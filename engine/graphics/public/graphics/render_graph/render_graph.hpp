@@ -67,8 +67,7 @@ public:
         pass->set_execute(std::forward<ExecuteFunctor>(execute));
         pass->setup(setup);
 
-        m_passes.push_back(pass);
-        m_label_offset.push_back(m_labels.size());
+        add_pass(pass);
     }
 
     void begin_group(std::string_view group_name);
@@ -85,6 +84,11 @@ public:
     const render_camera& get_camera() const noexcept
     {
         return *m_camera;
+    }
+
+    const std::vector<rdg_resource*>& get_resources() const noexcept
+    {
+        return m_resources;
     }
 
 private:
@@ -108,6 +112,12 @@ private:
         const rdg_reference* curr_reference,
         std::size_t offset,
         std::size_t size);
+
+    void add_pass(rdg_pass* pass)
+    {
+        m_passes.push_back(pass);
+        m_label_offset.push_back(m_labels.size());
+    }
 
     std::vector<rdg_resource*> m_resources;
     std::vector<rdg_pass*> m_passes;

@@ -30,9 +30,14 @@ rhi_command* vk_rhi::allocate_command()
     return m_context->get_graphics_queue()->allocate_command();
 }
 
-void vk_rhi::execute(rhi_command* command, bool sync)
+void vk_rhi::execute(rhi_command_batch* batchs, std::uint32_t batch_count)
 {
-    m_context->get_graphics_queue()->execute(command, sync);
+    m_context->get_graphics_queue()->execute(batchs, batch_count);
+}
+
+void vk_rhi::execute_sync(rhi_command* command)
+{
+    m_context->get_graphics_queue()->execute_sync(command);
 }
 
 void vk_rhi::begin_frame()

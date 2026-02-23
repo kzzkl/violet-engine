@@ -61,6 +61,17 @@ float v_smith_joint_approx(float NdotV, float NdotL, float roughness)
     return 0.5 * rcp(smith_v + smith_l + EPSILON);
 }
 
+float v_smith_ggx_correlated(float NdotV, float NdotL, float roughness) 
+{
+    float a2 = roughness * roughness;
+
+    float ggx_v = NdotL * sqrt(NdotV * NdotV * (1.0 - a2) + a2);
+    float ggx_l = NdotV * sqrt(NdotL * NdotL * (1.0 - a2) + a2);
+
+    float ggx = ggx_v + ggx_l;
+    return (ggx > 0.0) ? (0.5 / ggx) : 0.0;
+}
+
 float d_ggx(float NdotH, float roughness)
 {
     float a = roughness * roughness;
@@ -75,6 +86,11 @@ float d_ggx(float NdotH, float roughness)
 float3 f_schlick(float VdotH, float3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
+}
+
+float3 f_schlick(float VdotH, float3 F0, float3 F90) 
+{
+    return F0 + (F90 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
 float3 f_schlick_roughness(float VdotH, float3 F0, float roughness)

@@ -191,7 +191,7 @@ public:
     void set_name(std::string_view name)
     {
         m_name = name;
-        m_object_buffer->set_name(name);
+        m_object_buffer->get_rhi()->set_name(m_name.c_str());
     }
 
 private:
@@ -217,7 +217,7 @@ private:
 
         if (!m_name.empty())
         {
-            m_object_buffer->set_name(m_name);
+            m_object_buffer->get_rhi()->set_name(m_name.c_str());
         }
     }
 
@@ -393,7 +393,7 @@ public:
     void set_name(std::string_view name)
     {
         m_name = name;
-        m_object_buffer->set_name(name);
+        m_object_buffer->get_rhi()->set_name(m_name.c_str());
     }
 
 private:
@@ -419,7 +419,7 @@ private:
 
         if (!m_name.empty())
         {
-            m_object_buffer->set_name(m_name);
+            m_object_buffer->get_rhi()->set_name(m_name.c_str());
         }
     }
 
@@ -604,7 +604,7 @@ public:
     void set_name(std::string_view name)
     {
         m_name = name;
-        m_object_buffer->set_name(name);
+        m_object_buffer->get_rhi()->set_name(m_name.c_str());
     }
 
 private:
@@ -632,7 +632,7 @@ private:
 
         if (!m_name.empty())
         {
-            m_object_buffer->set_name(m_name);
+            m_object_buffer->get_rhi()->set_name(m_name.c_str());
         }
     }
 

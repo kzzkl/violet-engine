@@ -194,7 +194,9 @@ void graphics_system::end_frame()
             command = device.allocate_command();
         }
 
+        command->begin_label("Upload Data");
         m_gpu_buffer_uploader->record(command);
+        command->end_label();
     }
 
     auto& skinning = get_system<skinning_system>();
@@ -205,22 +207,44 @@ void graphics_system::end_frame()
             command = device.allocate_command();
         }
 
+        command->begin_label("Skinning");
         skinning.morphing(command);
         skinning.skinning(command);
+        command->end_label();
     }
+
+    std::vector<execute_batch> batches;
 
     if (command != nullptr)
     {
-        command->signal(m_update_fence.get(), ++m_update_fence_value);
-        device.execute(command);
+        execute_batch prepare_batch;
+        prepare_batch.commands.push_back(command);
+        prepare_batch.signal_fences.push_back({
+            .fence = m_update_fence.get(),
+            .stages = RHI_PIPELINE_STAGE_END,
+            .value = ++m_update_fence_value,
+        });
+
+        batches.push_back(prepare_batch);
     }
 
-    render();
+    std::vector<rhi_swapchain*> swapchains;
+
+    execute_batch render_batch;
+    render(render_batch, swapchains);
+    batches.push_back(render_batch);
+
+    device.execute(batches);
+
+    for (rhi_swapchain* swapchain : swapchains)
+    {
+        swapchain->present();
+    }
 
     device.end_frame();
 }
 
-void graphics_system::render()
+void graphics_system::render(execute_batch& batch, std::vector<rhi_swapchain*>& swapchains)
 {
     auto& world = get_world();
 
@@ -248,30 +272,32 @@ void graphics_system::render()
 
     auto& device = render_device::instance();
 
-    rhi_command* command = device.allocate_command();
-
     for (const auto& context : render_queue)
     {
-        rhi_fence* finish_fence = render(context);
-        if (finish_fence)
-        {
-            command->wait(finish_fence, m_frame_fence_value);
-        }
+        render(batch, swapchains, context);
     }
 
+    batch.wait_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_BEGIN,
+        .value = m_update_fence_value,
+    });
+
+    batch.signal_fences.push_back({
+        .fence = m_frame_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_END,
+        .value = m_frame_fence_value,
+    });
+
     m_frame_fence_values[device.get_frame_resource_index()] = m_frame_fence_value;
-
-    command->signal(m_frame_fence.get(), m_frame_fence_value);
-
-    device.execute(command);
 }
 
-rhi_fence* graphics_system::render(const render_context& context)
+void graphics_system::render(
+    execute_batch& batch,
+    std::vector<rhi_swapchain*>& swapchains,
+    const render_context& context)
 {
     auto& device = render_device::instance();
-    rhi_command* command = device.allocate_command();
-
-    command->wait(m_update_fence.get(), m_update_fence_value);
 
     bool skip = false;
 
@@ -290,7 +316,10 @@ rhi_fence* graphics_system::render(const render_context& context)
                     return;
                 }
 
-                command->wait(fence, 0, RHI_PIPELINE_STAGE_BEGIN);
+                batch.wait_fences.push_back({
+                    .fence = fence,
+                    .stages = RHI_PIPELINE_STAGE_BEGIN,
+                });
 
                 swapchain = arg;
             }
@@ -299,33 +328,29 @@ rhi_fence* graphics_system::render(const render_context& context)
 
     if (skip)
     {
-        return nullptr;
+        return;
     }
-
-    if (swapchain != nullptr)
-    {
-        command->signal(swapchain->get_present_fence(), m_frame_fence_value);
-    }
-
-    rhi_fence* finish_fence = allocate_fence();
-    command->signal(finish_fence, m_frame_fence_value);
 
     render_camera render_camera(context.camera, context.camera_meta);
     render_graph graph("Camera", context.camera_meta->scene, &render_camera, m_allocator.get());
 
     context.camera->renderer->render(graph);
 
+    rhi_command* command = device.allocate_command();
     graph.compile();
-
     graph.record(command);
-    device.execute(command);
 
     if (swapchain != nullptr)
     {
-        swapchain->present();
+        batch.signal_fences.push_back({
+            .fence = swapchain->get_present_fence(),
+            .stages = RHI_PIPELINE_STAGE_END,
+        });
+
+        swapchains.push_back(swapchain);
     }
 
-    return finish_fence;
+    batch.commands.push_back(command);
 }
 
 rhi_fence* graphics_system::allocate_fence()

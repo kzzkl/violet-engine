@@ -100,9 +100,6 @@ public:
         rhi_texture* texture,
         const rhi_texture_region& texture_region) override;
 
-    void signal(rhi_fence* fence, std::uint64_t value) override;
-    void wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages) override;
-
     void begin_label(const char* label) const override
     {
 #ifndef NDEBUG
@@ -125,31 +122,6 @@ public:
 
     void reset();
 
-    const std::vector<VkSemaphore>& get_signal_fences() const noexcept
-    {
-        return m_signal_fences;
-    }
-
-    const std::vector<std::uint64_t>& get_signal_values() const noexcept
-    {
-        return m_signal_values;
-    }
-
-    const std::vector<VkSemaphore>& get_wait_fences() const noexcept
-    {
-        return m_wait_fences;
-    }
-
-    const std::vector<std::uint64_t>& get_wait_values() const noexcept
-    {
-        return m_wait_values;
-    }
-
-    const std::vector<VkPipelineStageFlags>& get_wait_stages() const noexcept
-    {
-        return m_wait_stages;
-    }
-
 private:
     VkCommandBuffer m_command_buffer;
 
@@ -157,13 +129,6 @@ private:
     vk_pipeline_layout* m_current_pipeline_layout;
     VkPipeline m_current_pipeline;
     VkPipelineBindPoint m_current_bind_point;
-
-    std::vector<VkSemaphore> m_signal_fences;
-    std::vector<std::uint64_t> m_signal_values;
-
-    std::vector<VkSemaphore> m_wait_fences;
-    std::vector<std::uint64_t> m_wait_values;
-    std::vector<VkPipelineStageFlags> m_wait_stages;
 
     vk_context* m_context;
 };
@@ -176,7 +141,8 @@ public:
 
     vk_command* allocate_command();
 
-    void execute(rhi_command* command, bool sync = false);
+    void execute(rhi_command_batch* batchs, std::uint32_t batch_count);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
 

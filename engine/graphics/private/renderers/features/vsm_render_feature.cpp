@@ -17,13 +17,13 @@ vsm_render_feature::vsm_render_feature()
         .size = sizeof(lru_state_data) * 2,
         .flags = RHI_BUFFER_STORAGE,
     });
-    device.set_name(m_lru_state.get(), "VSM LRU State");
+    m_lru_state->set_name("VSM LRU State");
 
     m_lru_buffer = device.create_buffer({
         .size = sizeof(std::uint32_t) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT * 2,
         .flags = RHI_BUFFER_STORAGE,
     });
-    device.set_name(m_lru_buffer.get(), "VSM LRU");
+    m_lru_buffer->set_name("VSM LRU");
 }
 
 void vsm_render_feature::set_debug_info(bool enable)
@@ -42,7 +42,7 @@ void vsm_render_feature::set_debug_info(bool enable)
             .size = sizeof(debug_info) * device.get_frame_resource_count(),
             .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE | RHI_BUFFER_TRANSFER_DST,
         });
-        device.set_name(m_debug_info.get(), "VSM Debug Info");
+        m_debug_info->set_name("VSM Debug Info");
     }
 }
 

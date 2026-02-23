@@ -458,6 +458,7 @@ void deferred_renderer::add_bloom_pass(render_graph& graph)
         .threshold = bloom->get_threshold(),
         .intensity = bloom->get_intensity(),
         .knee = bloom->get_knee(),
+        .radius = bloom->get_radius(),
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
     });

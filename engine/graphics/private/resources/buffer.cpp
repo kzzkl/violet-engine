@@ -23,14 +23,6 @@ void raw_buffer::set_buffer(rhi_ptr<rhi_buffer>&& buffer)
     m_buffer = std::move(buffer);
 }
 
-void raw_buffer::set_name(const std::string_view& name) noexcept
-{
-    if (m_buffer != nullptr)
-    {
-        render_device::instance().set_name(m_buffer.get(), name);
-    }
-}
-
 structured_buffer::structured_buffer(std::size_t buffer_size, rhi_buffer_flags flags)
 {
     set_buffer({

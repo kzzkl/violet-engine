@@ -16,13 +16,13 @@ vsm_manager::vsm_manager(bool enable_occlusion)
         .size = sizeof(std::uint32_t) * MAX_VSM_COUNT * VSM_VIRTUAL_PAGE_TABLE_PAGE_COUNT,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
-    device.set_name(m_virtual_page_table.get(), "VSM Virtual Page Table");
+    m_virtual_page_table->set_name("VSM Virtual Page Table");
 
     m_physical_page_table = device.create_buffer({
         .size = sizeof(vec4u) * VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
         .flags = RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST,
     });
-    device.set_name(m_physical_page_table.get(), "VSM Physical Page Table");
+    m_physical_page_table->set_name("VSM Physical Page Table");
 
     rhi_command* command = device.allocate_command();
 
@@ -34,7 +34,7 @@ vsm_manager::vsm_manager(bool enable_occlusion)
     region.size = m_physical_page_table->get_size();
     command->fill_buffer(m_physical_page_table.get(), region, 0);
 
-    device.execute(command, true);
+    device.execute_sync(command);
 
     rhi_texture_desc physical_shadow_map_desc = {
         .extent =
@@ -50,10 +50,10 @@ vsm_manager::vsm_manager(bool enable_occlusion)
     };
 
     m_physical_shadow_map_static = device.create_texture(physical_shadow_map_desc);
-    device.set_name(m_physical_shadow_map_static.get(), "VSM Physical Shadow Map Static");
+    m_physical_shadow_map_static->set_name("VSM Physical Shadow Map Static");
 
     m_physical_shadow_map_final = device.create_texture(physical_shadow_map_desc);
-    device.set_name(m_physical_shadow_map_final.get(), "VSM Physical Shadow Map Final");
+    m_physical_shadow_map_final->set_name("VSM Physical Shadow Map Final");
 
     if (enable_occlusion)
     {
@@ -70,7 +70,7 @@ vsm_manager::vsm_manager(bool enable_occlusion)
             .layer_count = 1,
             .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         });
-        device.set_name(m_hzb.get(), "VSM HZB");
+        m_hzb->set_name("VSM HZB");
     }
 }
 

@@ -16,6 +16,8 @@ public:
     vk_shader(const rhi_shader_desc& desc, vk_context* context);
     virtual ~vk_shader();
 
+    void set_name(const char* name) override;
+
     virtual VkShaderStageFlagBits get_stage() const noexcept = 0;
 
     VkShaderModule get_module() const noexcept

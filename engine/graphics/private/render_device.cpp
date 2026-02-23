@@ -115,9 +115,29 @@ rhi_command* render_device::allocate_command()
     return m_rhi->allocate_command();
 }
 
-void render_device::execute(rhi_command* command, bool sync)
+void render_device::execute(std::span<execute_batch> batches)
 {
-    m_rhi->execute(command, sync);
+    std::vector<rhi_command_batch> command_batches(batches.size());
+    for (std::uint32_t i = 0; i < batches.size(); ++i)
+    {
+        command_batches[i].commands = batches[i].commands.data();
+        command_batches[i].command_count = static_cast<std::uint32_t>(batches[i].commands.size());
+
+        command_batches[i].signal_fences = batches[i].signal_fences.data();
+        command_batches[i].signal_fence_count =
+            static_cast<std::uint32_t>(batches[i].signal_fences.size());
+
+        command_batches[i].wait_fences = batches[i].wait_fences.data();
+        command_batches[i].wait_fence_count =
+            static_cast<std::uint32_t>(batches[i].wait_fences.size());
+    }
+
+    m_rhi->execute(command_batches.data(), static_cast<std::uint32_t>(command_batches.size()));
+}
+
+void render_device::execute_sync(rhi_command* command)
+{
+    m_rhi->execute_sync(command);
 }
 
 void render_device::begin_frame()

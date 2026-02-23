@@ -77,6 +77,7 @@ struct bloom_upsample_cs : public shader_cs
         std::uint32_t prev_src;
         std::uint32_t curr_src;
         std::uint32_t dst;
+        float radius;
     };
 
     static constexpr parameter_layout parameters = {
@@ -156,7 +157,7 @@ void bloom_pass::add(render_graph& graph, const parameter& parameter)
     prefilter(graph, parameter);
     downsample(graph);
     blur(graph);
-    upsample(graph);
+    upsample(graph, parameter);
     merge(graph, parameter);
 }
 
@@ -364,7 +365,7 @@ void bloom_pass::blur(render_graph& graph)
     }
 }
 
-void bloom_pass::upsample(render_graph& graph)
+void bloom_pass::upsample(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Upsample");
 
@@ -373,6 +374,7 @@ void bloom_pass::upsample(render_graph& graph)
         rdg_texture_srv prev_src;
         rdg_texture_srv curr_src;
         rdg_texture_uav dst;
+        float radius;
     };
 
     for (std::int32_t level = bloom_mip_count - 2; level >= 0; --level)
@@ -400,6 +402,7 @@ void bloom_pass::upsample(render_graph& graph)
                     RHI_TEXTURE_DIMENSION_2D,
                     level,
                     1);
+                data.radius = parameter.radius;
             },
             [](const pass_data& data, rdg_command& command)
             {
@@ -420,6 +423,7 @@ void bloom_pass::upsample(render_graph& graph)
                         .prev_src = data.prev_src.get_bindless(),
                         .curr_src = data.curr_src.get_bindless(),
                         .dst = data.dst.get_bindless(),
+                        .radius = data.radius,
                     });
 
                 auto extent = data.dst.get_extent();

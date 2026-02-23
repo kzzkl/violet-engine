@@ -91,7 +91,7 @@ rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_opti
 
     command->set_pipeline_barrier(nullptr, 0, &texture_barrier, 1);
 
-    render_device::instance().execute(command, true);
+    render_device::instance().execute_sync(command);
 
     return texture;
 }
@@ -175,7 +175,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
 
     command->set_pipeline_barrier(nullptr, 0, &texture_barrier, 1);
 
-    render_device::instance().execute(command, true);
+    render_device::instance().execute_sync(command);
 
     return texture;
 }

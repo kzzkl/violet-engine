@@ -30,17 +30,20 @@ skybox::skybox(
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_SRC |
             RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_CUBE,
         get_level_count(texture_extent));
+    m_texture->get_rhi()->set_name("skybox");
 
     m_irradiance = std::make_unique<texture_cube>(
         irradiance_extent,
         RHI_FORMAT_R11G11B10_FLOAT,
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE);
+    m_irradiance->get_rhi()->set_name("skybox_irradiance");
 
     m_prefilter = std::make_unique<texture_cube>(
         prefilter_extent,
         RHI_FORMAT_R11G11B10_FLOAT,
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
         get_level_count(prefilter_extent));
+    m_prefilter->get_rhi()->set_name("skybox_prefilter");
 
     texture_2d env_map(path);
     ibl_tool::generate_cube_map(env_map.get_rhi(), m_texture->get_rhi());

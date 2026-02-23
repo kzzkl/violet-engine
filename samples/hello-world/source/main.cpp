@@ -143,14 +143,14 @@ private:
             bool ligth_dirty = false;
 
             static float color[3] = {1.0f, 1.0f, 1.0f};
-            static float intensity = 7.0f;
+            static float intensity = 10.0f;
 
             if (ImGui::ColorEdit3("Color", color))
             {
                 ligth_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f))
+            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 30.0f))
             {
                 ligth_dirty = true;
             }
@@ -282,11 +282,13 @@ private:
             static float threshold = bloom->get_threshold();
             static float intensity = bloom->get_intensity();
             static float knee = bloom->get_knee();
+            static float radius = bloom->get_radius();
 
             ImGui::Checkbox("Enable##Bloom", &enable_bloom);
             ImGui::SliderFloat("Threshold##Bloom", &threshold, 0.0f, 2.0f);
-            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 10.0f);
+            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 2.0f);
             ImGui::SliderFloat("Knee##Bloom", &knee, 0.0f, 1.0f);
+            ImGui::SliderFloat("Radius##Bloom", &radius, 0.2f, 1.0f);
 
             if (enable_bloom)
             {
@@ -299,6 +301,7 @@ private:
             bloom->set_threshold(threshold);
             bloom->set_intensity(intensity);
             bloom->set_knee(knee);
+            bloom->set_radius(radius);
         }
 
         if (ImGui::CollapsingHeader("Debug"))

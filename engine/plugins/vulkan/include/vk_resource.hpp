@@ -174,6 +174,8 @@ public:
         std::uint32_t layer,
         std::uint32_t layer_count) override;
 
+    void set_name(const char* name) override;
+
     VkImage get_image() const noexcept
     {
         return m_image;
@@ -351,6 +353,8 @@ public:
 
     rhi_buffer_srv* get_srv(std::size_t offset, std::size_t size, rhi_format format) override;
     rhi_buffer_uav* get_uav(std::size_t offset, std::size_t size, rhi_format format) override;
+
+    void set_name(const char* name) override;
 
     VkBuffer get_buffer() const noexcept
     {

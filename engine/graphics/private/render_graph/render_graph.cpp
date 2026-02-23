@@ -329,6 +329,11 @@ rdg_texture* render_graph::add_texture(
 
     m_resources.push_back(resource);
 
+    if (final_layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
+    {
+        m_final_pass->add_texture(resource, RHI_PIPELINE_STAGE_END, 0, final_layout);
+    }
+
     return resource;
 }
 
@@ -407,6 +412,8 @@ void render_graph::end_group()
 void render_graph::compile()
 {
     end_group();
+
+    add_pass(m_final_pass);
 
     cull();
     allocate_resources();
@@ -504,28 +511,6 @@ void render_graph::cull()
         });
 
     m_resources.erase(iter, m_resources.end());*/
-
-    m_passes.push_back(m_final_pass);
-    m_label_offset.push_back(m_labels.size());
-
-    for (auto* resource : m_resources)
-    {
-        if (resource->is_culled())
-        {
-            continue;
-        }
-
-        if (resource->get_type() == RDG_RESOURCE_TEXTURE)
-        {
-            auto* texture = static_cast<rdg_texture*>(resource);
-
-            if (texture->get_final_layout() != RHI_TEXTURE_LAYOUT_UNDEFINED)
-            {
-                m_final_pass
-                    ->add_texture(texture, RHI_PIPELINE_STAGE_END, 0, texture->get_final_layout());
-            }
-        }
-    }
 
     for (auto* pass : m_passes)
     {

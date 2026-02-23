@@ -3,8 +3,8 @@
 #include "vk_framebuffer.hpp"
 #include "vk_resource.hpp"
 #include "vk_utils.hpp"
+#include <array>
 #include <cassert>
-#include <vector>
 
 namespace violet::vk
 {
@@ -39,12 +39,13 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         }
     };
 
-    std::vector<VkAttachmentDescription> attachments;
+    std::vector<VkAttachmentDescription2> attachments;
 
     auto add_attachment = [&](const rhi_attachment_desc& desc)
     {
         attachments.emplace_back(
-            VkAttachmentDescription{
+            VkAttachmentDescription2{
+                .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
                 .format = vk_utils::map_format(desc.format),
                 .samples = vk_utils::map_sample_count(desc.samples),
                 .loadOp = map_load_op(desc.load_op),
@@ -56,8 +57,10 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
             });
     };
 
-    std::vector<VkAttachmentReference> color;
-    VkAttachmentReference depth_stencil;
+    std::vector<VkAttachmentReference2> color;
+    VkAttachmentReference2 depth_stencil = {
+        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+    };
     bool has_depth_stencil = false;
 
     for (std::size_t i = 0; i < desc.attachment_count; ++i)
@@ -67,7 +70,8 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         if (desc.attachments[i].type == RHI_ATTACHMENT_TYPE_RENDER_TARGET)
         {
             color.emplace_back(
-                VkAttachmentReference{
+                VkAttachmentReference2{
+                    .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
                     .attachment = static_cast<std::uint32_t>(i),
                     .layout = vk_utils::map_layout(desc.attachments[i].layout),
                 });
@@ -87,50 +91,60 @@ vk_render_pass::vk_render_pass(const rhi_render_pass_desc& desc, vk_context* con
         m_attachment_layout.push_back(desc.attachments[i].type);
     }
 
-    VkSubpassDescription subpass = {
+    VkSubpassDescription2 subpass = {
+        .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
         .colorAttachmentCount = static_cast<std::uint32_t>(color.size()),
         .pColorAttachments = color.data(),
         .pDepthStencilAttachment = has_depth_stencil ? &depth_stencil : nullptr,
         .preserveAttachmentCount = 0,
     };
 
-    std::vector<VkSubpassDependency> dependencies;
-    if (desc.attachment_count != 0)
-    {
-        dependencies = {
-            {
-                .srcSubpass = VK_SUBPASS_EXTERNAL,
-                .dstSubpass = 0,
-                .srcStageMask =
-                    vk_utils::map_pipeline_stage_flags(desc.begin_dependency.src_stages),
-                .dstStageMask =
-                    vk_utils::map_pipeline_stage_flags(desc.begin_dependency.dst_stages),
-                .srcAccessMask = vk_utils::map_access_flags(desc.begin_dependency.src_access),
-                .dstAccessMask = vk_utils::map_access_flags(desc.begin_dependency.dst_access),
-            },
-            {
-                .srcSubpass = 0,
-                .dstSubpass = VK_SUBPASS_EXTERNAL,
-                .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.src_stages),
-                .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.dst_stages),
-                .srcAccessMask = vk_utils::map_access_flags(desc.end_dependency.src_access),
-                .dstAccessMask = vk_utils::map_access_flags(desc.end_dependency.dst_access),
-            },
-        };
-    }
-
-    VkRenderPassCreateInfo render_pass_info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+    VkRenderPassCreateInfo2 render_pass_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
         .attachmentCount = static_cast<std::uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
-        .dependencyCount = static_cast<std::uint32_t>(dependencies.size()),
-        .pDependencies = dependencies.data(),
     };
 
+    std::array<VkSubpassDependency2, 2> dependencies;
+    std::array<VkMemoryBarrier2, 2> memory_barriers;
+    if (desc.attachment_count != 0)
+    {
+        memory_barriers[0] = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+            .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.begin_dependency.src_stages),
+            .srcAccessMask = vk_utils::map_access_flags(desc.begin_dependency.src_access),
+            .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.begin_dependency.dst_stages),
+            .dstAccessMask = vk_utils::map_access_flags(desc.begin_dependency.dst_access),
+        };
+        dependencies[0] = {
+            .sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+            .pNext = memory_barriers.data(),
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+        };
+
+        memory_barriers[1] = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+            .srcStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.src_stages),
+            .srcAccessMask = vk_utils::map_access_flags(desc.end_dependency.src_access),
+            .dstStageMask = vk_utils::map_pipeline_stage_flags(desc.end_dependency.dst_stages),
+            .dstAccessMask = vk_utils::map_access_flags(desc.end_dependency.dst_access),
+        };
+        dependencies[1] = {
+            .sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+            .pNext = memory_barriers.data() + 1,
+            .srcSubpass = 0,
+            .dstSubpass = VK_SUBPASS_EXTERNAL,
+        };
+
+        render_pass_info.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
+        render_pass_info.pDependencies = dependencies.data();
+    }
+
     vk_check(
-        vkCreateRenderPass(m_context->get_device(), &render_pass_info, nullptr, &m_render_pass));
+        vkCreateRenderPass2(m_context->get_device(), &render_pass_info, nullptr, &m_render_pass));
 }
 
 vk_render_pass::~vk_render_pass()

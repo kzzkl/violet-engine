@@ -41,9 +41,11 @@ private:
 
     void begin_frame();
     void end_frame();
-    void render();
-
-    rhi_fence* render(const render_context& context);
+    void render(execute_batch& batch, std::vector<rhi_swapchain*>& swapchains);
+    void render(
+        execute_batch& batch,
+        std::vector<rhi_swapchain*>& swapchains,
+        const render_context& context);
 
     rhi_fence* allocate_fence();
 

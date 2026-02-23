@@ -316,7 +316,7 @@ void ibl_tool::generate_cube_map(rhi_texture* env_map, rhi_texture* cube_map)
     graph.compile();
     graph.record(command);
 
-    device.execute(command, true);
+    device.execute_sync(command);
 }
 
 void ibl_tool::generate_ibl(
@@ -334,6 +334,6 @@ void ibl_tool::generate_ibl(
     graph.compile();
     graph.record(command);
 
-    device.execute(command, true);
+    device.execute_sync(command);
 }
 } // namespace violet

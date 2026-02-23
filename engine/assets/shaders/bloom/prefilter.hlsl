@@ -33,7 +33,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 color1 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(1, -1)).xyz;
     float3 color2 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(1, 1)).xyz;
     float3 color3 = src.SampleLevel(linear_clamp_sampler, texcoord, 0.0, int2(-1, 1)).xyz;
+
     float3 color = (color0 + color1 + color2 + color3) * 0.25;
+    color = min(color, 10.0);
 
     float brightness = max(color.r, max(color.g, color.b));
 

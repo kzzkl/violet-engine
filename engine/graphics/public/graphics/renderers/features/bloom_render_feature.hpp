@@ -37,9 +37,20 @@ public:
         return m_knee;
     }
 
+    void set_radius(float radius) noexcept
+    {
+        m_radius = radius;
+    }
+
+    float get_radius() const noexcept
+    {
+        return m_radius;
+    }
+
 private:
     float m_threshold{0.9f};
     float m_intensity{0.1f};
     float m_knee{0.25f};
+    float m_radius{0.5f};
 };
 } // namespace violet

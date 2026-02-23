@@ -96,7 +96,7 @@ void persistent_buffer::reserve()
     };
     command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
 
-    device.execute(command);
+    device.execute_sync(command);
 
     set_buffer(std::move(new_buffer));
 }
