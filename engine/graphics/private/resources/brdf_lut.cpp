@@ -81,7 +81,7 @@ brdf_lut::brdf_lut(std::uint32_t size)
     rhi_command* command = device.allocate_command();
     graph.compile();
     graph.record(command);
-    device.execute(command, true);
+    device.execute_sync(command);
 
     set_texture(std::move(brdf_lut));
 }

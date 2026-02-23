@@ -10,7 +10,6 @@ enum cull_stage
     CULL_STAGE_POST_PASS,
 };
 
-class cluster_render_feature;
 class cull_pass
 {
 public:

@@ -30,6 +30,7 @@ public:
     void push(rhi_texture* texture);
     void push(rhi_swapchain* swapchain);
     void push(rhi_fence* fence);
+    void push(rhi_query_pool* query_pool);
 
 private:
     template <typename T>
@@ -81,6 +82,7 @@ private:
     sub_queue<rhi_texture> m_texture_queue;
     sub_queue<rhi_swapchain> m_swapchain_queue;
     sub_queue<rhi_fence> m_fence_queue;
+    sub_queue<rhi_query_pool> m_query_pool_queue;
 
     vk_context* m_context;
 };

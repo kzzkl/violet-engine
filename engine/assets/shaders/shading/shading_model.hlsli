@@ -73,7 +73,7 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         lighting = shading_model.evaluate_indirect_lighting();
     }
 
-    render_target[coord] += float4(lighting, 1.0);
+    render_target[coord] += float4(lighting, 0.0);
 }
 
 #endif

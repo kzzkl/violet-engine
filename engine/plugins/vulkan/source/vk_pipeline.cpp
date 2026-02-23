@@ -41,6 +41,19 @@ vk_shader::~vk_shader()
     vkDestroyShaderModule(m_context->get_device(), m_module, nullptr);
 }
 
+void vk_shader::set_name(const char* name)
+{
+#ifndef NDEBUG
+    VkDebugUtilsObjectNameInfoEXT info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_SHADER_MODULE,
+        .objectHandle = reinterpret_cast<std::uint64_t>(m_module),
+        .pObjectName = name,
+    };
+    vkSetDebugUtilsObjectNameEXT(m_context->get_device(), &info);
+#endif
+}
+
 vk_vertex_shader::vk_vertex_shader(const rhi_shader_desc& desc, vk_context* context)
     : vk_shader(desc, context)
 {

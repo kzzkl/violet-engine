@@ -20,8 +20,8 @@ public:
     static VkImageUsageFlags map_image_usage_flags(rhi_texture_flags flags);
     static VkBufferUsageFlags map_buffer_usage_flags(rhi_buffer_flags flags);
 
-    static VkPipelineStageFlags map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
-    static VkAccessFlags map_access_flags(rhi_access_flags flags);
+    static VkPipelineStageFlags2 map_pipeline_stage_flags(rhi_pipeline_stage_flags flags);
+    static VkAccessFlags2 map_access_flags(rhi_access_flags flags);
 
     static VkBlendFactor map_blend_factor(rhi_blend_factor factor);
     static VkBlendOp map_blend_op(rhi_blend_op op);
@@ -30,5 +30,7 @@ public:
     static VkStencilOp map_stencil_op(rhi_stencil_op op);
 
     static VkImageAspectFlags map_image_aspect_flags(rhi_texture_aspect_flags flags);
+
+    static VkQueryType map_query_type(rhi_query_type type);
 };
 } // namespace violet::vk

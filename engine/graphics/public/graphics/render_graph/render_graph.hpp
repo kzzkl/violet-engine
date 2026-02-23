@@ -14,6 +14,7 @@ concept render_graph_pass = requires(T t, Graph& graph) {
     { t.add(graph, std::declval<typename T::parameter>()) } -> std::same_as<typename T::output>;
 };
 
+class rdg_profiling;
 class render_graph
 {
 public:
@@ -67,8 +68,7 @@ public:
         pass->set_execute(std::forward<ExecuteFunctor>(execute));
         pass->setup(setup);
 
-        m_passes.push_back(pass);
-        m_label_offset.push_back(m_labels.size());
+        add_pass(pass);
     }
 
     void begin_group(std::string_view group_name);
@@ -85,6 +85,16 @@ public:
     const render_camera& get_camera() const noexcept
     {
         return *m_camera;
+    }
+
+    const std::vector<rdg_resource*>& get_resources() const noexcept
+    {
+        return m_resources;
+    }
+
+    void set_profiling(rdg_profiling* profiling) noexcept
+    {
+        m_profiling = profiling;
     }
 
 private:
@@ -109,11 +119,17 @@ private:
         std::size_t offset,
         std::size_t size);
 
+    void add_pass(rdg_pass* pass)
+    {
+        m_passes.push_back(pass);
+        m_group_offset.push_back(m_groups.size());
+    }
+
     std::vector<rdg_resource*> m_resources;
     std::vector<rdg_pass*> m_passes;
 
-    std::vector<std::size_t> m_label_offset;
-    std::vector<std::string> m_labels;
+    std::vector<std::size_t> m_group_offset;
+    std::vector<std::string> m_groups;
 
     struct batch
     {
@@ -135,6 +151,8 @@ private:
 
     const render_scene* m_scene;
     const render_camera* m_camera;
+
+    rdg_profiling* m_profiling{nullptr};
 };
 
 class rdg_scope

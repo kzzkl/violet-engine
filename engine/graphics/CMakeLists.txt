@@ -6,8 +6,9 @@ add_library(violet-graphics STATIC
     private/materials/unlit_material.cpp
     private/render_graph/rdg_command.cpp
     private/render_graph/rdg_pass.cpp
+    private/render_graph/rdg_profiling.cpp
     private/render_graph/render_graph.cpp
-    private/renderers/features/vsm_render_feature.cpp
+    private/renderers/features/vsm_feature.cpp
     private/renderers/passes/blit_pass.cpp
     private/renderers/passes/bloom_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp

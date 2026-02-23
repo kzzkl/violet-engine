@@ -307,49 +307,53 @@ VkBufferUsageFlags vk_utils::map_buffer_usage_flags(rhi_buffer_flags flags)
     return usages;
 }
 
-VkPipelineStageFlags vk_utils::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
+VkPipelineStageFlags2 vk_utils::map_pipeline_stage_flags(rhi_pipeline_stage_flags flags)
 {
-    VkPipelineStageFlags result = 0;
-    result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_VERTEX_INPUT) ? VK_PIPELINE_STAGE_VERTEX_INPUT_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_VERTEX) ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT : 0;
+    VkPipelineStageFlags2 result = 0;
+    result |= (flags & RHI_PIPELINE_STAGE_BEGIN) ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_VERTEX_INPUT) ? VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_VERTEX) ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_EARLY_DEPTH_STENCIL) ?
-                  VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT :
+                  VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT :
                   0;
-    result |= (flags & RHI_PIPELINE_STAGE_FRAGMENT) ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_FRAGMENT) ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT : 0;
     result |= (flags & RHI_PIPELINE_STAGE_LATE_DEPTH_STENCIL) ?
-                  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT :
+                  VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT :
                   0;
     result |= (flags & RHI_PIPELINE_STAGE_COLOR_OUTPUT) ?
-                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT :
+                  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT :
                   0;
-    result |= (flags & RHI_PIPELINE_STAGE_TRANSFER) ? VK_PIPELINE_STAGE_TRANSFER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_COMPUTE) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_HOST) ? VK_PIPELINE_STAGE_HOST_BIT : 0;
-    result |= (flags & RHI_PIPELINE_STAGE_DRAW_INDIRECT) ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_TRANSFER) ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_COMPUTE) ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_END) ? VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT : 0;
+    result |= (flags & RHI_PIPELINE_STAGE_HOST) ? VK_PIPELINE_STAGE_2_HOST_BIT : 0;
+    result |=
+        (flags & RHI_PIPELINE_STAGE_DRAW_INDIRECT) ? VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT : 0;
 
     return result;
 }
 
-VkAccessFlags vk_utils::map_access_flags(rhi_access_flags flags)
+VkAccessFlags2 vk_utils::map_access_flags(rhi_access_flags flags)
 {
     VkAccessFlags result = 0;
-    result |= (flags & RHI_ACCESS_COLOR_READ) ? VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_COLOR_WRITE) ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_COLOR_READ) ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_COLOR_WRITE) ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : 0;
     result |=
-        (flags & RHI_ACCESS_DEPTH_STENCIL_READ) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT : 0;
+        (flags & RHI_ACCESS_DEPTH_STENCIL_READ) ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_DEPTH_STENCIL_WRITE) ?
+                  VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT :
+                  0;
+    result |= (flags & RHI_ACCESS_SHADER_READ) ? VK_ACCESS_2_SHADER_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_SHADER_WRITE) ? VK_ACCESS_2_SHADER_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_TRANSFER_READ) ? VK_ACCESS_2_TRANSFER_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_TRANSFER_WRITE) ? VK_ACCESS_2_TRANSFER_WRITE_BIT : 0;
+    result |= (flags & RHI_ACCESS_HOST_READ) ? VK_ACCESS_2_HOST_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_2_HOST_WRITE_BIT : 0;
     result |=
-        (flags & RHI_ACCESS_DEPTH_STENCIL_WRITE) ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0;
-    result |= (flags & RHI_ACCESS_SHADER_READ) ? VK_ACCESS_SHADER_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_SHADER_WRITE) ? VK_ACCESS_SHADER_WRITE_BIT : 0;
-    result |= (flags & RHI_ACCESS_TRANSFER_READ) ? VK_ACCESS_TRANSFER_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_TRANSFER_WRITE) ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
-    result |= (flags & RHI_ACCESS_HOST_READ) ? VK_ACCESS_HOST_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_HOST_WRITE) ? VK_ACCESS_HOST_WRITE_BIT : 0;
-    result |= (flags & RHI_ACCESS_INDIRECT_COMMAND_READ) ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_VERTEX_ATTRIBUTE_READ) ? VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT : 0;
-    result |= (flags & RHI_ACCESS_INDEX_READ) ? VK_ACCESS_INDEX_READ_BIT : 0;
+        (flags & RHI_ACCESS_INDIRECT_COMMAND_READ) ? VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT : 0;
+    result |=
+        (flags & RHI_ACCESS_VERTEX_ATTRIBUTE_READ) ? VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT : 0;
+    result |= (flags & RHI_ACCESS_INDEX_READ) ? VK_ACCESS_2_INDEX_READ_BIT : 0;
 
     return result;
 }
@@ -459,5 +463,20 @@ VkImageAspectFlags vk_utils::map_image_aspect_flags(rhi_texture_aspect_flags fla
     result |= (flags & RHI_TEXTURE_ASPECT_DEPTH) ? VK_IMAGE_ASPECT_DEPTH_BIT : 0;
     result |= (flags & RHI_TEXTURE_ASPECT_STENCIL) ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
     return result;
+}
+
+VkQueryType vk_utils::map_query_type(rhi_query_type type)
+{
+    switch (type)
+    {
+    case RHI_QUERY_TYPE_OCCLUSION:
+        return VK_QUERY_TYPE_OCCLUSION;
+    case RHI_QUERY_TYPE_TIMESTAMP:
+        return VK_QUERY_TYPE_TIMESTAMP;
+    case RHI_QUERY_TYPE_PIPELINE_STATISTICS:
+        return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+    default:
+        throw std::runtime_error("Invalid query type.");
+    }
 }
 } // namespace violet::vk

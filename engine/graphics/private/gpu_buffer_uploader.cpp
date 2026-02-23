@@ -70,8 +70,8 @@ void gpu_buffer_uploader::record(rhi_command* command)
     {
         rhi_buffer_barrier barrier = {
             .buffer = buffer,
-            .src_stages = stages_access.first,
-            .src_access = stages_access.second,
+            .src_stages = stages_access.first | RHI_PIPELINE_STAGE_TRANSFER,
+            .src_access = stages_access.second | RHI_ACCESS_TRANSFER_WRITE,
             .dst_stages = RHI_PIPELINE_STAGE_TRANSFER,
             .dst_access = RHI_ACCESS_TRANSFER_WRITE,
             .offset = 0,
@@ -215,7 +215,7 @@ void gpu_buffer_uploader::flush()
 
     rhi_command* command = device.allocate_command();
     record(command);
-    device.execute(command, true);
+    device.execute_sync(command);
 
     for (std::uint32_t i = 0; i < m_active_staging_pages.size(); ++i)
     {

@@ -31,6 +31,7 @@ public:
     void operator()(rhi_texture* texture);
     void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
+    void operator()(rhi_query_pool* query_pool);
 
 private:
     rhi* m_rhi;
@@ -39,18 +40,19 @@ private:
 template <typename T>
 using rhi_ptr = std::unique_ptr<T, rhi_deleter>;
 
+struct execute_batch
+{
+    std::vector<rhi_command*> commands;
+    std::vector<rhi_command_batch_fence> signal_fences;
+    std::vector<rhi_command_batch_fence> wait_fences;
+};
+
 class material_manager;
 class geometry_manager;
 class shader_compiler;
 
 class raw_buffer;
 class raw_texture;
-
-template <typename T>
-concept rhi_resource = std::is_same_v<T, rhi_buffer> || std::is_same_v<T, rhi_texture> ||
-                       std::is_same_v<T, rhi_texture_srv> || std::is_same_v<T, rhi_texture_uav> ||
-                       std::is_same_v<T, rhi_texture_rtv> || std::is_same_v<T, rhi_texture_dsv> ||
-                       std::is_same_v<T, rhi_buffer_srv> || std::is_same_v<T, rhi_buffer_uav>;
 
 class transient_allocator;
 class render_device
@@ -65,7 +67,8 @@ public:
     void reset();
 
     rhi_command* allocate_command();
-    void execute(rhi_command* command, bool sync = false);
+    void execute(std::span<execute_batch> batches);
+    void execute_sync(rhi_command* command);
 
     void begin_frame();
     void end_frame();
@@ -119,7 +122,7 @@ public:
         }
 
         auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
-        m_rhi->set_name(shader.get(), T::path.data());
+        shader->set_name(T::path.data());
 
         rhi_shader* result = shader.get();
         m_shaders[key] = std::move(shader);
@@ -137,14 +140,6 @@ public:
         return m_geometry_manager.get();
     }
 
-    template <typename T>
-    void set_name(T* object, std::string_view name) const
-    {
-#ifndef NDEBUG
-        m_rhi->set_name(object, name.data());
-#endif
-    }
-
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
 
     rhi_ptr<rhi_raster_pipeline> create_pipeline(const rhi_raster_pipeline_desc& desc);
@@ -159,6 +154,8 @@ public:
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
     rhi_ptr<rhi_fence> create_fence();
+
+    rhi_ptr<rhi_query_pool> create_query_pool(const rhi_query_pool_desc& desc);
 
     // Transient resources.
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);

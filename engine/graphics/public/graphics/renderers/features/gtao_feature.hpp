@@ -4,8 +4,7 @@
 
 namespace violet
 {
-
-class gtao_render_feature : public render_feature<gtao_render_feature>
+class gtao_feature : public render_feature<gtao_feature>
 {
 public:
     void set_slice_count(std::uint32_t slice_count) noexcept

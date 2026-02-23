@@ -69,6 +69,11 @@ void rhi_deleter::operator()(rhi_fence* fence)
     m_rhi->destroy_fence(fence);
 }
 
+void rhi_deleter::operator()(rhi_query_pool* query_pool)
+{
+    m_rhi->destroy_query_pool(query_pool);
+}
+
 render_device::render_device() = default;
 
 render_device::~render_device() {}
@@ -115,9 +120,29 @@ rhi_command* render_device::allocate_command()
     return m_rhi->allocate_command();
 }
 
-void render_device::execute(rhi_command* command, bool sync)
+void render_device::execute(std::span<execute_batch> batches)
 {
-    m_rhi->execute(command, sync);
+    std::vector<rhi_command_batch> command_batches(batches.size());
+    for (std::uint32_t i = 0; i < batches.size(); ++i)
+    {
+        command_batches[i].commands = batches[i].commands.data();
+        command_batches[i].command_count = static_cast<std::uint32_t>(batches[i].commands.size());
+
+        command_batches[i].signal_fences = batches[i].signal_fences.data();
+        command_batches[i].signal_fence_count =
+            static_cast<std::uint32_t>(batches[i].signal_fences.size());
+
+        command_batches[i].wait_fences = batches[i].wait_fences.data();
+        command_batches[i].wait_fence_count =
+            static_cast<std::uint32_t>(batches[i].wait_fences.size());
+    }
+
+    m_rhi->execute(command_batches.data(), static_cast<std::uint32_t>(command_batches.size()));
+}
+
+void render_device::execute_sync(rhi_command* command)
+{
+    m_rhi->execute_sync(command);
 }
 
 void render_device::begin_frame()
@@ -194,6 +219,11 @@ rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc&
 rhi_ptr<rhi_fence> render_device::create_fence()
 {
     return {m_rhi->create_fence(), m_rhi_deleter};
+}
+
+rhi_ptr<rhi_query_pool> render_device::create_query_pool(const rhi_query_pool_desc& desc)
+{
+    return {m_rhi->create_query_pool(desc), m_rhi_deleter};
 }
 
 rhi_parameter* render_device::allocate_parameter(const rhi_parameter_desc& desc)

@@ -12,7 +12,7 @@
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/skybox.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
@@ -121,7 +121,7 @@ private:
 
         auto& main_camera = world.get_component<camera_component>(m_camera);
         main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
-        main_camera.renderer->get_feature<taa_render_feature>()->disable();
+        main_camera.renderer->get_feature<taa_feature>()->disable();
         main_camera.render_target = m_swapchain.get();
 
         // Model.

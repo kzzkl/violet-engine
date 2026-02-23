@@ -1,9 +1,7 @@
 #pragma once
 
 #include "vk_bindless.hpp"
-#include "vk_common.hpp"
 #include "vk_context.hpp"
-#include "vk_pipeline.hpp"
 #include "vk_resource.hpp"
 
 namespace violet::vk
@@ -20,7 +18,8 @@ public:
     bool initialize(const rhi_desc& desc) override;
 
     rhi_command* allocate_command() override;
-    void execute(rhi_command* command, bool sync) override;
+    void execute(rhi_command_batch* batchs, std::uint32_t batch_count) override;
+    void execute_sync(rhi_command* command) override;
 
     void begin_frame() override;
     void end_frame() override;
@@ -48,21 +47,6 @@ public:
     rhi_backend get_backend() const noexcept final
     {
         return RHI_BACKEND_VULKAN;
-    }
-
-    void set_name(rhi_texture* object, const char* name) const override
-    {
-        set_name(static_cast<vk_texture*>(object)->get_image(), VK_OBJECT_TYPE_IMAGE, name);
-    }
-
-    void set_name(rhi_buffer* object, const char* name) const override
-    {
-        set_name(static_cast<vk_buffer*>(object)->get_buffer(), VK_OBJECT_TYPE_BUFFER, name);
-    }
-
-    void set_name(rhi_shader* object, const char* name) const override
-    {
-        set_name(static_cast<vk_shader*>(object)->get_module(), VK_OBJECT_TYPE_SHADER_MODULE, name);
     }
 
     rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) override;
@@ -95,20 +79,10 @@ public:
     rhi_fence* create_fence() override;
     void destroy_fence(rhi_fence* fence) override;
 
-private:
-    template <typename T>
-    void set_name(T object, VkObjectType type, const char* name) const
-    {
-#ifndef NDEBUG
-        VkDebugUtilsObjectNameInfoEXT info = {};
-        info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-        info.objectType = type;
-        info.objectHandle = reinterpret_cast<std::uint64_t>(object);
-        info.pObjectName = name;
-        vkSetDebugUtilsObjectNameEXT(m_context->get_device(), &info);
-#endif
-    }
+    rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) override;
+    void destroy_query_pool(rhi_query_pool* query_pool) override;
 
+private:
     std::unique_ptr<vk_context> m_context;
 };
 } // namespace violet::vk

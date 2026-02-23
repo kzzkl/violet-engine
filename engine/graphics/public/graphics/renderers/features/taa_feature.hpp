@@ -5,7 +5,7 @@
 
 namespace violet
 {
-class taa_render_feature : public render_feature<taa_render_feature>
+class taa_feature : public render_feature<taa_feature>
 {
 public:
     rhi_texture* get_current()

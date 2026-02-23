@@ -121,16 +121,6 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     mesh_loader::scene_data scene_data;
 
     // Load textures
-    auto get_format = [](int component, int bits, int pixel_type) -> rhi_format
-    {
-        if (component == 4 && bits == 8 && pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
-        {
-            return RHI_FORMAT_R8G8B8A8_UNORM;
-        }
-
-        return RHI_FORMAT_UNDEFINED;
-    };
-
     auto get_texture = [&](int index, bool srgb = false) -> texture_2d*
     {
         int image_index = model.textures[index].source;
@@ -156,9 +146,19 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
         }
         else
         {
-            texture_data data = {
-                .format = get_format(image.component, image.bits, image.pixel_type),
-            };
+            texture_data data;
+
+            if (srgb)
+            {
+                data.format = RHI_FORMAT_R8G8B8A8_SRGB;
+            }
+            else if (
+                image.component == 4 && image.bits == 8 &&
+                image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            {
+                data.format = RHI_FORMAT_R8G8B8A8_UNORM;
+            }
+
             data.mipmaps.resize(1);
             data.mipmaps[0].extent.height = image.height;
             data.mipmaps[0].extent.width = image.width;

@@ -12,15 +12,71 @@
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
+#include "graphics/render_graph/rdg_profiling.hpp"
 #include "graphics/tools/geometry_tool.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
 #include "sample/imgui_system.hpp"
 #include "window/window_system.hpp"
 #include <filesystem>
+#include <imgui.h>
 
 namespace violet
 {
+namespace
+{
+void imgui_profiling_event(
+    const std::vector<rdg_profiling::node>& nodes,
+    std::uint32_t index,
+    float frame_time)
+{
+    const auto& node = nodes[index];
+
+    // ImGui::PushID(&node);
+
+    ImGui::TableNextRow();
+
+    // 第一列：树结构
+    ImGui::TableNextColumn();
+
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow;
+
+    if (node.children.empty())
+    {
+        flags |= ImGuiTreeNodeFlags_Leaf;
+    }
+
+    std::string name = std::format("{}##{}", node.name, index);
+    bool open = ImGui::TreeNodeEx(name.c_str(), flags);
+
+    // 第二列：时间
+    ImGui::TableNextColumn();
+    ImGui::Text("%.2f ms", node.time_ms);
+
+    // 第三列：百分比 + 进度条
+    ImGui::TableNextColumn();
+
+    float percent = frame_time > 0.0f ? node.time_ms / frame_time : 0.0f;
+
+    ImGui::ProgressBar(
+        percent,
+        ImVec2(-FLT_MIN, 0),
+        (std::to_string(int(percent * 100)) + "%").c_str());
+
+    if (open)
+    {
+        for (std::uint32_t c : node.children)
+        {
+            imgui_profiling_event(nodes, c, frame_time);
+        }
+
+        ImGui::TreePop();
+    }
+
+    // ImGui::PopID();
+}
+} // namespace
+
 sample_system::sample_system(std::string_view name)
     : system(name)
 {
@@ -314,6 +370,31 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
     return root;
 }
 
+void sample_system::imgui_profiling(rdg_profiling* profiling)
+{
+    if (ImGui::Begin("GPU Profiler"))
+    {
+        if (ImGui::BeginTable(
+                "ProfilerTable",
+                3,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable |
+                    ImGuiTableFlags_Sortable))
+        {
+            ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_NoHide);
+            ImGui::TableSetupColumn("Time (ms)");
+            ImGui::TableSetupColumn("Frame %");
+
+            ImGui::TableHeadersRow();
+
+            const auto& nodes = profiling->get_nodes();
+            imgui_profiling_event(nodes, 0, nodes[0].time_ms);
+
+            ImGui::EndTable();
+        }
+    }
+    ImGui::End();
+}
+
 void sample_system::initialize_render()
 {
     m_swapchain = render_device::instance().create_swapchain({
@@ -344,7 +425,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 
     auto& main_light = world.get_component<light_component>(m_light);
     main_light.type = LIGHT_DIRECTIONAL;
-    main_light.color = {.x = 7.0f, .y = 7.0f, .z = 7.0f};
+    main_light.color = {.x = 10.0f, .y = 10.0f, .z = 10.0f};
     main_light.cast_shadow = true;
 
     m_camera = world.create();

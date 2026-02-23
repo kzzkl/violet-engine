@@ -265,6 +265,8 @@ public:
         std::uint32_t level_count = 0,
         std::uint32_t layer = 0,
         std::uint32_t layer_count = 0) = 0;
+
+    virtual void set_name(const char* name) = 0;
 };
 
 class rhi_buffer_srv : public rhi_descriptor
@@ -319,6 +321,8 @@ public:
         std::size_t offset = 0,
         std::size_t size = 0,
         rhi_format format = RHI_FORMAT_UNDEFINED) = 0;
+
+    virtual void set_name(const char* name) = 0;
 };
 
 enum rhi_filter : std::uint8_t
@@ -559,6 +563,8 @@ class rhi_shader
 {
 public:
     virtual ~rhi_shader() = default;
+
+    virtual void set_name(const char* name) = 0;
 };
 
 enum rhi_cull_mode : std::uint8_t
@@ -818,6 +824,31 @@ public:
     virtual void wait(std::uint64_t value) = 0;
 };
 
+enum rhi_query_type
+{
+    RHI_QUERY_TYPE_OCCLUSION,
+    RHI_QUERY_TYPE_PIPELINE_STATISTICS,
+    RHI_QUERY_TYPE_TIMESTAMP,
+};
+
+struct rhi_query_pool_desc
+{
+    rhi_query_type type;
+    std::uint32_t size;
+};
+
+class rhi_query_pool
+{
+public:
+    virtual ~rhi_query_pool() = default;
+
+    virtual void reset() = 0;
+
+    virtual void get_results(std::uint64_t* data, std::uint32_t count) = 0;
+
+    virtual std::uint32_t get_size() const = 0;
+};
+
 class rhi_command
 {
 public:
@@ -909,14 +940,32 @@ public:
         rhi_texture* texture,
         const rhi_texture_region& texture_region) = 0;
 
-    virtual void signal(rhi_fence* fence, std::uint64_t value) = 0;
-    virtual void wait(
-        rhi_fence* fence,
-        std::uint64_t value,
-        rhi_pipeline_stage_flags stages = RHI_PIPELINE_STAGE_BEGIN) = 0;
-
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;
+
+    virtual void write_timestamp(
+        rhi_query_pool* query_pool,
+        std::uint32_t index,
+        rhi_pipeline_stage_flag stage) = 0;
+};
+
+struct rhi_command_batch_fence
+{
+    rhi_fence* fence;
+    rhi_pipeline_stage_flags stages;
+    std::uint64_t value;
+};
+
+struct rhi_command_batch
+{
+    rhi_command** commands;
+    std::uint32_t command_count;
+
+    rhi_command_batch_fence* signal_fences;
+    std::uint32_t signal_fence_count;
+
+    rhi_command_batch_fence* wait_fences;
+    std::uint32_t wait_fence_count;
 };
 
 struct rhi_swapchain_desc
@@ -971,7 +1020,8 @@ public:
     virtual bool initialize(const rhi_desc& desc) = 0;
 
     virtual rhi_command* allocate_command() = 0;
-    virtual void execute(rhi_command* command, bool sync = false) = 0;
+    virtual void execute(rhi_command_batch* batchs, std::uint32_t batch_count) = 0;
+    virtual void execute_sync(rhi_command* command) = 0;
 
     virtual void begin_frame() = 0;
     virtual void end_frame() = 0;
@@ -983,10 +1033,6 @@ public:
     virtual rhi_parameter* get_bindless_parameter() const noexcept = 0;
 
     virtual rhi_backend get_backend() const noexcept = 0;
-
-    virtual void set_name(rhi_texture* object, const char* name) const = 0;
-    virtual void set_name(rhi_buffer* object, const char* name) const = 0;
-    virtual void set_name(rhi_shader* object, const char* name) const = 0;
 
     virtual rhi_render_pass* create_render_pass(const rhi_render_pass_desc& desc) = 0;
     virtual void destroy_render_pass(rhi_render_pass* render_pass) = 0;
@@ -1020,6 +1066,9 @@ public:
 
     virtual rhi_fence* create_fence() = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
+
+    virtual rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) = 0;
+    virtual void destroy_query_pool(rhi_query_pool* query_pool) = 0;
 };
 using create_rhi = rhi* (*)();
 using destroy_rhi = void (*)(rhi*);

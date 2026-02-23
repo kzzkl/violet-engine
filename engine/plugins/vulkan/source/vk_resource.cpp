@@ -200,7 +200,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         command->set_pipeline_barrier(nullptr, 0, &barrier, 1);
 
         // TODO: use async version?
-        m_context->get_graphics_queue()->execute(command, true);
+        m_context->get_graphics_queue()->execute_sync(command);
     }
 }
 
@@ -304,6 +304,19 @@ rhi_texture_dsv* vk_texture::get_dsv(
     }
 
     return view.dsv.get();
+}
+
+void vk_texture::set_name(const char* name)
+{
+#ifndef NDEBUG
+    VkDebugUtilsObjectNameInfoEXT info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE,
+        .objectHandle = reinterpret_cast<std::uint64_t>(m_image),
+        .pObjectName = name,
+    };
+    vkSetDebugUtilsObjectNameEXT(m_context->get_device(), &info);
+#endif
 }
 
 vk_texture::view& vk_texture::get_or_create_view(
@@ -589,7 +602,7 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
                 m_buffer,
                 1,
                 &copy_region);
-            m_context->get_graphics_queue()->execute(command, true);
+            m_context->get_graphics_queue()->execute_sync(command);
 
             vmaDestroyBuffer(m_context->get_vma_allocator(), staging_buffer, staging_allocation);
         }
@@ -638,6 +651,19 @@ rhi_buffer_uav* vk_buffer::get_uav(std::size_t offset, std::size_t size, rhi_for
     }
 
     return view.uav.get();
+}
+
+void vk_buffer::set_name(const char* name)
+{
+#ifndef NDEBUG
+    VkDebugUtilsObjectNameInfoEXT info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_BUFFER,
+        .objectHandle = reinterpret_cast<std::uint64_t>(m_buffer),
+        .pObjectName = name,
+    };
+    vkSetDebugUtilsObjectNameEXT(m_context->get_device(), &info);
+#endif
 }
 
 vk_buffer::view& vk_buffer::get_or_create_view(

@@ -27,5 +27,5 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
     float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    render_target[dtid.xy] += float4(bloom.SampleLevel(linear_clamp_sampler, texcoord, 0.0) * 0.125 * constant.intensity, 0.0);
+    render_target[dtid.xy] += float4(bloom.SampleLevel(linear_clamp_sampler, texcoord, 0.0) * constant.intensity, 0.0);
 }

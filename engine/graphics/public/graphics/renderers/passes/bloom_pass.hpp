@@ -21,6 +21,7 @@ public:
         float threshold;
         float intensity;
         float knee;
+        float radius;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
         rdg_texture* debug_output{nullptr};
@@ -34,7 +35,7 @@ private:
     void prefilter(render_graph& graph, const parameter& parameter);
     void downsample(render_graph& graph);
     void blur(render_graph& graph);
-    void upsample(render_graph& graph);
+    void upsample(render_graph& graph, const parameter& parameter);
     void merge(render_graph& graph, const parameter& parameter);
 
     void debug(render_graph& graph, const parameter& parameter);

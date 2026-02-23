@@ -3,7 +3,7 @@
 #include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
 
 namespace violet
 {
@@ -85,7 +85,7 @@ shader::camera_data get_camera_data(
     mat4f_simd matrix_vp = matrix::mul(matrix_v, matrix_p);
     math::store(matrix_vp, result.matrix_vp_no_jitter);
 
-    auto* taa = camera.renderer->get_feature<taa_render_feature>();
+    auto* taa = camera.renderer->get_feature<taa_feature>();
     if (taa && taa->is_enable())
     {
         std::size_t index = render_device::instance().get_frame_count() % halton_sequence.size();

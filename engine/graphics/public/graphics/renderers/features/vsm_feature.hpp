@@ -4,7 +4,7 @@
 
 namespace violet
 {
-class vsm_render_feature : public render_feature<vsm_render_feature>
+class vsm_feature : public render_feature<vsm_feature>
 {
 public:
     struct debug_info
@@ -16,7 +16,7 @@ public:
         std::uint32_t dynamic_drawcall;
     };
 
-    vsm_render_feature();
+    vsm_feature();
 
     rhi_buffer* get_lru_state() const noexcept
     {

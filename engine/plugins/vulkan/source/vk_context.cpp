@@ -159,6 +159,7 @@ bool vk_context::initialize(const rhi_desc& desc)
 
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         // VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
     };
 
@@ -448,12 +449,14 @@ void vk_context::initialize_logic_device(
     VkPhysicalDeviceVulkan12Features vulkan12_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .samplerFilterMinmax = VK_TRUE,
+        .hostQueryReset = VK_TRUE,
         .timelineSemaphore = VK_TRUE,
     };
 
     VkPhysicalDeviceVulkan13Features vulkan13_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .shaderDemoteToHelperInvocation = VK_TRUE, // For hlsl clip, alpha test.
+        .synchronization2 = VK_TRUE,
     };
 
     VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {

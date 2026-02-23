@@ -2,6 +2,7 @@
 #include "vk_context.hpp"
 #include "vk_layout.hpp"
 #include "vk_pipeline.hpp"
+#include "vk_query.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_utils.hpp"
@@ -228,33 +229,31 @@ void vk_command::set_pipeline_barrier(
 {
     assert(buffer_barrier_count != 0 || texture_barrier_count != 0);
 
-    rhi_pipeline_stage_flags src_stages = 0;
-    rhi_pipeline_stage_flags dst_stages = 0;
-
-    std::vector<VkBufferMemoryBarrier> vk_buffer_barriers(buffer_barrier_count);
+    std::vector<VkBufferMemoryBarrier2> vk_buffer_barriers(buffer_barrier_count);
     for (std::size_t i = 0; i < buffer_barrier_count; ++i)
     {
         vk_buffer_barriers[i] = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask = vk_utils::map_pipeline_stage_flags(buffer_barriers[i].src_stages),
             .srcAccessMask = vk_utils::map_access_flags(buffer_barriers[i].src_access),
+            .dstStageMask = vk_utils::map_pipeline_stage_flags(buffer_barriers[i].dst_stages),
             .dstAccessMask = vk_utils::map_access_flags(buffer_barriers[i].dst_access),
             .buffer = static_cast<vk_buffer*>(buffer_barriers[i].buffer)->get_buffer(),
             .offset = buffer_barriers[i].offset,
             .size = buffer_barriers[i].size,
         };
-
-        src_stages |= buffer_barriers[i].src_stages;
-        dst_stages |= buffer_barriers[i].dst_stages;
     }
 
-    std::vector<VkImageMemoryBarrier> vk_image_barriers(texture_barrier_count);
+    std::vector<VkImageMemoryBarrier2> vk_image_barriers(texture_barrier_count);
     for (std::size_t i = 0; i < texture_barrier_count; ++i)
     {
         auto* image = static_cast<vk_texture*>(texture_barriers[i].texture);
 
         vk_image_barriers[i] = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = vk_utils::map_pipeline_stage_flags(texture_barriers[i].src_stages),
             .srcAccessMask = vk_utils::map_access_flags(texture_barriers[i].src_access),
+            .dstStageMask = vk_utils::map_pipeline_stage_flags(texture_barriers[i].dst_stages),
             .dstAccessMask = vk_utils::map_access_flags(texture_barriers[i].dst_access),
             .oldLayout = vk_utils::map_layout(texture_barriers[i].src_layout),
             .newLayout = vk_utils::map_layout(texture_barriers[i].dst_layout),
@@ -270,22 +269,17 @@ void vk_command::set_pipeline_barrier(
                     .layerCount = texture_barriers[i].layer_count,
                 },
         };
-
-        src_stages |= texture_barriers[i].src_stages;
-        dst_stages |= texture_barriers[i].dst_stages;
     }
 
-    vkCmdPipelineBarrier(
-        m_command_buffer,
-        vk_utils::map_pipeline_stage_flags(src_stages),
-        vk_utils::map_pipeline_stage_flags(dst_stages),
-        0,
-        0,
-        nullptr,
-        buffer_barrier_count,
-        vk_buffer_barriers.data(),
-        texture_barrier_count,
-        vk_image_barriers.data());
+    VkDependencyInfo dependency_info = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .bufferMemoryBarrierCount = buffer_barrier_count,
+        .pBufferMemoryBarriers = vk_buffer_barriers.data(),
+        .imageMemoryBarrierCount = texture_barrier_count,
+        .pImageMemoryBarriers = vk_image_barriers.data(),
+    };
+
+    vkCmdPipelineBarrier2(m_command_buffer, &dependency_info);
 }
 
 void vk_command::clear_texture(
@@ -519,27 +513,23 @@ void vk_command::copy_buffer_to_texture(
         &region);
 }
 
-void vk_command::signal(rhi_fence* fence, std::uint64_t value)
+void vk_command::write_timestamp(
+    rhi_query_pool* query_pool,
+    std::uint32_t index,
+    rhi_pipeline_stage_flag stage)
 {
-    m_signal_fences.push_back(static_cast<vk_fence*>(fence)->get_semaphore());
-    m_signal_values.push_back(value);
-}
+    auto* pool = static_cast<vk_query_pool*>(query_pool);
 
-void vk_command::wait(rhi_fence* fence, std::uint64_t value, rhi_pipeline_stage_flags stages)
-{
-    m_wait_fences.push_back(static_cast<vk_fence*>(fence)->get_semaphore());
-    m_wait_values.push_back(value);
-    m_wait_stages.push_back(vk_utils::map_pipeline_stage_flags(stages));
+    vkCmdWriteTimestamp2(
+        m_command_buffer,
+        stage == RHI_PIPELINE_STAGE_BEGIN ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT :
+                                            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+        pool->get_query_pool(),
+        index);
 }
 
 void vk_command::reset()
 {
-    m_signal_fences.clear();
-    m_signal_values.clear();
-    m_wait_fences.clear();
-    m_wait_values.clear();
-    m_wait_stages.clear();
-
     m_current_render_pass = VK_NULL_HANDLE;
     m_current_pipeline_layout = VK_NULL_HANDLE;
     vk_check(vkResetCommandBuffer(m_command_buffer, 0));
@@ -608,58 +598,124 @@ vk_command* vk_graphics_queue::allocate_command()
     return command;
 }
 
-void vk_graphics_queue::execute(rhi_command* command, bool sync)
+void vk_graphics_queue::execute(rhi_command_batch* batchs, std::uint32_t batch_count)
 {
-    if (sync)
+    std::vector<VkSubmitInfo2> submit_infos(batch_count);
+    std::vector<VkCommandBufferSubmitInfo> commands;
+    std::vector<VkSemaphoreSubmitInfo> signal_semaphores;
+    std::vector<VkSemaphoreSubmitInfo> wait_semaphores;
+
+    std::size_t command_count = 0;
+    std::size_t signal_count = 0;
+    std::size_t wait_count = 0;
+    for (std::uint32_t i = 0; i < batch_count; ++i)
     {
-        command->signal(m_fence.get(), ++m_fence_value);
+        const auto& batch = batchs[i];
+        command_count += batch.command_count;
+        signal_count += batch.signal_fence_count;
+        wait_count += batch.wait_fence_count;
+    }
+    commands.reserve(command_count);
+    signal_semaphores.reserve(signal_count);
+    wait_semaphores.reserve(wait_count);
+
+    for (std::uint32_t i = 0; i < batch_count; ++i)
+    {
+        const auto& batch = batchs[i];
+
+        std::size_t command_offset = commands.size();
+        std::size_t signal_offset = signal_semaphores.size();
+        std::size_t wait_offset = wait_semaphores.size();
+
+        for (std::uint32_t j = 0; j < batch.command_count; ++j)
+        {
+            auto* command = static_cast<vk_command*>(batch.commands[j]);
+
+            vk_check(vkEndCommandBuffer(command->get_command_buffer()));
+
+            commands.push_back({
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .commandBuffer = command->get_command_buffer(),
+            });
+
+            m_active_commands[m_context->get_frame_resource_index()].push_back(command);
+        }
+
+        for (std::uint32_t j = 0; j < batch.wait_fence_count; ++j)
+        {
+            const auto& fence = batch.wait_fences[j];
+            wait_semaphores.push_back({
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = static_cast<vk_fence*>(fence.fence)->get_semaphore(),
+                .value = fence.value,
+                .stageMask = vk_utils::map_pipeline_stage_flags(fence.stages),
+            });
+        }
+
+        for (std::uint32_t j = 0; j < batch.signal_fence_count; ++j)
+        {
+            const auto& fence = batch.signal_fences[j];
+            signal_semaphores.push_back({
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = static_cast<vk_fence*>(fence.fence)->get_semaphore(),
+                .value = fence.value,
+                .stageMask = vk_utils::map_pipeline_stage_flags(fence.stages),
+            });
+        }
+
+        submit_infos[i] = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .waitSemaphoreInfoCount = batch.wait_fence_count,
+            .pWaitSemaphoreInfos = wait_semaphores.data() + wait_offset,
+            .commandBufferInfoCount = batch.command_count,
+            .pCommandBufferInfos = commands.data() + command_offset,
+            .signalSemaphoreInfoCount = batch.signal_fence_count,
+            .pSignalSemaphoreInfos = signal_semaphores.data() + signal_offset,
+        };
     }
 
-    auto* cast_command = static_cast<vk_command*>(command);
+    std::scoped_lock lock(m_mutex);
 
-    VkCommandBuffer buffer = cast_command->get_command_buffer();
-    vk_check(vkEndCommandBuffer(buffer));
+    vk_check(vkQueueSubmit2(
+        m_queue,
+        static_cast<std::uint32_t>(submit_infos.size()),
+        submit_infos.data(),
+        VK_NULL_HANDLE));
+}
 
-    const auto& signal_semaphores = cast_command->get_signal_fences();
-    const auto& signal_values = cast_command->get_signal_values();
+void vk_graphics_queue::execute_sync(rhi_command* command)
+{
+    ++m_fence_value;
 
-    const auto& wait_semaphores = cast_command->get_wait_fences();
-    const auto& wait_values = cast_command->get_wait_values();
-    const auto& wait_stages = cast_command->get_wait_stages();
+    VkCommandBuffer command_buffer = static_cast<vk_command*>(command)->get_command_buffer();
+    vk_check(vkEndCommandBuffer(command_buffer));
 
-    VkTimelineSemaphoreSubmitInfo timeline_info = {
-        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-        .waitSemaphoreValueCount = static_cast<std::uint32_t>(wait_values.size()),
-        .pWaitSemaphoreValues = wait_values.data(),
-        .signalSemaphoreValueCount = static_cast<std::uint32_t>(signal_values.size()),
-        .pSignalSemaphoreValues = signal_values.data(),
+    VkCommandBufferSubmitInfo command_buffer_submit_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = command_buffer,
     };
 
-    VkSubmitInfo submit_info = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext = &timeline_info,
-        .waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size()),
-        .pWaitSemaphores = wait_semaphores.empty() ? nullptr : wait_semaphores.data(),
-        .pWaitDstStageMask = wait_stages.data(),
-        .commandBufferCount = 1,
-        .pCommandBuffers = &buffer,
-        .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
-        .pSignalSemaphores = signal_semaphores.empty() ? nullptr : signal_semaphores.data(),
+    VkSemaphoreSubmitInfo signal_semaphore_submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = m_fence->get_semaphore(),
+        .value = m_fence_value,
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+    };
+
+    VkSubmitInfo2 submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &command_buffer_submit_info,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signal_semaphore_submit_info,
     };
 
     std::scoped_lock lock(m_mutex);
 
-    vk_check(vkQueueSubmit(m_queue, 1, &submit_info, VK_NULL_HANDLE));
+    vk_check(vkQueueSubmit2(m_queue, 1, &submit_info, VK_NULL_HANDLE));
 
-    if (sync)
-    {
-        m_fence->wait(m_fence_value);
-        m_free_commands.push_back(static_cast<vk_command*>(command));
-    }
-    else
-    {
-        m_active_commands[m_context->get_frame_resource_index()].push_back(cast_command);
-    }
+    m_fence->wait(m_fence_value);
+    m_free_commands.push_back(static_cast<vk_command*>(command));
 }
 
 void vk_graphics_queue::begin_frame()
