@@ -9,6 +9,7 @@ add_library(violet-vulkan SHARED
     source/vk_layout.cpp
     source/vk_parameter.cpp
     source/vk_pipeline.cpp
+    source/vk_query.cpp
     source/vk_render_pass.cpp
     source/vk_resource.cpp
     source/vk_rhi.cpp

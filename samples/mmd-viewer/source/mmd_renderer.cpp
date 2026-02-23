@@ -1,7 +1,7 @@
 #include "mmd_renderer.hpp"
-#include "graphics/renderers/features/gtao_render_feature.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
-#include "graphics/renderers/features/vsm_render_feature.hpp"
+#include "graphics/renderers/features/gtao_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
+#include "graphics/renderers/features/vsm_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
@@ -34,9 +34,9 @@ struct toon_fs : public mesh_fs
 
 mmd_renderer::mmd_renderer()
 {
-    add_feature<vsm_render_feature>();
-    add_feature<taa_render_feature>();
-    add_feature<gtao_render_feature>();
+    add_feature<vsm_feature>();
+    add_feature<taa_feature>();
+    add_feature<gtao_feature>();
 }
 
 void mmd_renderer::on_render(render_graph& graph)
@@ -96,7 +96,7 @@ void mmd_renderer::on_render(render_graph& graph)
             add_hzb_pass(graph);
         }
 
-        if (get_feature<gtao_render_feature>(true))
+        if (get_feature<gtao_feature>(true))
         {
             add_gtao_pass(graph);
         }
@@ -119,7 +119,7 @@ void mmd_renderer::on_render(render_graph& graph)
         add_transparent_pass(graph);
     }
 
-    if (get_feature<taa_render_feature>(true))
+    if (get_feature<taa_feature>(true))
     {
         add_motion_vector_pass(graph);
         add_taa_pass(graph);
@@ -235,7 +235,7 @@ void mmd_renderer::add_hzb_pass(render_graph& graph)
 
 void mmd_renderer::add_gtao_pass(render_graph& graph)
 {
-    auto* gtao = get_feature<gtao_render_feature>();
+    auto* gtao = get_feature<gtao_feature>();
 
     m_ao_buffer = graph.add_texture(
         "AO Buffer",
@@ -257,7 +257,7 @@ void mmd_renderer::add_gtao_pass(render_graph& graph)
 
 void mmd_renderer::add_shadow_pass(render_graph& graph)
 {
-    auto* vsm = get_feature<vsm_render_feature>();
+    auto* vsm = get_feature<vsm_feature>();
 
     rdg_buffer* debug_info = nullptr;
     if (vsm->get_debug_info_buffer() != nullptr)
@@ -339,7 +339,7 @@ void mmd_renderer::add_motion_vector_pass(render_graph& graph)
 
 void mmd_renderer::add_taa_pass(render_graph& graph)
 {
-    auto* taa = get_feature<taa_render_feature>();
+    auto* taa = get_feature<taa_feature>();
 
     rdg_texture* resolved_render_target = graph.add_texture(
         "Resolved Render Target",

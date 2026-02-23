@@ -2,6 +2,7 @@
 #include "vk_context.hpp"
 #include "vk_layout.hpp"
 #include "vk_pipeline.hpp"
+#include "vk_query.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_resource.hpp"
 #include "vk_utils.hpp"
@@ -510,6 +511,21 @@ void vk_command::copy_buffer_to_texture(
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &region);
+}
+
+void vk_command::write_timestamp(
+    rhi_query_pool* query_pool,
+    std::uint32_t index,
+    rhi_pipeline_stage_flag stage)
+{
+    auto* pool = static_cast<vk_query_pool*>(query_pool);
+
+    vkCmdWriteTimestamp2(
+        m_command_buffer,
+        stage == RHI_PIPELINE_STAGE_BEGIN ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT :
+                                            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+        pool->get_query_pool(),
+        index);
 }
 
 void vk_command::reset()

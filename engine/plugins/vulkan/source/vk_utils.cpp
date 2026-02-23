@@ -464,4 +464,19 @@ VkImageAspectFlags vk_utils::map_image_aspect_flags(rhi_texture_aspect_flags fla
     result |= (flags & RHI_TEXTURE_ASPECT_STENCIL) ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
     return result;
 }
+
+VkQueryType vk_utils::map_query_type(rhi_query_type type)
+{
+    switch (type)
+    {
+    case RHI_QUERY_TYPE_OCCLUSION:
+        return VK_QUERY_TYPE_OCCLUSION;
+    case RHI_QUERY_TYPE_TIMESTAMP:
+        return VK_QUERY_TYPE_TIMESTAMP;
+    case RHI_QUERY_TYPE_PIPELINE_STATISTICS:
+        return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+    default:
+        throw std::runtime_error("Invalid query type.");
+    }
+}
 } // namespace violet::vk

@@ -7,6 +7,7 @@
 
 namespace violet
 {
+class rdg_profiling;
 class sample_system : public system
 {
 public:
@@ -35,6 +36,8 @@ protected:
     {
         return m_camera;
     }
+
+    void imgui_profiling(rdg_profiling* profiling);
 
 private:
     virtual void tick() {}

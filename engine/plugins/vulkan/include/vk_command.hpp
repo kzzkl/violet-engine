@@ -120,6 +120,11 @@ public:
 #endif
     }
 
+    void write_timestamp(
+        rhi_query_pool* query_pool,
+        std::uint32_t index,
+        rhi_pipeline_stage_flag stage) override;
+
     void reset();
 
 private:

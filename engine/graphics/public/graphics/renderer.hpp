@@ -64,8 +64,8 @@ public:
 class renderer
 {
 public:
-    renderer() = default;
-    virtual ~renderer() = default;
+    renderer();
+    virtual ~renderer();
 
     void render(render_graph& graph);
 
@@ -86,6 +86,9 @@ public:
 
         return static_cast<T*>(m_features[id].get());
     }
+
+    void set_profiling(bool enable);
+    rdg_profiling* get_profiling();
 
 protected:
     template <typename T>
@@ -110,5 +113,6 @@ protected:
 
 private:
     std::vector<std::unique_ptr<render_feature_base>> m_features;
+    std::vector<std::unique_ptr<rdg_profiling>> m_profilings;
 };
 } // namespace violet

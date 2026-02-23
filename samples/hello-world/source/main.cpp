@@ -7,11 +7,11 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
-#include "graphics/renderers/features/bloom_render_feature.hpp"
-#include "graphics/renderers/features/gtao_render_feature.hpp"
-#include "graphics/renderers/features/shadow_render_feature.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
-#include "graphics/renderers/features/vsm_render_feature.hpp"
+#include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/gtao_feature.hpp"
+#include "graphics/renderers/features/shadow_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
+#include "graphics/renderers/features/vsm_feature.hpp"
 #include "sample/sample_system.hpp"
 #include <imgui.h>
 
@@ -35,6 +35,9 @@ public:
         m_root = load_model(config["model"]);
 
         auto& world = get_world();
+
+        auto& main_camera = get_world().get_component<camera_component>(get_camera());
+        main_camera.renderer->set_profiling(true);
 
         m_box_geometry = std::make_unique<box_geometry>();
 
@@ -186,7 +189,7 @@ private:
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
             auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
 
-            auto* shadow = renderer->get_feature<shadow_render_feature>();
+            auto* shadow = renderer->get_feature<shadow_feature>();
 
             static auto sample_mode = static_cast<std::int32_t>(shadow->get_sample_mode());
             static const char* sample_mode_items[] = {
@@ -226,7 +229,7 @@ private:
         if (ImGui::CollapsingHeader("TAA"))
         {
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
-            auto* taa = main_camera.renderer->get_feature<taa_render_feature>();
+            auto* taa = main_camera.renderer->get_feature<taa_feature>();
 
             static bool enable_taa = taa->is_enable();
 
@@ -245,7 +248,7 @@ private:
         if (ImGui::CollapsingHeader("GTAO"))
         {
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
-            auto* gtao = main_camera.renderer->get_feature<gtao_render_feature>();
+            auto* gtao = main_camera.renderer->get_feature<gtao_feature>();
 
             static bool enable_gtao = gtao->is_enable();
             static int slice_count = static_cast<int>(gtao->get_slice_count());
@@ -276,7 +279,7 @@ private:
         if (ImGui::CollapsingHeader("Bloom"))
         {
             auto& main_camera = get_world().get_component<camera_component>(get_camera());
-            auto* bloom = main_camera.renderer->get_feature<bloom_render_feature>();
+            auto* bloom = main_camera.renderer->get_feature<bloom_feature>();
 
             static bool enable_bloom = bloom->is_enable();
             static float threshold = bloom->get_threshold();
@@ -302,6 +305,12 @@ private:
             bloom->set_intensity(intensity);
             bloom->set_knee(knee);
             bloom->set_radius(radius);
+        }
+
+        if (ImGui::CollapsingHeader("Profiling"))
+        {
+            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            imgui_profiling(main_camera.renderer->get_profiling());
         }
 
         if (ImGui::CollapsingHeader("Debug"))
@@ -340,13 +349,13 @@ private:
                     debug_info_items,
                     IM_ARRAYSIZE(debug_info_items)))
             {
-                auto* vsm = renderer->get_feature<vsm_render_feature>();
+                auto* vsm = renderer->get_feature<vsm_feature>();
                 vsm->set_debug_info(debug_info == 1);
             }
 
             if (debug_info == 1)
             {
-                auto* vsm = renderer->get_feature<vsm_render_feature>();
+                auto* vsm = renderer->get_feature<vsm_feature>();
                 auto debug_info = vsm->get_debug_info();
 
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);

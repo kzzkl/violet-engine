@@ -1,9 +1,9 @@
-#include "graphics/renderers/features/vsm_render_feature.hpp"
+#include "graphics/renderers/features/vsm_feature.hpp"
 #include "virtual_shadow_map/vsm_common.hpp"
 
 namespace violet
 {
-vsm_render_feature::vsm_render_feature()
+vsm_feature::vsm_feature()
 {
     auto& device = render_device::instance();
 
@@ -26,7 +26,7 @@ vsm_render_feature::vsm_render_feature()
     m_lru_buffer->set_name("VSM LRU");
 }
 
-void vsm_render_feature::set_debug_info(bool enable)
+void vsm_feature::set_debug_info(bool enable)
 {
     if (!enable)
     {
@@ -46,7 +46,7 @@ void vsm_render_feature::set_debug_info(bool enable)
     }
 }
 
-vsm_render_feature::debug_info vsm_render_feature::get_debug_info() const
+vsm_feature::debug_info vsm_feature::get_debug_info() const
 {
     if (m_debug_info == nullptr)
     {

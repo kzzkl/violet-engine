@@ -3,6 +3,7 @@
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_pipeline.hpp"
+#include "vk_query.hpp"
 #include "vk_render_pass.hpp"
 #include "vk_swapchain.hpp"
 #include "vk_sync.hpp"
@@ -160,6 +161,16 @@ rhi_fence* vk_rhi::create_fence()
 void vk_rhi::destroy_fence(rhi_fence* fence)
 {
     m_context->get_deletion_queue()->push(fence);
+}
+
+rhi_query_pool* vk_rhi::create_query_pool(const rhi_query_pool_desc& desc)
+{
+    return new vk_query_pool(desc, m_context.get());
+}
+
+void vk_rhi::destroy_query_pool(rhi_query_pool* query_pool)
+{
+    m_context->get_deletion_queue()->push(query_pool);
 }
 } // namespace violet::vk
 

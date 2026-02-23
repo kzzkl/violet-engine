@@ -12,8 +12,8 @@
 #include "control/control_system.hpp"
 #include "gf2/gf2_material.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/renderers/features/gtao_render_feature.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
+#include "graphics/renderers/features/gtao_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
 #include "math/matrix.hpp"
 #include "mmd_animation.hpp"
 #include "mmd_material.hpp"
@@ -421,7 +421,7 @@ void mmd_viewer::draw_imgui()
     if (ImGui::CollapsingHeader("TAA"))
     {
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        auto* taa = main_camera.renderer->get_feature<taa_render_feature>();
+        auto* taa = main_camera.renderer->get_feature<taa_feature>();
 
         static bool enable_taa = taa->is_enable();
 
@@ -440,7 +440,7 @@ void mmd_viewer::draw_imgui()
     if (ImGui::CollapsingHeader("GTAO"))
     {
         auto& main_camera = get_world().get_component<camera_component>(m_camera);
-        auto* gtao = main_camera.renderer->get_feature<gtao_render_feature>();
+        auto* gtao = main_camera.renderer->get_feature<gtao_feature>();
 
         static bool enable_gtao = gtao->is_enable();
         static int slice_count = static_cast<int>(gtao->get_slice_count());

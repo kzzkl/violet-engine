@@ -79,6 +79,9 @@ public:
     rhi_fence* create_fence() override;
     void destroy_fence(rhi_fence* fence) override;
 
+    rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) override;
+    void destroy_query_pool(rhi_query_pool* query_pool) override;
+
 private:
     std::unique_ptr<vk_context> m_context;
 };

@@ -11,7 +11,7 @@ enum shadow_sample_mode
     SHADOW_SAMPLE_MODE_PCSS,
 };
 
-class shadow_render_feature : public render_feature<shadow_render_feature>
+class shadow_feature : public render_feature<shadow_feature>
 {
 public:
     void set_sample_mode(shadow_sample_mode sample_mode) noexcept

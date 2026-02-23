@@ -1,4 +1,5 @@
 #include "graphics/render_graph/render_graph.hpp"
+#include "graphics/render_graph/rdg_profiling.hpp"
 #include <algorithm>
 #include <cassert>
 
@@ -401,12 +402,12 @@ rdg_buffer* render_graph::add_buffer(
 
 void render_graph::begin_group(std::string_view group_name)
 {
-    m_labels.emplace_back(group_name.data());
+    m_groups.emplace_back(group_name.data());
 }
 
 void render_graph::end_group()
 {
-    m_labels.emplace_back("");
+    m_groups.emplace_back("");
 }
 
 void render_graph::compile()
@@ -426,28 +427,57 @@ void render_graph::record(rhi_command* command)
     rdg_command cmd(command, m_allocator, m_scene, m_camera);
 
     std::size_t batch_index = 0;
-    std::size_t label_index = 0;
+    std::size_t group_index = 0;
+    std::uint32_t query_index = 0;
 
-    auto set_label = [&](std::size_t end)
+    auto push_group = [&](const std::string& group_name, bool is_leaf)
     {
-        for (std::size_t i = label_index; i < end; ++i)
+        command->begin_label(group_name.c_str());
+
+        if (m_profiling != nullptr)
         {
-            if (!m_labels[i].empty())
+            m_profiling->begin(group_name, is_leaf ? ++query_index : 0xFFFFFFFF);
+        }
+    };
+
+    auto pop_group = [&](bool is_leaf)
+    {
+        if (m_profiling != nullptr)
+        {
+            m_profiling->end();
+
+            if (is_leaf)
             {
-                command->begin_label(m_labels[i].c_str());
-            }
-            else
-            {
-                command->end_label();
+                command->write_timestamp(
+                    m_profiling->get_query_pool(),
+                    query_index,
+                    RHI_PIPELINE_STAGE_END);
             }
         }
 
-        label_index = end;
+        command->end_label();
     };
+
+    if (m_profiling != nullptr)
+    {
+        m_profiling->reset(static_cast<std::uint32_t>(m_passes.size()));
+        command->write_timestamp(m_profiling->get_query_pool(), 0, RHI_PIPELINE_STAGE_BEGIN);
+    }
 
     for (std::size_t i = 0; i < m_passes.size(); ++i)
     {
-        set_label(m_label_offset[i]);
+        for (std::size_t j = group_index; j < m_group_offset[i]; ++j)
+        {
+            if (!m_groups[j].empty())
+            {
+                push_group(m_groups[j], false);
+            }
+            else
+            {
+                pop_group(false);
+            }
+        }
+        group_index = m_group_offset[i];
 
         rdg_pass* pass = m_passes[i];
 
@@ -456,7 +486,7 @@ void render_graph::record(rhi_command* command)
             continue;
         }
 
-        command->begin_label(pass->get_name().c_str());
+        push_group(pass->get_name(), true);
 
         if (m_batches[batch_index].begin_pass == pass)
         {
@@ -496,7 +526,7 @@ void render_graph::record(rhi_command* command)
             ++batch_index;
         }
 
-        command->end_label();
+        pop_group(true);
     }
 }
 

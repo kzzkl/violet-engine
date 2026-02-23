@@ -824,6 +824,31 @@ public:
     virtual void wait(std::uint64_t value) = 0;
 };
 
+enum rhi_query_type
+{
+    RHI_QUERY_TYPE_OCCLUSION,
+    RHI_QUERY_TYPE_PIPELINE_STATISTICS,
+    RHI_QUERY_TYPE_TIMESTAMP,
+};
+
+struct rhi_query_pool_desc
+{
+    rhi_query_type type;
+    std::uint32_t size;
+};
+
+class rhi_query_pool
+{
+public:
+    virtual ~rhi_query_pool() = default;
+
+    virtual void reset() = 0;
+
+    virtual void get_results(std::uint64_t* data, std::uint32_t count) = 0;
+
+    virtual std::uint32_t get_size() const = 0;
+};
+
 class rhi_command
 {
 public:
@@ -917,6 +942,11 @@ public:
 
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;
+
+    virtual void write_timestamp(
+        rhi_query_pool* query_pool,
+        std::uint32_t index,
+        rhi_pipeline_stage_flag stage) = 0;
 };
 
 struct rhi_command_batch_fence
@@ -1036,6 +1066,9 @@ public:
 
     virtual rhi_fence* create_fence() = 0;
     virtual void destroy_fence(rhi_fence* fence) = 0;
+
+    virtual rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) = 0;
+    virtual void destroy_query_pool(rhi_query_pool* query_pool) = 0;
 };
 using create_rhi = rhi* (*)();
 using destroy_rhi = void (*)(rhi*);

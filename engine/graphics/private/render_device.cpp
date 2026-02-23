@@ -69,6 +69,11 @@ void rhi_deleter::operator()(rhi_fence* fence)
     m_rhi->destroy_fence(fence);
 }
 
+void rhi_deleter::operator()(rhi_query_pool* query_pool)
+{
+    m_rhi->destroy_query_pool(query_pool);
+}
+
 render_device::render_device() = default;
 
 render_device::~render_device() {}
@@ -214,6 +219,11 @@ rhi_ptr<rhi_swapchain> render_device::create_swapchain(const rhi_swapchain_desc&
 rhi_ptr<rhi_fence> render_device::create_fence()
 {
     return {m_rhi->create_fence(), m_rhi_deleter};
+}
+
+rhi_ptr<rhi_query_pool> render_device::create_query_pool(const rhi_query_pool_desc& desc)
+{
+    return {m_rhi->create_query_pool(desc), m_rhi_deleter};
 }
 
 rhi_parameter* render_device::allocate_parameter(const rhi_parameter_desc& desc)

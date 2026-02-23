@@ -30,5 +30,7 @@ public:
     static VkStencilOp map_stencil_op(rhi_stencil_op op);
 
     static VkImageAspectFlags map_image_aspect_flags(rhi_texture_aspect_flags flags);
+
+    static VkQueryType map_query_type(rhi_query_type type);
 };
 } // namespace violet::vk

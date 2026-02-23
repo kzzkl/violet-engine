@@ -31,6 +31,7 @@ public:
     void operator()(rhi_texture* texture);
     void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
+    void operator()(rhi_query_pool* query_pool);
 
 private:
     rhi* m_rhi;
@@ -153,6 +154,8 @@ public:
     rhi_ptr<rhi_swapchain> create_swapchain(const rhi_swapchain_desc& desc);
 
     rhi_ptr<rhi_fence> create_fence();
+
+    rhi_ptr<rhi_query_pool> create_query_pool(const rhi_query_pool_desc& desc);
 
     // Transient resources.
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);

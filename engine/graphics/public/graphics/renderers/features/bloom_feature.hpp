@@ -4,7 +4,7 @@
 
 namespace violet
 {
-class bloom_render_feature : public render_feature<bloom_render_feature>
+class bloom_feature : public render_feature<bloom_feature>
 {
 public:
     void set_threshold(float threshold) noexcept

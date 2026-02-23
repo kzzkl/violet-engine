@@ -1,10 +1,10 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/graphics_config.hpp"
-#include "graphics/renderers/features/bloom_render_feature.hpp"
-#include "graphics/renderers/features/gtao_render_feature.hpp"
-#include "graphics/renderers/features/shadow_render_feature.hpp"
-#include "graphics/renderers/features/taa_render_feature.hpp"
-#include "graphics/renderers/features/vsm_render_feature.hpp"
+#include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/gtao_feature.hpp"
+#include "graphics/renderers/features/shadow_feature.hpp"
+#include "graphics/renderers/features/taa_feature.hpp"
+#include "graphics/renderers/features/vsm_feature.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/bloom_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
@@ -22,11 +22,11 @@ namespace violet
 {
 deferred_renderer::deferred_renderer()
 {
-    add_feature<shadow_render_feature>();
-    add_feature<vsm_render_feature>();
-    add_feature<taa_render_feature>();
-    add_feature<gtao_render_feature>();
-    add_feature<bloom_render_feature>();
+    add_feature<shadow_feature>();
+    add_feature<vsm_feature>();
+    add_feature<taa_feature>();
+    add_feature<gtao_feature>();
+    add_feature<bloom_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -49,7 +49,7 @@ void deferred_renderer::on_render(render_graph& graph)
             add_hzb_pass(graph);
         }
 
-        if (get_feature<gtao_render_feature>(true))
+        if (get_feature<gtao_feature>(true))
         {
             add_gtao_pass(graph);
         }
@@ -73,7 +73,7 @@ void deferred_renderer::on_render(render_graph& graph)
 
     {
         rdg_scope scope(graph, "Post Processing");
-        if (get_feature<taa_render_feature>(true))
+        if (get_feature<taa_feature>(true))
         {
             add_motion_vector_pass(graph);
             add_taa_pass(graph);
@@ -287,7 +287,7 @@ void deferred_renderer::add_hzb_pass(render_graph& graph)
 
 void deferred_renderer::add_gtao_pass(render_graph& graph)
 {
-    auto* gtao = get_feature<gtao_render_feature>();
+    auto* gtao = get_feature<gtao_feature>();
 
     m_ao_buffer = graph.add_texture(
         "AO Buffer",
@@ -309,7 +309,7 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
 
 void deferred_renderer::add_shadow_pass(render_graph& graph)
 {
-    auto* vsm = get_feature<vsm_render_feature>();
+    auto* vsm = get_feature<vsm_feature>();
 
     shadow_pass::debug_mode debug_mode = shadow_pass::DEBUG_MODE_NONE;
     switch (m_debug_mode)
@@ -366,7 +366,7 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         m_ao_buffer,
     };
 
-    auto* shadow = get_feature<shadow_render_feature>();
+    auto* shadow = get_feature<shadow_feature>();
 
     graph.add_pass<shading_pass>({
         .gbuffers = m_gbuffers,
@@ -403,7 +403,7 @@ void deferred_renderer::add_motion_vector_pass(render_graph& graph)
 
 void deferred_renderer::add_taa_pass(render_graph& graph)
 {
-    auto* taa = get_feature<taa_render_feature>();
+    auto* taa = get_feature<taa_feature>();
 
     rdg_texture* resolved_render_target = graph.add_texture(
         "Resolved Render Target",
@@ -434,7 +434,7 @@ void deferred_renderer::add_taa_pass(render_graph& graph)
 
 void deferred_renderer::add_bloom_pass(render_graph& graph)
 {
-    auto* bloom = get_feature<bloom_render_feature>(true);
+    auto* bloom = get_feature<bloom_feature>(true);
     if (bloom == nullptr)
     {
         return;
