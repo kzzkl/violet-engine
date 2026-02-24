@@ -113,6 +113,6 @@ protected:
 
 private:
     std::vector<std::unique_ptr<render_feature_base>> m_features;
-    std::vector<std::unique_ptr<rdg_profiling>> m_profilings;
+    std::unique_ptr<rdg_profiling> m_profiling;
 };
 } // namespace violet

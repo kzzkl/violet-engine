@@ -25,13 +25,18 @@ void depth_only_pass::add(render_graph& graph, const parameter& parameter)
         .primitive_topology = parameter.primitive_topology,
     };
 
+    mesh_pass::attachment depth_buffer = {
+        .texture = parameter.depth_buffer,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD,
+    };
+
     graph.add_pass<mesh_pass>({
         .draw_buffer = parameter.draw_buffer,
         .draw_count_buffer = parameter.draw_count_buffer,
         .draw_info_buffer = parameter.draw_info_buffer,
-        .depth_buffer = parameter.depth_buffer,
+        .depth_buffer = depth_buffer,
         .surface_type = parameter.surface_type,
-        .clear = parameter.clear,
         .override_pipeline = pipeline,
     });
 }

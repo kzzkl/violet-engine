@@ -17,7 +17,7 @@ public:
         rdg_texture* visibility_buffer;
         rdg_texture* depth_buffer;
 
-        bool clear;
+        bool main_pass;
     };
 
     void add(render_graph& graph, const parameter& parameter);

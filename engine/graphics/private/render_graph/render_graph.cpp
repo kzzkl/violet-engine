@@ -402,7 +402,7 @@ rdg_buffer* render_graph::add_buffer(
 
 void render_graph::begin_group(std::string_view group_name)
 {
-    m_groups.emplace_back(group_name.data());
+    m_groups.emplace_back(group_name);
 }
 
 void render_graph::end_group()
@@ -412,9 +412,9 @@ void render_graph::end_group()
 
 void render_graph::compile()
 {
-    end_group();
-
     add_pass(m_final_pass);
+
+    end_group();
 
     cull();
     allocate_resources();
@@ -429,6 +429,7 @@ void render_graph::record(rhi_command* command)
     std::size_t batch_index = 0;
     std::size_t group_index = 0;
     std::uint32_t query_index = 0;
+    std::uint32_t group_stack = 0;
 
     auto push_group = [&](const std::string& group_name, bool is_leaf)
     {
@@ -438,6 +439,8 @@ void render_graph::record(rhi_command* command)
         {
             m_profiling->begin(group_name, is_leaf ? ++query_index : 0xFFFFFFFF);
         }
+
+        ++group_stack;
     };
 
     auto pop_group = [&](bool is_leaf)
@@ -456,6 +459,8 @@ void render_graph::record(rhi_command* command)
         }
 
         command->end_label();
+
+        --group_stack;
     };
 
     if (m_profiling != nullptr)
@@ -466,18 +471,17 @@ void render_graph::record(rhi_command* command)
 
     for (std::size_t i = 0; i < m_passes.size(); ++i)
     {
-        for (std::size_t j = group_index; j < m_group_offset[i]; ++j)
+        for (; group_index < m_group_offset[i]; ++group_index)
         {
-            if (!m_groups[j].empty())
+            if (!m_groups[group_index].empty())
             {
-                push_group(m_groups[j], false);
+                push_group(m_groups[group_index], false);
             }
             else
             {
                 pop_group(false);
             }
         }
-        group_index = m_group_offset[i];
 
         rdg_pass* pass = m_passes[i];
 
@@ -527,6 +531,11 @@ void render_graph::record(rhi_command* command)
         }
 
         pop_group(true);
+    }
+
+    while (group_stack > 0)
+    {
+        pop_group(false);
     }
 }
 

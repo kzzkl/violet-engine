@@ -27,31 +27,26 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
         RDG_PASS_RASTER,
         [&](pass_data& data, rdg_pass& pass)
         {
-            rhi_attachment_load_op load_op =
-                parameter.clear ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
-
-            for (std::size_t i = 0; i < parameter.render_targets.size(); ++i)
+            for (const auto& attachment : parameter.render_targets)
             {
                 pass.add_render_target(
-                    parameter.render_targets[i],
-                    load_op,
-                    RHI_ATTACHMENT_STORE_OP_STORE,
+                    attachment.texture,
+                    attachment.load_op,
+                    attachment.store_op,
                     0,
                     0,
-                    parameter.render_target_clear_values.size() > i ?
-                        parameter.render_target_clear_values[i] :
-                        rhi_clear_value{});
+                    attachment.clear_value);
             }
 
-            if (parameter.depth_buffer != nullptr)
+            if (parameter.depth_buffer.texture != nullptr)
             {
                 pass.set_depth_stencil(
-                    parameter.depth_buffer,
-                    load_op,
-                    RHI_ATTACHMENT_STORE_OP_STORE,
+                    parameter.depth_buffer.texture,
+                    parameter.depth_buffer.load_op,
+                    parameter.depth_buffer.store_op,
                     0,
                     0,
-                    parameter.depth_buffer_clear_value);
+                    parameter.depth_buffer.clear_value);
             }
 
             data.draw_buffer = pass.add_buffer(

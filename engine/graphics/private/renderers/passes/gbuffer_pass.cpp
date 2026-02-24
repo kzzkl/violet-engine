@@ -63,7 +63,7 @@ struct visibility_sort_worklist_cs : public shader_cs
 
 void gbuffer_pass::add(render_graph& graph, const parameter& parameter)
 {
-    if (parameter.clear)
+    if (parameter.main_pass)
     {
         add_clear_pass(graph, parameter);
     }
@@ -129,16 +129,28 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
     rhi_clear_value clear_value = {};
     clear_value.color.uint32[0] = 0xFFFFFFFF;
 
+    std::vector<mesh_pass::attachment> render_targets;
+    render_targets.push_back({
+        .texture = parameter.visibility_buffer,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR,
+        .clear_value = clear_value,
+    });
+
+    mesh_pass::attachment depth_buffer = {
+        .texture = parameter.depth_buffer,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = parameter.main_pass ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD,
+    };
+
     graph.add_pass<mesh_pass>({
         .draw_buffer = parameter.draw_buffer,
         .draw_count_buffer = parameter.draw_count_buffer,
         .draw_info_buffer = parameter.draw_info_buffer,
-        .render_targets = {&m_visibility_buffer, 1},
-        .depth_buffer = parameter.depth_buffer,
+        .render_targets = render_targets,
+        .depth_buffer = depth_buffer,
         .surface_type = SURFACE_TYPE_OPAQUE,
         .material_path = MATERIAL_PATH_VISIBILITY,
-        .clear = parameter.clear,
-        .render_target_clear_values = {&clear_value, 1},
     });
 
     add_material_classify_pass(graph);
@@ -398,15 +410,30 @@ void gbuffer_pass::add_deferred_pass(render_graph& graph, const parameter& param
 {
     rdg_scope scope(graph, "Deferred Pass");
 
+    std::vector<mesh_pass::attachment> render_targets;
+    for (auto* gbuffer : parameter.gbuffers)
+    {
+        render_targets.push_back({
+            .texture = gbuffer,
+            .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+            .load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        });
+    }
+
+    mesh_pass::attachment depth_buffer = {
+        .texture = parameter.depth_buffer,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+    };
+
     graph.add_pass<mesh_pass>({
         .draw_buffer = parameter.draw_buffer,
         .draw_count_buffer = parameter.draw_count_buffer,
         .draw_info_buffer = parameter.draw_info_buffer,
-        .render_targets = parameter.gbuffers,
-        .depth_buffer = parameter.depth_buffer,
+        .render_targets = render_targets,
+        .depth_buffer = depth_buffer,
         .surface_type = SURFACE_TYPE_OPAQUE,
         .material_path = MATERIAL_PATH_DEFERRED,
-        .clear = false,
     });
 }
 } // namespace violet

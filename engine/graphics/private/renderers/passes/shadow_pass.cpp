@@ -1029,8 +1029,8 @@ void shadow_pass::clear_physical_page(render_graph& graph)
                 VSM_PAGE_RESOLUTION,
                 VSM_PAGE_RESOLUTION,
                 VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
-                8,
-                8,
+                16,
+                16,
                 1);
         });
 }
@@ -1487,8 +1487,8 @@ void shadow_pass::merge_physical_page(render_graph& graph)
                 VSM_PAGE_RESOLUTION,
                 VSM_PAGE_RESOLUTION,
                 VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT,
-                8,
-                8,
+                16,
+                16,
                 1);
         });
 }

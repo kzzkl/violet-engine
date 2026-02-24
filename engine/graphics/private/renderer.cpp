@@ -3,10 +3,7 @@
 
 namespace violet
 {
-renderer::renderer()
-{
-    m_profilings.resize(render_device::instance().get_frame_resource_count());
-}
+renderer::renderer() = default;
 
 renderer::~renderer() {}
 
@@ -23,10 +20,9 @@ void renderer::render(render_graph& graph)
 
     on_render(graph);
 
-    if (m_profilings[0] != nullptr)
+    if (m_profiling != nullptr)
     {
-        auto& device = render_device::instance();
-        graph.set_profiling(m_profilings[device.get_frame_resource_index()].get());
+        graph.set_profiling(m_profiling.get());
     }
 }
 
@@ -34,37 +30,28 @@ void renderer::set_profiling(bool enable)
 {
     if (enable)
     {
-        if (m_profilings[0] != nullptr)
+        if (m_profiling != nullptr)
         {
             return;
         }
 
-        for (auto& profiling : m_profilings)
-        {
-            profiling = std::make_unique<rdg_profiling>();
-        }
+        m_profiling = std::make_unique<rdg_profiling>();
     }
     else
     {
-        for (auto& profiling : m_profilings)
-        {
-            profiling = nullptr;
-        }
+        m_profiling = nullptr;
     }
 }
 
 rdg_profiling* renderer::get_profiling()
 {
-    if (m_profilings[0] == nullptr)
+    if (m_profiling == nullptr)
     {
         return nullptr;
     }
 
-    auto& device = render_device::instance();
+    m_profiling->resolve();
 
-    auto* profiling = m_profilings[device.get_frame_resource_index()].get();
-    profiling->resolve();
-
-    return profiling;
+    return m_profiling.get();
 }
 } // namespace violet
