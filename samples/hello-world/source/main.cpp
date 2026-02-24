@@ -32,7 +32,7 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"]);
+        m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
 
         auto& world = get_world();
 

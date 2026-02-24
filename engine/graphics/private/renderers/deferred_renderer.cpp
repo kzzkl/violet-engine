@@ -273,7 +273,7 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
         .gbuffers = m_gbuffers,
         .visibility_buffer = m_visibility_buffer,
         .depth_buffer = m_depth_buffer,
-        .clear = main_pass,
+        .main_pass = main_pass,
     });
 }
 

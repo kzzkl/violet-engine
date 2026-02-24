@@ -3,6 +3,12 @@
 
 namespace violet
 {
+rdg_profiling::rdg_profiling()
+{
+    auto& device = render_device::instance();
+    m_query_pools.resize(device.get_frame_resource_count());
+}
+
 void rdg_profiling::begin(std::string_view name, std::uint32_t query_index)
 {
     auto index = static_cast<std::uint32_t>(m_nodes.size());
@@ -25,6 +31,8 @@ void rdg_profiling::end()
 
 void rdg_profiling::reset(std::uint32_t leaf_count)
 {
+    m_query_pool_index = (m_query_pool_index + 1) % m_query_pools.size();
+
     m_nodes.clear();
 
     while (!m_node_stack.empty())
@@ -32,21 +40,24 @@ void rdg_profiling::reset(std::uint32_t leaf_count)
         m_node_stack.pop();
     }
 
-    if (m_query_pool == nullptr || leaf_count > m_query_pool->get_size())
+    auto& query_pool = m_query_pools[m_query_pool_index];
+
+    std::uint32_t required_size = leaf_count + 1;
+    if (query_pool == nullptr || required_size > query_pool->get_size())
     {
         std::uint32_t size = 1;
-        while (size < leaf_count)
+        while (size < required_size)
         {
             size <<= 1;
         }
 
-        m_query_pool = render_device::instance().create_query_pool({
+        query_pool = render_device::instance().create_query_pool({
             .type = RHI_QUERY_TYPE_TIMESTAMP,
             .size = size,
         });
     }
 
-    m_query_pool->reset();
+    query_pool->reset();
 
     m_leaf_count = leaf_count;
     m_resolved = false;
@@ -62,7 +73,7 @@ void rdg_profiling::resolve()
     assert(m_node_stack.empty());
 
     std::vector<std::uint64_t> results(m_leaf_count + 1);
-    m_query_pool->get_results(results.data(), static_cast<std::uint32_t>(results.size()));
+    get_query_pool()->get_results(results.data(), static_cast<std::uint32_t>(results.size()));
 
     for (auto& node : m_nodes)
     {
@@ -76,6 +87,11 @@ void rdg_profiling::resolve()
     get_node_time(0);
 
     m_resolved = true;
+}
+
+rhi_query_pool* rdg_profiling::get_query_pool() const
+{
+    return m_query_pools[m_query_pool_index].get();
 }
 
 float rdg_profiling::get_node_time(std::uint32_t node_index)

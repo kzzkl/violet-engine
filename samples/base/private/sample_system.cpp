@@ -32,11 +32,8 @@ void imgui_profiling_event(
 {
     const auto& node = nodes[index];
 
-    // ImGui::PushID(&node);
-
     ImGui::TableNextRow();
 
-    // 第一列：树结构
     ImGui::TableNextColumn();
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -49,19 +46,13 @@ void imgui_profiling_event(
     std::string name = std::format("{}##{}", node.name, index);
     bool open = ImGui::TreeNodeEx(name.c_str(), flags);
 
-    // 第二列：时间
     ImGui::TableNextColumn();
     ImGui::Text("%.2f ms", node.time_ms);
 
-    // 第三列：百分比 + 进度条
     ImGui::TableNextColumn();
 
     float percent = frame_time > 0.0f ? node.time_ms / frame_time : 0.0f;
-
-    ImGui::ProgressBar(
-        percent,
-        ImVec2(-FLT_MIN, 0),
-        (std::to_string(int(percent * 100)) + "%").c_str());
+    ImGui::ProgressBar(percent, ImVec2(-FLT_MIN, 0), std::format("{:.2f}%", percent * 100).c_str());
 
     if (open)
     {
@@ -72,8 +63,6 @@ void imgui_profiling_event(
 
         ImGui::TreePop();
     }
-
-    // ImGui::PopID();
 }
 } // namespace
 
@@ -372,8 +361,18 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
 
 void sample_system::imgui_profiling(rdg_profiling* profiling)
 {
+    static float smoothed_fps = 0.0f;
+
+    float delta_time = ImGui::GetIO().DeltaTime;
+    float current_fps = 1.0f / delta_time;
+
+    const float smoothing = 0.1f;
+    smoothed_fps = smoothed_fps * (1.0f - smoothing) + current_fps * smoothing;
+
     if (ImGui::Begin("GPU Profiler"))
     {
+        ImGui::Text("FPS: %.1f", smoothed_fps);
+
         if (ImGui::BeginTable(
                 "ProfilerTable",
                 3,
