@@ -30,6 +30,18 @@ groupshared uint gs_cluster_node_mask;
 groupshared uint3 gs_cluster_node[MAX_CLUSTER_NODE_PER_GROUP]; // x: child_offset, y: child_count, z: instance_id
 groupshared uint gs_recheck_mask[MAX_CLUSTER_NODE_PER_GROUP];
 
+#ifndef CULL_CLUSTER_NODE
+#define CULL_CLUSTER_NODE 0
+#endif
+
+#ifndef CULL_MAIN_PASS
+#define CULL_MAIN_PASS 0
+#endif
+
+#ifndef CULL_RECHECK
+#define CULL_RECHECK 0
+#endif
+
 uint2 pack_cluster_node_item(uint id, uint instance_id, uint recheck_mask)
 {
     return uint2(recheck_mask << 24 | id, instance_id);
@@ -73,18 +85,25 @@ void process_cluster_node(uint group_index)
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
 
     uint parent_index = group_index / MAX_CLUSTER_NODE_PER_GROUP;
+    uint child_index = group_index % MAX_CLUSTER_NODE_PER_GROUP;
 
     if ((gs_cluster_node_mask & (1u << parent_index)) == 0)
     {
         return;
     }
 
+#if CULL_RECHECK
+    if ((gs_recheck_mask[parent_index] & (1u << child_index)) == 0)
+    {
+        return;
+    }
+#endif
+
     uint3 item = gs_cluster_node[parent_index];
     uint child_offset = item.x;
     uint child_count = item.y;
     uint instance_id = item.z;
 
-    uint child_index = group_index % MAX_CLUSTER_NODE_PER_GROUP;
     if (child_index >= child_count)
     {
         return;
@@ -105,11 +124,14 @@ void process_cluster_node(uint group_index)
 
     bool visible = true;
 
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+#if CULL_RECHECK
+    visible = occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
+#else
     visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {
+#if CULL_MAIN_PASS
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(cluster_node.bounding_sphere.xyz, 1.0)));
         prev_sphere_vs.w = sphere_vs.w;
         if (!occlusion_cull(
@@ -123,18 +145,10 @@ void process_cluster_node(uint group_index)
             visible = false;
             InterlockedOr(gs_recheck_mask[parent_index], 1u << child_index);
         }
-    }
 #else
-    if (gs_queue_offset + group_index < cluster_queue_state[0].cluster_node_recheck_size)
-    {
-        visible = gs_recheck_mask[parent_index] & (1u << child_index);
+        visible = occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
+#endif
     }
-    else
-    {
-        visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
-    }
-
-    visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
 #endif
 
     if (visible)
@@ -194,7 +208,7 @@ void process_cluster(uint3 dtid)
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(cluster.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
 
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+#if CULL_MAIN_PASS
     visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
 
     if (visible)
@@ -289,7 +303,7 @@ void cluster_node_cull(uint group_index)
 
         InterlockedOr(gs_cluster_node_mask, 1u << group_index);
 
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+#if CULL_MAIN_PASS
         gs_recheck_mask[group_index] = 0;
 #else
         gs_recheck_mask[group_index] = recheck_mask;
@@ -297,6 +311,7 @@ void cluster_node_cull(uint group_index)
     }
     GroupMemoryBarrierWithGroupSync();
 
+#if CULL_MAIN_PASS
     if (gs_cluster_node_mask != 0)
     {
         process_cluster_node(group_index);
@@ -308,6 +323,16 @@ void cluster_node_cull(uint group_index)
     {
         cluster_queue[queue_index] = pack_cluster_node_item(cluster_id, instance_id, gs_recheck_mask[group_index]);
     }
+#else
+#if CULL_RECHECK
+    if (gs_cluster_node_mask != 0 && gs_recheck_mask[group_index] != 0)
+#else
+    if (gs_cluster_node_mask != 0)
+#endif
+    {
+        process_cluster_node(group_index);
+    }
+#endif
 }
 
 void cluster_cull(uint3 dtid, uint group_index)
@@ -323,9 +348,9 @@ void cluster_cull(uint3 dtid, uint group_index)
 [numthreads(CLUSTER_CULL_GROUP_SIZE, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
-#if defined(CULL_CLUSTER_NODE)
+#if CULL_CLUSTER_NODE
     cluster_node_cull(group_index);
-#elif defined(CULL_CLUSTER)
+#else
     cluster_cull(dtid, group_index);
 #endif
 }

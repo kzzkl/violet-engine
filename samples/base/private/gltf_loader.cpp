@@ -118,7 +118,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     std::filesystem::path model_path(path);
     std::filesystem::path dir_path = model_path.parent_path();
 
-    mesh_loader::scene_data scene_data;
+    scene_data scene_data;
 
     // Load textures
     auto get_texture = [&](int index, bool srgb = false) -> texture_2d*

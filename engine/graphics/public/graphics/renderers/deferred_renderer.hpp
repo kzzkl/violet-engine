@@ -10,6 +10,9 @@ public:
     enum debug_mode
     {
         DEBUG_MODE_NONE,
+        DEBUG_MODE_CLUSTER,
+        DEBUG_MODE_CLUSTER_NODE,
+        DEBUG_MODE_TRIANGLE,
         DEBUG_MODE_VSM_PAGE,
         DEBUG_MODE_VSM_PAGE_CACHE,
         DEBUG_MODE_SHADING_SHADOW_MASK,

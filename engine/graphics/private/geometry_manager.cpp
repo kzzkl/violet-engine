@@ -160,6 +160,7 @@ void geometry_manager::set_submesh(
                     .bounding_sphere = cluster.bounding_sphere,
                     .lod_bounds = cluster.lod_bounds,
                     .lod_error = cluster.lod == 0 ? -1.0f : cluster.lod_error,
+                    .cluster_node = id,
                 };
             }
 
@@ -263,6 +264,7 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
                 .lod_error = cluster.lod_error,
                 .index_offset = cluster.index_offset,
                 .index_count = cluster.index_count,
+                .cluster_node = cluster.cluster_node,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

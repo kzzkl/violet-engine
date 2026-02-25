@@ -150,7 +150,7 @@ private:
             float lod_error;
             std::uint32_t index_offset;
             std::uint32_t index_count;
-            std::uint32_t padding0;
+            std::uint32_t cluster_node;
         };
 
         std::uint32_t index_offset;
@@ -160,6 +160,8 @@ private:
 
         sphere3f lod_bounds;
         float lod_error;
+
+        std::uint32_t cluster_node;
     };
 
     struct gpu_cluster_node

@@ -7,6 +7,14 @@ namespace violet
 class gbuffer_pass
 {
 public:
+    enum debug_mode
+    {
+        DEBUG_MODE_NONE,
+        DEBUG_MODE_CLUSTER,
+        DEBUG_MODE_CLUSTER_NODE,
+        DEBUG_MODE_TRIANGLE,
+    };
+
     struct parameter
     {
         rdg_buffer* draw_buffer;
@@ -18,6 +26,9 @@ public:
         rdg_texture* depth_buffer;
 
         bool main_pass;
+
+        debug_mode debug_mode{DEBUG_MODE_NONE};
+        rdg_texture* debug_output{nullptr};
     };
 
     void add(render_graph& graph, const parameter& parameter);
@@ -36,6 +47,8 @@ private:
         const rdg_compute_pipeline& pipeline);
 
     void add_deferred_pass(render_graph& graph, const parameter& parameter);
+
+    void add_debug_pass(render_graph& graph, const parameter& parameter);
 
     rdg_texture* m_visibility_buffer{nullptr};
     rdg_buffer* m_worklist_buffer{nullptr};

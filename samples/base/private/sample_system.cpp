@@ -11,9 +11,9 @@
 #include "control/control_system.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
-#include "graphics/materials/unlit_material.hpp"
 #include "graphics/render_graph/rdg_profiling.hpp"
 #include "graphics/tools/geometry_tool.hpp"
+#include "sample/assimp_loader.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
 #include "sample/imgui_system.hpp"
@@ -122,8 +122,18 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
 
     auto& world = get_world();
 
-    gltf_loader loader;
-    auto result = loader.load(model_path);
+    std::optional<mesh_loader::scene_data> result;
+    if (model_path.ends_with(".gltf") || model_path.ends_with(".glb"))
+    {
+        gltf_loader loader;
+        result = loader.load(model_path);
+    }
+    else
+    {
+        assimp_loader loader;
+        result = loader.load(model_path);
+    }
+
     if (!result)
     {
         return INVALID_ENTITY;
@@ -401,7 +411,11 @@ void sample_system::initialize_render()
         .window_handle = get_system<window_system>().get_handle(),
     });
 
-    m_materials.push_back(std::make_unique<unlit_material>());
+    auto default_material = std::make_unique<pbr_material>();
+    default_material->set_albedo({1.0f, 1.0f, 1.0f});
+    default_material->set_roughness(0.8f);
+    default_material->set_metallic(0.2f);
+    m_materials.push_back(std::move(default_material));
 }
 
 void sample_system::initialize_scene(std::string_view skybox_path)

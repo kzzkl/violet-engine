@@ -6,9 +6,16 @@ struct constant_data
 {
     uint cluster_queue_state;
     uint dispatch_buffer;
-    uint recheck;
 };
 PushConstant(constant_data, constant);
+
+#ifndef CULL_CLUSTER_NODE
+#define CULL_CLUSTER_NODE 0
+#endif
+
+#ifndef CULL_RECHECK
+#define CULL_RECHECK 0
+#endif
 
 [numthreads(1, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
@@ -18,24 +25,25 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     dispatch_command command;
 
-#if defined(CULL_CLUSTER_NODE)
+#if CULL_CLUSTER_NODE
     uint cluster_node_queue_rear = cluster_queue_state[0].cluster_node_queue_rear;
     uint cluster_node_queue_prev_rear = cluster_queue_state[0].cluster_node_queue_prev_rear;
-    uint cluster_node_queue_front = constant.recheck ? 0 : cluster_node_queue_prev_rear;
 
-    if (constant.recheck)
-    {
-        cluster_queue_state[0].cluster_recheck_size = cluster_queue_state[0].cluster_queue_rear;
-        cluster_queue_state[0].cluster_node_recheck_size = cluster_node_queue_prev_rear;
-    }
+#if CULL_RECHECK
+    uint cluster_node_queue_front = 0;
+
+    cluster_queue_state[0].cluster_recheck_size = cluster_queue_state[0].cluster_queue_rear;
+    cluster_queue_state[0].cluster_node_recheck_size = cluster_node_queue_prev_rear;
+#else
+    uint cluster_node_queue_front = cluster_node_queue_prev_rear;
+#endif
 
     cluster_queue_state[0].cluster_node_queue_front = cluster_node_queue_front;
     cluster_queue_state[0].cluster_node_queue_prev_rear = cluster_node_queue_rear;
 
     uint cluster_node_count = cluster_node_queue_rear - cluster_node_queue_front;
     command.x = (cluster_node_count + MAX_CLUSTER_NODE_PER_GROUP - 1) / MAX_CLUSTER_NODE_PER_GROUP;
-
-#elif defined(CULL_CLUSTER)
+#else
     uint cluster_queue_rear = cluster_queue_state[0].cluster_queue_rear;
     command.x = (cluster_queue_rear + CLUSTER_CULL_GROUP_SIZE - 1) / CLUSTER_CULL_GROUP_SIZE;
 #endif

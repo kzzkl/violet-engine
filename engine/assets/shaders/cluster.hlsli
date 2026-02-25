@@ -30,7 +30,7 @@ struct cluster_data
     float lod_error;
     uint index_offset;
     uint index_count;
-    uint padding0;
+    uint cluster_node;
 
     bool check_lod(camera_data camera, mesh_data mesh, float threshold)
     {

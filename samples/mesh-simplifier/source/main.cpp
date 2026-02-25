@@ -18,111 +18,36 @@
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
 #include "sample/imgui_system.hpp"
+#include "sample/sample_system.hpp"
 #include "window/window_system.hpp"
 #include <imgui.h>
 
 namespace violet
 {
-class mesh_simplifier_demo : public system
+class mesh_simplifier_demo : public sample_system
 {
 public:
     mesh_simplifier_demo()
-        : system("mesh_simplifier_demo")
+        : sample_system("mesh_simplifier_demo")
     {
-    }
-
-    void install(application& app) override
-    {
-        app.install<window_system>();
-        app.install<graphics_system>();
-        app.install<control_system>();
-        app.install<imgui_system>();
-
-        m_app = &app;
     }
 
     bool initialize(const dictionary& config) override
     {
-        auto& window = get_system<window_system>();
-        window.on_resize().add_task().set_execute(
-            [this]()
-            {
-                resize();
-            });
-        window.on_destroy().add_task().set_execute(
-            [this]()
-            {
-                m_app->exit();
-            });
+        if (!sample_system::initialize(config))
+        {
+            return false;
+        }
 
-        task_graph& task_graph = get_task_graph();
-        task_group& update = task_graph.get_group("Update");
-
-        task_graph.add_task()
-            .set_name("Demo Tick")
-            .set_group(update)
-            .set_options(TASK_OPTION_MAIN_THREAD)
-            .set_execute(
-                [this]()
-                {
-                    tick();
-                });
-
-        initialize_render();
         initialize_scene(config["model"], config["skybox"]);
-
-        resize();
 
         return true;
     }
 
 private:
-    void initialize_render()
-    {
-        m_swapchain = render_device::instance().create_swapchain({
-            .flags = RHI_TEXTURE_TRANSFER_DST | RHI_TEXTURE_RENDER_TARGET,
-            .window_handle = get_system<window_system>().get_handle(),
-        });
-    }
-
     void initialize_scene(std::string_view model_path, std::string_view skybox_path)
     {
         auto& world = get_world();
-
-        m_skybox = std::make_unique<skybox>(skybox_path);
-
-        entity scene_skybox = world.create();
-        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
-        auto& skybox = world.get_component<skybox_component>(scene_skybox);
-        skybox.skybox = m_skybox.get();
-
-        entity light = world.create();
-        world.add_component<transform_component, light_component, scene_component>(light);
-
-        auto& light_transform = world.get_component<transform_component>(light);
-        light_transform.set_position({10.0f, 10.0f, 10.0f});
-        light_transform.lookat({0.0f, 0.0f, 0.0f});
-
-        auto& main_light = world.get_component<light_component>(light);
-        main_light.type = LIGHT_DIRECTIONAL;
-
-        m_camera = world.create();
-        world.add_component<
-            transform_component,
-            camera_component,
-            orbit_control_component,
-            scene_component>(m_camera);
-
-        auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-        camera_control.radius_speed = 0.05f;
-
-        auto& camera_transform = world.get_component<transform_component>(m_camera);
-        camera_transform.set_position({0.0f, 0.0f, -10.0f});
-
-        auto& main_camera = world.get_component<camera_component>(m_camera);
-        main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
-        main_camera.renderer->get_feature<taa_feature>()->disable();
-        main_camera.render_target = m_swapchain.get();
 
         // Model.
         m_line_material = std::make_unique<unlit_material>(
@@ -237,12 +162,7 @@ private:
         });
     }
 
-    void resize()
-    {
-        m_swapchain->resize();
-    }
-
-    void tick()
+    void tick() override
     {
         auto& world = get_world();
 
@@ -338,7 +258,6 @@ private:
         }
     }
 
-    entity m_camera;
     entity m_model;
 
     std::unique_ptr<material> m_material;
@@ -351,12 +270,6 @@ private:
     std::unique_ptr<unlit_material> m_line_material;
 
     std::vector<std::unique_ptr<texture_2d>> m_textures;
-
-    std::unique_ptr<skybox> m_skybox;
-
-    rhi_ptr<rhi_swapchain> m_swapchain;
-
-    application* m_app{nullptr};
 };
 } // namespace violet
 

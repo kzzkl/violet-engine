@@ -161,8 +161,20 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
             adjacent_triangles,
             [&](std::uint32_t triangle)
             {
-                return !is_triangle_flipped(p0, position, triangle) &&
-                       !is_triangle_flipped(p1, position, triangle);
+                float edge_length = vector::length(p1 - p0);
+                if (vector::length(position - p0) > edge_length ||
+                    vector::length(position - p1) > edge_length)
+                {
+                    return false;
+                }
+
+                if (is_triangle_flipped(p0, position, triangle) ||
+                    is_triangle_flipped(p1, position, triangle))
+                {
+                    return false;
+                }
+
+                return true;
             });
     };
 
@@ -291,11 +303,6 @@ void mesh_simplifier::collapse_edge(std::uint32_t edge_index)
                     if (m_correct_attributes)
                     {
                         m_correct_attributes(attributes);
-                    }
-
-                    for (std::uint32_t aaa = 0; aaa < get_attribute_count(); ++aaa)
-                    {
-                        assert(!std::isnan(attributes[aaa]));
                     }
 
                     first_indexes[wedge_index] = m_indexes[corner];

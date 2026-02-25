@@ -61,6 +61,16 @@ struct visibility_sort_worklist_cs : public shader_cs
     };
 };
 
+struct gbuffer_debug_vs : public mesh_vs
+{
+    static constexpr std::string_view path = "assets/shaders/visibility/visibility_debug.hlsl";
+};
+
+struct gbuffer_debug_fs : public mesh_fs
+{
+    static constexpr std::string_view path = "assets/shaders/visibility/visibility_debug.hlsl";
+};
+
 void gbuffer_pass::add(render_graph& graph, const parameter& parameter)
 {
     if (parameter.main_pass)
@@ -68,8 +78,15 @@ void gbuffer_pass::add(render_graph& graph, const parameter& parameter)
         add_clear_pass(graph, parameter);
     }
 
-    add_visibility_pass(graph, parameter);
-    add_deferred_pass(graph, parameter);
+    if (parameter.debug_mode == DEBUG_MODE_NONE)
+    {
+        add_visibility_pass(graph, parameter);
+        add_deferred_pass(graph, parameter);
+    }
+    else
+    {
+        add_debug_pass(graph, parameter);
+    }
 }
 
 void gbuffer_pass::add_clear_pass(render_graph& graph, const parameter& parameter)
@@ -434,6 +451,68 @@ void gbuffer_pass::add_deferred_pass(render_graph& graph, const parameter& param
         .depth_buffer = depth_buffer,
         .surface_type = SURFACE_TYPE_OPAQUE,
         .material_path = MATERIAL_PATH_DEFERRED,
+    });
+}
+
+void gbuffer_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
+{
+    rdg_scope scope(graph, "Debug Pass");
+
+    std::vector<mesh_pass::attachment> render_targets;
+    render_targets.push_back({
+        .texture = parameter.debug_output,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+    });
+
+    mesh_pass::attachment depth_buffer = {
+        .texture = parameter.depth_buffer,
+        .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
+        .load_op = parameter.main_pass ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD,
+    };
+
+    auto& device = render_device::instance();
+
+    std::vector<std::wstring> defines;
+    if (parameter.debug_mode == DEBUG_MODE_CLUSTER)
+    {
+        defines.emplace_back(L"-DDEBUG_MODE_CLUSTER=1");
+    }
+    else if (parameter.debug_mode == DEBUG_MODE_CLUSTER_NODE)
+    {
+        defines.emplace_back(L"-DDEBUG_MODE_CLUSTER_NODE=1");
+    }
+    else if (parameter.debug_mode == DEBUG_MODE_TRIANGLE)
+    {
+        defines.emplace_back(L"-DDEBUG_MODE_TRIANGLE=1");
+    }
+
+    rdg_raster_pipeline debug_pipeline = {
+        .vertex_shader = device.get_shader<gbuffer_debug_vs>(defines),
+        .fragment_shader = device.get_shader<gbuffer_debug_fs>(defines),
+        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
+    };
+
+    graph.add_pass<mesh_pass>({
+        .draw_buffer = parameter.draw_buffer,
+        .draw_count_buffer = parameter.draw_count_buffer,
+        .draw_info_buffer = parameter.draw_info_buffer,
+        .render_targets = render_targets,
+        .depth_buffer = depth_buffer,
+        .surface_type = SURFACE_TYPE_OPAQUE,
+        .material_path = MATERIAL_PATH_VISIBILITY,
+        .override_pipeline = debug_pipeline,
+    });
+
+    graph.add_pass<mesh_pass>({
+        .draw_buffer = parameter.draw_buffer,
+        .draw_count_buffer = parameter.draw_count_buffer,
+        .draw_info_buffer = parameter.draw_info_buffer,
+        .render_targets = render_targets,
+        .depth_buffer = depth_buffer,
+        .surface_type = SURFACE_TYPE_OPAQUE,
+        .material_path = MATERIAL_PATH_DEFERRED,
+        .override_pipeline = debug_pipeline,
     });
 }
 } // namespace violet

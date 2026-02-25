@@ -1,4 +1,5 @@
 #include "components/camera_component.hpp"
+#include "components/first_person_control_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/scene_component.hpp"
@@ -137,6 +138,46 @@ private:
             }
         }
 
+        if (ImGui::CollapsingHeader("Camera"))
+        {
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto& controller = world.get_component<first_person_control_component>(get_camera());
+            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 20.0f);
+
+            const char* camera_types[] = {"Perspective", "Orthographic"};
+            static int camera_type = static_cast<int>(main_camera.type);
+            if (ImGui::Combo("Camera Type", &camera_type, camera_types, IM_ARRAYSIZE(camera_types)))
+            {
+                if (camera_type == CAMERA_PERSPECTIVE)
+                {
+                    main_camera.type = CAMERA_PERSPECTIVE;
+                    main_camera.near = 0.01f;
+                    main_camera.far = std::numeric_limits<float>::infinity();
+                }
+                else
+                {
+                    main_camera.type = CAMERA_ORTHOGRAPHIC;
+                    main_camera.near = 0.0f;
+                    main_camera.far = 1000.0f;
+                }
+            }
+
+            if (camera_type == CAMERA_PERSPECTIVE)
+            {
+                static float fov = math::to_degrees(main_camera.perspective.fov);
+                ImGui::SliderFloat("FOV", &fov, 1.0f, 120.0f);
+                main_camera.perspective.fov = math::to_radians(fov);
+            }
+            else if (camera_type == CAMERA_ORTHOGRAPHIC)
+            {
+                ImGui::SliderFloat(
+                    "Orthographic Size",
+                    &main_camera.orthographic.size,
+                    1.0f,
+                    100.0f);
+            }
+        }
+
         if (ImGui::CollapsingHeader("Light"))
         {
             static float rotate_x = 0.0f;
@@ -186,7 +227,7 @@ private:
 
         if (ImGui::CollapsingHeader("Shadow"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
 
             auto* shadow = renderer->get_feature<shadow_feature>();
@@ -228,7 +269,7 @@ private:
 
         if (ImGui::CollapsingHeader("TAA"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* taa = main_camera.renderer->get_feature<taa_feature>();
 
             static bool enable_taa = taa->is_enable();
@@ -247,7 +288,7 @@ private:
 
         if (ImGui::CollapsingHeader("GTAO"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* gtao = main_camera.renderer->get_feature<gtao_feature>();
 
             static bool enable_gtao = gtao->is_enable();
@@ -278,7 +319,7 @@ private:
 
         if (ImGui::CollapsingHeader("Bloom"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* bloom = main_camera.renderer->get_feature<bloom_feature>();
 
             static bool enable_bloom = bloom->is_enable();
@@ -309,18 +350,21 @@ private:
 
         if (ImGui::CollapsingHeader("Profiling"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             imgui_profiling(main_camera.renderer->get_profiling());
         }
 
         if (ImGui::CollapsingHeader("Debug"))
         {
-            auto& main_camera = get_world().get_component<camera_component>(get_camera());
+            auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
 
             static int debug_mode = static_cast<int>(renderer->get_debug_mode());
             const char* debug_mode_items[] = {
                 "None",
+                "Cluster",
+                "Cluster Node",
+                "Triangle",
                 "VSM Page",
                 "VSM Page Cache",
                 "Shadow Mask",
