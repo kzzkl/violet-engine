@@ -1,5 +1,4 @@
 add_subdirectory(base)
-add_subdirectory(cluster)
 add_subdirectory(hello-world)
 add_subdirectory(mesh-simplifier)
 # add_subdirectory(mmd-viewer)

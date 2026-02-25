@@ -20,6 +20,10 @@ PushConstant(constant_data, constant);
 
 groupshared uint gs_recheck_masks[2];
 
+#ifndef CULL_MAIN_PASS
+#define CULL_MAIN_PASS 0
+#endif
+
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
@@ -43,7 +47,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     bool visible = true;
 
-#if CULL_STAGE == CULL_STAGE_MAIN_PASS
+#if CULL_MAIN_PASS
     uint recheck_mask_index = group_index / 32;
 
     if (group_index % 32 == 0)

@@ -266,6 +266,22 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
             RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
     }
 
+    gbuffer_pass::debug_mode debug_mode = gbuffer_pass::DEBUG_MODE_NONE;
+    switch (m_debug_mode)
+    {
+    case DEBUG_MODE_CLUSTER:
+        debug_mode = gbuffer_pass::DEBUG_MODE_CLUSTER;
+        break;
+    case DEBUG_MODE_CLUSTER_NODE:
+        debug_mode = gbuffer_pass::DEBUG_MODE_CLUSTER_NODE;
+        break;
+    case DEBUG_MODE_TRIANGLE:
+        debug_mode = gbuffer_pass::DEBUG_MODE_TRIANGLE;
+        break;
+    default:
+        break;
+    }
+
     graph.add_pass<gbuffer_pass>({
         .draw_buffer = m_draw_buffer,
         .draw_count_buffer = m_draw_count_buffer,
@@ -274,6 +290,8 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
         .visibility_buffer = m_visibility_buffer,
         .depth_buffer = m_depth_buffer,
         .main_pass = main_pass,
+        .debug_mode = debug_mode,
+        .debug_output = m_debug_output,
     });
 }
 

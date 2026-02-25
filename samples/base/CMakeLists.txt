@@ -9,6 +9,7 @@ target_include_directories(imgui
         ${VIOLET_THIRDPARTY_DIR}/imgui)
 
 add_library(violet-sample-base STATIC
+    private/assimp_loader.cpp
     private/gltf_loader.cpp
     private/imgui_pass.cpp
     private/imgui_system.cpp

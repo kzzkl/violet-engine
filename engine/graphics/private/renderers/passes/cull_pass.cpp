@@ -12,7 +12,6 @@ struct prepare_cluster_cull_cs : public shader_cs
     {
         std::uint32_t cluster_queue_state;
         std::uint32_t dispatch_buffer;
-        std::uint32_t recheck;
     };
 
     static constexpr parameter_layout parameters = {
@@ -116,7 +115,7 @@ void cull_pass::add(render_graph& graph, const parameter& parameter)
 void cull_pass::prepare_cluster_cull(
     render_graph& graph,
     rdg_buffer* dispatch_buffer,
-    bool cull_cluster,
+    bool cull_cluster_node,
     bool recheck)
 {
     struct pass_data
@@ -134,13 +133,21 @@ void cull_pass::prepare_cluster_cull(
                 pass.add_buffer_uav(m_cluster_queue_state, RHI_PIPELINE_STAGE_COMPUTE);
             data.dispatch_buffer = pass.add_buffer_uav(dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
-        [cull_cluster, recheck](const pass_data& data, rdg_command& command)
+        [cull_cluster_node, recheck](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
-            std::vector<std::wstring> defines = {
-                cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
-            };
+            std::vector<std::wstring> defines;
+
+            if (cull_cluster_node)
+            {
+                defines.emplace_back(L"-DCULL_CLUSTER_NODE=1");
+            }
+
+            if (recheck)
+            {
+                defines.emplace_back(L"-DCULL_RECHECK");
+            }
 
             command.set_pipeline({
                 .compute_shader = device.get_shader<prepare_cluster_cull_cs>(defines),
@@ -150,7 +157,6 @@ void cull_pass::prepare_cluster_cull(
                 prepare_cluster_cull_cs::constant_data{
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .dispatch_buffer = data.dispatch_buffer.get_bindless(),
-                    .recheck = recheck,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
@@ -281,8 +287,11 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
             if (data.cluster_queue)
             {
                 defines.emplace_back(L"-DGENERATE_CLUSTER_LIST");
-                defines.emplace_back(
-                    stage == CULL_STAGE_MAIN_PASS ? L"-DCULL_STAGE=0" : L"-DCULL_STAGE=1");
+            }
+
+            if (stage == CULL_STAGE_MAIN_PASS)
+            {
+                defines.emplace_back(L"-DCULL_MAIN_PASS=1");
             }
 
             command.set_pipeline({
@@ -338,16 +347,13 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
         render_device::instance().get_geometry_manager()->get_cluster_node_depth();
     for (std::uint32_t i = 0; i < cluster_node_depth; ++i)
     {
-        bool cull_cluster = i == cluster_node_depth - 1;
+        bool cull_cluster_node = i != cluster_node_depth - 1;
+        bool recheck = m_stage == CULL_STAGE_POST_PASS && i == 0;
 
-        prepare_cluster_cull(
-            graph,
-            dispatch_buffer,
-            cull_cluster,
-            m_stage == CULL_STAGE_POST_PASS && i == 0);
+        prepare_cluster_cull(graph, dispatch_buffer, cull_cluster_node, recheck);
 
         graph.add_pass<pass_data>(
-            cull_cluster ? "Cull Cluster" : "Cull Cluster Node: " + std::to_string(i),
+            cull_cluster_node ? "Cull Cluster Node: " + std::to_string(i) : "Cull Cluster",
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
@@ -363,7 +369,7 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                     RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                     RHI_ACCESS_INDIRECT_COMMAND_READ);
 
-                if (cull_cluster)
+                if (!cull_cluster_node)
                 {
                     data.draw_buffer =
                         pass.add_buffer_uav(m_draw_buffer, RHI_PIPELINE_STAGE_COMPUTE);
@@ -377,10 +383,22 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
             {
                 auto& device = render_device::instance();
 
-                std::vector<std::wstring> defines = {
-                    cull_cluster ? L"-DCULL_CLUSTER" : L"-DCULL_CLUSTER_NODE",
-                    stage == CULL_STAGE_MAIN_PASS ? L"-DCULL_STAGE=0" : L"-DCULL_STAGE=1",
-                };
+                std::vector<std::wstring> defines;
+
+                if (stage == CULL_STAGE_MAIN_PASS)
+                {
+                    defines.emplace_back(L"-DCULL_MAIN_PASS=1");
+                }
+
+                if (cull_cluster_node)
+                {
+                    defines.emplace_back(L"-DCULL_CLUSTER_NODE=1");
+                }
+
+                if (recheck)
+                {
+                    defines.emplace_back(L"-DCULL_RECHECK=1");
+                }
 
                 command.set_pipeline({
                     .compute_shader = device.get_shader<cluster_cull_cs>(defines),
@@ -397,17 +415,17 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                     .max_draw_command_count = graphics_config::get_max_draw_command_count(),
                 };
 
-                if (cull_cluster)
-                {
-                    constant.draw_buffer = data.draw_buffer.get_bindless();
-                    constant.draw_count_buffer = data.draw_count_buffer.get_bindless();
-                    constant.draw_info_buffer = data.draw_info_buffer.get_bindless();
-                }
-                else
+                if (cull_cluster_node)
                 {
                     rhi_buffer_srv* cluster_node_buffer_srv =
                         device.get_geometry_manager()->get_cluster_node_buffer()->get_srv();
                     constant.cluster_node_buffer = cluster_node_buffer_srv->get_bindless();
+                }
+                else
+                {
+                    constant.draw_buffer = data.draw_buffer.get_bindless();
+                    constant.draw_count_buffer = data.draw_count_buffer.get_bindless();
+                    constant.draw_info_buffer = data.draw_info_buffer.get_bindless();
                 }
 
                 command.set_constant(constant);

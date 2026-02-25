@@ -35,7 +35,7 @@ private:
     void prepare_cluster_cull(
         render_graph& graph,
         rdg_buffer* dispatch_buffer,
-        bool cull_cluster,
+        bool cull_cluster_node,
         bool recheck);
 
     void add_prepare_pass(render_graph& graph);
