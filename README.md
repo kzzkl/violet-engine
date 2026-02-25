@@ -49,12 +49,8 @@ cmake --build ./ --config Debug --target install
 
 After building the project, example programs will be generated under: `build/install/bin`
 
-## Samples
+## Hello World
 
-![](documents/screenshot/pbr.png)
+![](documents/screenshot/hello-world.png)
 
-![](documents/screenshot/cluster.png)
-
-![](documents/screenshot/mmd1.png)
-
-![](documents/screenshot/mmd2.png)
+To run hello-world.exe, you need to update the resource paths in: `samples/hello-world/resources/config/hello-world.json`
