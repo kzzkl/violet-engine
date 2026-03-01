@@ -48,6 +48,7 @@ private:
     void add_gtao_pass(render_graph& graph);
     void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
+    void add_skybox_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
     void add_bloom_pass(render_graph& graph);

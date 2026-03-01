@@ -410,8 +410,8 @@ std::vector<std::uint8_t> render_device::compile_shader(
         arguments.push_back(L"1");
         arguments.push_back(L"0");
 #ifndef NDEBUG
-        // arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
-        // arguments.push_back(L"-fspv-debug=vulkan-with-source");
+        arguments.push_back(L"-fspv-extension=SPV_KHR_non_semantic_info");
+        arguments.push_back(L"-fspv-debug=vulkan-with-source");
 #endif
     }
 

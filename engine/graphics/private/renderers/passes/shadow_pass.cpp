@@ -332,6 +332,7 @@ struct vsm_shadow_vs : public shader_vs
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_physical_shadow_map;
         std::uint32_t draw_info_buffer;
+        float slope_scale_depth_bias;
     };
 
     static constexpr parameter_layout parameters = {
@@ -453,6 +454,8 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_lru_buffer = parameter.lru_buffer;
     m_lru_curr_index = parameter.lru_curr_index;
     m_lru_prev_index = parameter.lru_prev_index;
+
+    m_slope_scale_depth_bias = parameter.slope_scale_depth_bias;
 
     m_vsm_bounds_buffer = graph.add_buffer(
         "VSM Projection Buffer",
@@ -1364,7 +1367,7 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
         rdg_buffer_ref draw_buffer;
         rdg_buffer_ref draw_count_buffer;
         rdg_buffer_srv draw_info_buffer;
-
+        float slope_scale_depth_bias;
         bool is_static;
     };
 
@@ -1395,6 +1398,7 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
             data.draw_info_buffer =
                 pass.add_buffer_srv(m_draw_info_buffer, RHI_PIPELINE_STAGE_VERTEX);
 
+            data.slope_scale_depth_bias = m_slope_scale_depth_bias;
             data.is_static = is_static;
         },
         [](const pass_data& data, rdg_command& command)
@@ -1415,6 +1419,7 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
                     .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                    .slope_scale_depth_bias = data.slope_scale_depth_bias,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);

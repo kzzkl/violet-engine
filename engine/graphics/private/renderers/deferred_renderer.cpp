@@ -62,14 +62,7 @@ void deferred_renderer::on_render(render_graph& graph)
         add_shading_pass(graph);
     }
 
-    if (graph.get_scene().has_skybox())
-    {
-        graph.add_pass<skybox_pass>({
-            .render_target = m_render_target,
-            .depth_buffer = m_depth_buffer,
-            .clear = graph.get_scene().get_instance_count() == 0,
-        });
-    }
+    add_skybox_pass(graph);
 
     {
         rdg_scope scope(graph, "Post Processing");
@@ -328,6 +321,7 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
 void deferred_renderer::add_shadow_pass(render_graph& graph)
 {
     auto* vsm = get_feature<vsm_feature>();
+    auto* shadow = get_feature<shadow_feature>();
 
     shadow_pass::debug_mode debug_mode = shadow_pass::DEBUG_MODE_NONE;
     switch (m_debug_mode)
@@ -361,6 +355,7 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
         .lru_prev_index = vsm->get_prev_lru_index(),
+        .slope_scale_depth_bias = shadow->get_slope_scale_depth_bias(),
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
         .debug_info = debug_info,
@@ -397,11 +392,25 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .shadow_sample_mode = static_cast<std::uint32_t>(shadow->get_sample_mode()),
         .shadow_sample_count = shadow->get_sample_count(),
         .shadow_sample_radius = shadow->get_sample_radius(),
-        .shadow_normal_offset = shadow->get_normal_offset(),
+        .shadow_normal_bias = shadow->get_normal_bias(),
         .shadow_constant_bias = shadow->get_constant_bias(),
-        .shadow_receiver_plane_bias = shadow->get_receiver_plane_bias(),
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
+    });
+}
+
+void deferred_renderer::add_skybox_pass(render_graph& graph)
+{
+    if (!graph.get_scene().has_skybox())
+    {
+        return;
+    }
+
+    graph.add_pass<skybox_pass>({
+        .render_target = m_render_target,
+        .depth_buffer = m_depth_buffer,
+        .clear = graph.get_scene().get_instance_count() == 0,
+        .use_atmospheric_scattering = false,
     });
 }
 
@@ -423,31 +432,19 @@ void deferred_renderer::add_taa_pass(render_graph& graph)
 {
     auto* taa = get_feature<taa_feature>();
 
-    rdg_texture* resolved_render_target = graph.add_texture(
-        "Resolved Render Target",
-        taa->get_current(),
+    rdg_texture* history_render_target = graph.add_texture(
+        "History Render Target",
+        taa->get_history(),
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-
-    rdg_texture* history_render_target = nullptr;
-    if (taa->is_history_valid())
-    {
-        history_render_target = graph.add_texture(
-            "History Render Target",
-            taa->get_history(),
-            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-    }
 
     graph.add_pass<taa_pass>({
         .current_render_target = m_render_target,
         .history_render_target = history_render_target,
         .depth_buffer = m_depth_buffer,
         .motion_vector = m_motion_vectors,
-        .resolved_render_target = resolved_render_target,
+        .history_valid = taa->is_history_valid(),
     });
-
-    m_render_target = resolved_render_target;
 }
 
 void deferred_renderer::add_bloom_pass(render_graph& graph)

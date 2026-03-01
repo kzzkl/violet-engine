@@ -29,6 +29,7 @@ void environment_system::update(render_scene_manager& scene_manager)
                 skybox.skybox->get_texture(),
                 skybox.skybox->get_irradiance(),
                 skybox.skybox->get_prefilter());
+            render_scene->set_atmosphere(skybox.skybox->get_atmosphere());
         },
         [this](auto& view)
         {

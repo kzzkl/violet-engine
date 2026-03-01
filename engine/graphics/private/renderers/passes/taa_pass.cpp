@@ -1,4 +1,5 @@
 #include "graphics/renderers/passes/taa_pass.hpp"
+#include "graphics/renderers/passes/blit_pass.hpp"
 
 namespace violet
 {
@@ -12,7 +13,6 @@ struct taa_cs : public shader_cs
         std::uint32_t history_render_target;
         std::uint32_t depth_buffer;
         std::uint32_t motion_vector;
-        std::uint32_t resolved_render_target;
     };
 
     static constexpr parameter_layout parameters = {
@@ -23,13 +23,34 @@ struct taa_cs : public shader_cs
 
 void taa_pass::add(render_graph& graph, const parameter& parameter)
 {
+    rdg_scope scope(graph, "TAA");
+
+    if (parameter.history_valid)
+    {
+        resolve(graph, parameter);
+    }
+
+    rhi_texture_region region = {
+        .extent = parameter.current_render_target->get_extent(),
+        .layer_count = 1,
+    };
+
+    graph.add_pass<blit_pass>({
+        .src = parameter.current_render_target,
+        .src_region = region,
+        .dst = parameter.history_render_target,
+        .dst_region = region,
+    });
+}
+
+void taa_pass::resolve(render_graph& graph, const parameter& parameter)
+{
     struct pass_data
     {
-        rdg_texture_srv current_render_target;
+        rdg_texture_uav current_render_target;
         rdg_texture_srv history_render_target;
         rdg_texture_srv depth_buffer;
         rdg_texture_srv motion_vector;
-        rdg_texture_uav resolved_render_target;
     };
 
     graph.add_pass<pass_data>(
@@ -38,23 +59,11 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
         [&](pass_data& data, rdg_pass& pass)
         {
             data.current_render_target =
-                pass.add_texture_srv(parameter.current_render_target, RHI_PIPELINE_STAGE_COMPUTE);
-
-            if (parameter.history_render_target != nullptr)
-            {
-                data.history_render_target = pass.add_texture_srv(
-                    parameter.history_render_target,
-                    RHI_PIPELINE_STAGE_COMPUTE);
-            }
-            else
-            {
-                data.history_render_target.reset();
-            }
-
+                pass.add_texture_uav(parameter.current_render_target, RHI_PIPELINE_STAGE_COMPUTE);
+            data.history_render_target =
+                pass.add_texture_srv(parameter.history_render_target, RHI_PIPELINE_STAGE_COMPUTE);
             data.depth_buffer =
                 pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.resolved_render_target =
-                pass.add_texture_uav(parameter.resolved_render_target, RHI_PIPELINE_STAGE_COMPUTE);
 
             if (parameter.motion_vector != nullptr)
             {
@@ -75,7 +84,6 @@ void taa_pass::add(render_graph& graph, const parameter& parameter)
                 .history_render_target =
                     data.history_render_target ? data.history_render_target.get_bindless() : 0,
                 .depth_buffer = data.depth_buffer.get_bindless(),
-                .resolved_render_target = data.resolved_render_target.get_bindless(),
             };
 
             std::vector<std::wstring> defines;

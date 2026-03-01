@@ -160,7 +160,10 @@ bool vk_context::initialize(const rhi_desc& desc)
     std::vector<const char*> device_desired_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-        // VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
+    // VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
+#ifndef NDEBUG
+        VK_KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION_EXTENSION_NAME, // for shader debug.
+#endif
     };
 
     if (desc.features & RHI_FEATURE_BINDLESS)
@@ -489,6 +492,14 @@ void vk_context::initialize_logic_device(
 
     enable_feature(device_features, vulkan12_features);
     enable_feature(device_features, vulkan13_features);
+
+#ifndef NDEBUG
+    VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR shader_relaxed_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR,
+        .shaderRelaxedExtendedInstruction = VK_TRUE,
+    };
+    enable_feature(device_features, shader_relaxed_features);
+#endif
 
     VkDeviceCreateInfo device_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

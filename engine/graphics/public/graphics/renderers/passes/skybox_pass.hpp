@@ -13,6 +13,7 @@ public:
         rdg_texture* depth_buffer;
 
         bool clear;
+        bool use_atmospheric_scattering;
     };
 
     void add(render_graph& graph, const parameter& parameter);

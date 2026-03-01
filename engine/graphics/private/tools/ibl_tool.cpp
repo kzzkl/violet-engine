@@ -44,8 +44,8 @@ struct prefilter_cs : public shader_cs
         std::uint32_t prefilter_map;
         float roughness;
         std::uint32_t resolution;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
+        std::uint32_t width;
+        std::uint32_t height;
     };
 
     static constexpr parameter_layout parameters = {
@@ -287,6 +287,8 @@ private:
                     command.set_pipeline({
                         .compute_shader = render_device::instance().get_shader<prefilter_cs>(),
                     });
+
+                    rhi_texture_extent extent = data.prefilter_map.get_extent();
                     command.set_constant(
                         prefilter_cs::constant_data{
                             .cube_map = data.cube_map.get_bindless(),
@@ -294,10 +296,12 @@ private:
                             .roughness =
                                 static_cast<float>(level) / static_cast<float>(level_count),
                             .resolution = data.cube_map.get_texture()->get_extent().width,
+                            .width = extent.width,
+                            .height = extent.height,
                         });
+
                     command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                    rhi_texture_extent extent = data.prefilter_map.get_extent();
                     command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
                 });
         }

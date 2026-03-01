@@ -62,33 +62,42 @@ public:
         });
         auto& plane_transform = world.get_component<transform_component>(m_plane);
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
+        plane_transform.set_scale({10000.0f, 0.5f, 10000.0f});
 
-        for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
-        {
-            m_boxes[i] = world.create();
-            world.add_component<transform_component, mesh_component, scene_component>(m_boxes[i]);
+        // for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
+        // {
+        //     m_boxes[i] = world.create();
+        //     world.add_component<transform_component, mesh_component,
+        //     scene_component>(m_boxes[i]);
 
-            auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
-            box_mesh.geometry = m_box_geometry.get();
-            box_mesh.flags |= MESH_STATIC;
+        //     auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
+        //     box_mesh.geometry = m_box_geometry.get();
+        //     box_mesh.flags |= MESH_STATIC;
 
-            if (i % 2 == 0)
-            {
-                box_mesh.submeshes.push_back({
-                    .material = m_unlit_material.get(),
-                });
-            }
-            else
-            {
-                box_mesh.submeshes.push_back({
-                    .material = m_pbr_material.get(),
-                });
-            }
+        //     if (i % 2 == 0)
+        //     {
+        //         box_mesh.submeshes.push_back({
+        //             .material = m_unlit_material.get(),
+        //         });
+        //     }
+        //     else
+        //     {
+        //         box_mesh.submeshes.push_back({
+        //             .material = m_pbr_material.get(),
+        //         });
+        //     }
 
-            auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
-            box_transform.set_position({2.0f * static_cast<float>(i), 3.0f, 0.0f});
-        }
+        //     float scale = static_cast<float>(std::rand() % 100) + 1.0f;
+        //     vec3f position = {
+        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
+        //         static_cast<float>(std::rand() % 10) + 1.0f,
+        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
+        //     };
+
+        //     auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
+        //     box_transform.set_position(position);
+        //     box_transform.set_scale({scale, scale, scale});
+        // }
 
         return true;
     }
@@ -142,7 +151,7 @@ private:
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
             auto& controller = world.get_component<first_person_control_component>(get_camera());
-            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 20.0f);
+            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 50.0f);
 
             const char* camera_types[] = {"Perspective", "Orthographic"};
             static int camera_type = static_cast<int>(main_camera.type);
@@ -254,14 +263,20 @@ private:
                 shadow->set_sample_radius(sample_radius * 0.01f);
             }
 
-            static float normal_offset = shadow->get_normal_offset();
-            if (ImGui::SliderFloat("Normal Offset", &normal_offset, 0.0f, 20.0f))
+            static float slope_scale_depth_bias = shadow->get_slope_scale_depth_bias();
+            if (ImGui::SliderFloat("Slope Scale Depth Bias", &slope_scale_depth_bias, 0.0f, 2.0f))
             {
-                shadow->set_normal_offset(normal_offset);
+                shadow->set_slope_scale_depth_bias(slope_scale_depth_bias);
+            }
+
+            static float normal_bias = shadow->get_normal_bias();
+            if (ImGui::SliderFloat("Normal Bias", &normal_bias, 0.0f, 2.0f))
+            {
+                shadow->set_normal_bias(normal_bias);
             }
 
             static float constant_bias = shadow->get_constant_bias();
-            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 0.5f))
+            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 2.0f))
             {
                 shadow->set_constant_bias(constant_bias);
             }
@@ -419,7 +434,7 @@ private:
     std::unique_ptr<unlit_material> m_unlit_material;
 
     entity m_plane;
-    std::array<entity, 2> m_boxes;
+    std::array<entity, 500> m_boxes;
 };
 } // namespace violet
 

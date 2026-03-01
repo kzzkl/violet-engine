@@ -32,6 +32,8 @@ public:
         std::uint32_t lru_curr_index;
         std::uint32_t lru_prev_index;
 
+        float slope_scale_depth_bias;
+
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_id{0};
         rdg_texture* debug_output{nullptr};
@@ -84,6 +86,8 @@ private:
     rdg_buffer* m_lru_buffer{nullptr};
     std::uint32_t m_lru_curr_index;
     std::uint32_t m_lru_prev_index;
+
+    float m_slope_scale_depth_bias{0.0f};
 
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "components/camera_component.hpp"
+#include "graphics/atmosphere.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
@@ -117,6 +118,16 @@ public:
     bool has_skybox() const noexcept
     {
         return m_scene_data.skybox != 0;
+    }
+
+    void set_atmosphere(const atmosphere& atmosphere)
+    {
+        m_atmosphere = atmosphere;
+    }
+
+    const atmosphere& get_atmosphere() const noexcept
+    {
+        return m_atmosphere;
     }
 
     void update(gpu_buffer_uploader* uploader);
@@ -382,5 +393,7 @@ private:
     rhi_ptr<rhi_parameter> m_scene_parameter;
 
     vsm_manager* m_vsm_manager;
+
+    atmosphere m_atmosphere;
 };
 } // namespace violet

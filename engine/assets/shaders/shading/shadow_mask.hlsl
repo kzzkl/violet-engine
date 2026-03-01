@@ -10,9 +10,8 @@ struct constant_data
     uint vsm_physical_shadow_map;
     uint vsm_directional_buffer;
     uint light_id;
-    float normal_offset;
+    float normal_bias;
     float constant_bias;
-    float receiver_plane_bias;
     uint sample_mode;
     uint sample_count;
     float sample_radius;
@@ -29,30 +28,6 @@ struct vs_output
 };
 
 static const uint PCF_SAMPLE_COUNT = 8;
-
-float3 get_position_offset(float NdotL, float3 normal_ws, float normal_offset)
-{
-    return normal_offset * VIRTUAL_TEXEL_SIZE * saturate(1.0 - NdotL) * normal_ws;
-}
-
-float3 get_receiver_plane_bias(float3 position_ws, float4x4 cascade0_matrix_vp, uint cascade)
-{
-    float4 position_ls_cascade0 = mul(cascade0_matrix_vp, float4(position_ws, 1.0));
-    position_ls_cascade0 /= position_ls_cascade0.w;
-    position_ls_cascade0.xy = position_ls_cascade0.xy * 0.5 + 0.5;
-
-    float3 dx = ddx_fine(position_ls_cascade0.xyz);
-    float3 dy = ddy_fine(position_ls_cascade0.xyz);
-    dx = ldexp(dx, cascade);
-    dy = ldexp(dy, cascade);
-
-    float2 bias_uv;
-    bias_uv.x = dy.y * dx.z - dx.y * dy.z;
-    bias_uv.y = dx.x * dy.z - dy.x * dx.z;
-    bias_uv *= constant.receiver_plane_bias / ((dx.x * dy.y) - (dx.y * dy.x));
-
-    return float3(bias_uv, min(dot(VIRTUAL_TEXEL_SIZE, abs(bias_uv)), 0.01));
-}
 
 bool sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table, out float depth)
 {
@@ -72,11 +47,11 @@ bool sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, S
     return valid;
 }
 
-float sample_shadow(uint vsm_id, float3 position_ls, float3 bias, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
+float sample_shadow(uint vsm_id, float3 position_ls, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
 {
     float shadow_depth;
     sample_depth(vsm_id, position_ls.xy, physical_shadow_map, virtual_page_table, shadow_depth);
-    return shadow_depth > position_ls.z + bias.z ? 0.0 : 1.0;
+    return shadow_depth > position_ls.z ? 0.0 : 1.0;
 }
 
 float random(float2 uv)
@@ -89,7 +64,7 @@ float random(float2 uv)
     return frac(sin(sn) * c);
 }
 
-float sample_shadow_pcf(uint vsm_id, float3 position_ls, float3 bias, float sample_radius, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
+float sample_shadow_pcf(uint vsm_id, float3 position_ls, float sample_radius, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
 {
     float2 poisson_disk[PCF_SAMPLE_COUNT];
     float angle_step = TWO_PI * float(10) / float(PCF_SAMPLE_COUNT);
@@ -110,14 +85,12 @@ float sample_shadow_pcf(uint vsm_id, float3 position_ls, float3 bias, float samp
     for(int i = 0; i < PCF_SAMPLE_COUNT; i++)
     {
         float2 offset = poisson_disk[i] * sample_radius;
-        float sample_bias = bias.z + dot(abs(offset), bias.xy);
         float2 sample_uv = position_ls.xy + offset;
 
         float shadow_depth;
-
         if (sample_depth(vsm_id, sample_uv, physical_shadow_map, virtual_page_table, shadow_depth))
         {
-            visibility += shadow_depth > position_ls.z + sample_bias ? 0.0 : 1.0;
+            visibility += shadow_depth > position_ls.z ? 0.0 : 1.0;
             ++valid_sample_count;
         }
     }
@@ -157,26 +130,21 @@ float fs_main(vs_output input) : SV_TARGET
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     vsm_data vsm = vsms[vsm_id + cascade];
 
-    position_ws += get_position_offset(dot(normal_ws, light.direction), normal_ws, constant.normal_offset);
-
-#ifdef USE_RECEIVER_PLANE_BIAS
-    float3 bias = get_receiver_plane_bias(position_ws, vsms[vsm_id].matrix_vp, cascade);
-#else
-    float3 bias = 0.0;
-#endif
-    bias.z += ldexp(constant.constant_bias * VIRTUAL_TEXEL_SIZE, -int(cascade));
+    float sample_radius = constant.sample_radius * vsm.texel_size_inv;
+    float normal_bias = constant.normal_bias * (1.0 + ceil(sample_radius)) * vsm.texel_size * 0.5;
+    position_ws += normal_bias * saturate(1.0 - dot(normal_ws, -light.direction)) * normal_ws;
 
     float4 position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));
     position_ls /= position_ls.w;
     position_ls.xy = position_ls.xy * 0.5 + 0.5;
+    position_ls.z += constant.constant_bias * VIRTUAL_TEXEL_SIZE;
 
     if (constant.sample_mode == 1)
     {
-        float sample_radius = constant.sample_radius * vsm.texel_size_inv * VIRTUAL_TEXEL_SIZE;
-        return sample_shadow_pcf(vsm_id + cascade, position_ls.xyz, bias, sample_radius, physical_shadow_map, virtual_page_table);
+        return sample_shadow_pcf(vsm_id + cascade, position_ls.xyz, sample_radius * VIRTUAL_TEXEL_SIZE, physical_shadow_map, virtual_page_table);
     }
     else
     {
-        return sample_shadow(vsm_id + cascade, position_ls.xyz, bias, physical_shadow_map, virtual_page_table);
+        return sample_shadow(vsm_id + cascade, position_ls.xyz, physical_shadow_map, virtual_page_table);
     }
 }

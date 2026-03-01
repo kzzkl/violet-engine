@@ -50,9 +50,8 @@ struct shadow_mask_fs : public shader_fs
         std::uint32_t vsm_physical_shadow_map;
         std::uint32_t vsm_directional_buffer;
         std::uint32_t light_id;
-        float normal_offset;
+        float normal_bias;
         float constant_bias;
-        float receiver_plane_bias;
         std::uint32_t sample_mode;
         std::uint32_t sample_count;
         float sample_radius;
@@ -377,9 +376,8 @@ void shading_pass::add_shadow_mask_pass(
         rdg_buffer_srv vsm_directional_buffer;
         std::uint32_t light_id;
 
-        float normal_offset;
+        float normal_bias;
         float constant_bias;
-        float receiver_plane_bias;
         std::uint32_t sample_mode;
         std::uint32_t sample_count;
         float sample_radius;
@@ -409,9 +407,8 @@ void shading_pass::add_shadow_mask_pass(
             pass.add_render_target(m_shadow_mask, RHI_ATTACHMENT_LOAD_OP_CLEAR);
 
             data.light_id = light_id;
-            data.normal_offset = parameter.shadow_normal_offset;
+            data.normal_bias = parameter.shadow_normal_bias;
             data.constant_bias = parameter.shadow_constant_bias;
-            data.receiver_plane_bias = parameter.shadow_receiver_plane_bias;
             data.sample_mode = parameter.shadow_sample_mode;
             data.sample_count = parameter.shadow_sample_count;
             data.sample_radius = parameter.shadow_sample_radius;
@@ -437,9 +434,8 @@ void shading_pass::add_shadow_mask_pass(
                     .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
                     .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
                     .light_id = data.light_id,
-                    .normal_offset = data.normal_offset,
+                    .normal_bias = data.normal_bias,
                     .constant_bias = data.constant_bias,
-                    .receiver_plane_bias = data.receiver_plane_bias,
                     .sample_mode = data.sample_mode,
                     .sample_count = data.sample_count,
                     .sample_radius = data.sample_radius,
