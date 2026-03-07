@@ -13,6 +13,7 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/render_graph/rdg_profiling.hpp"
 #include "graphics/tools/geometry_tool.hpp"
+#include "math/quaternion.hpp"
 #include "sample/assimp_loader.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
@@ -422,21 +423,22 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 {
     auto& world = get_world();
 
-    m_skybox = std::make_unique<skybox>(skybox_path);
+    m_skybox = std::make_unique<skybox>();
+    m_skybox->set_skybox_texture(skybox_path);
+    m_skybox->set_dynamic_sky(true);
 
-    entity scene_skybox = world.create();
-    world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
-    auto& skybox = world.get_component<skybox_component>(scene_skybox);
+    m_sky = world.create();
+    world.add_component<transform_component, skybox_component, light_component, scene_component>(
+        m_sky);
+
+    auto& skybox = world.get_component<skybox_component>(m_sky);
     skybox.skybox = m_skybox.get();
 
-    m_light = world.create();
-    world.add_component<transform_component, light_component, scene_component>(m_light);
+    auto& light_transform = world.get_component<transform_component>(m_sky);
+    light_transform.set_rotation(
+        quaternion::from_euler(vec3f{math::to_radians(145.0f), math::to_radians(45.0f), 0.0f}));
 
-    auto& light_transform = world.get_component<transform_component>(m_light);
-    light_transform.set_position({10.0f, 10.0f, 10.0f});
-    light_transform.lookat({0.0f, 0.0f, 0.0f});
-
-    auto& main_light = world.get_component<light_component>(m_light);
+    auto& main_light = world.get_component<light_component>(m_sky);
     main_light.type = LIGHT_DIRECTIONAL;
     main_light.color = {.x = 10.0f, .y = 10.0f, .z = 10.0f};
     main_light.cast_shadow = true;

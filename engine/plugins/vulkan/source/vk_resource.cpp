@@ -163,6 +163,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
       m_flags(desc.flags),
       m_context(context)
 {
+    assert(desc.extent.width > 0 && desc.extent.height > 0 && desc.extent.depth > 0);
     assert(desc.level_count > 0 && desc.layer_count > 0);
 
     VkImageCreateInfo image_info = {
@@ -170,7 +171,7 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         .flags = desc.flags & RHI_TEXTURE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = vk_utils::map_format(desc.format),
-        .extent = {desc.extent.width, desc.extent.height, 1},
+        .extent = {desc.extent.width, desc.extent.height, desc.extent.depth},
         .mipLevels = m_level_count,
         .arrayLayers = m_layer_count,
         .samples = vk_utils::map_sample_count(desc.samples),
@@ -212,7 +213,7 @@ vk_texture::vk_texture(
     vk_context* context)
     : m_image(image),
       m_format(vk_utils::map_format(format)),
-      m_extent{extent.width, extent.height},
+      m_extent{.width = extent.width, .height = extent.height},
       m_level_count(1),
       m_layer_count(1),
       m_flags(flags),

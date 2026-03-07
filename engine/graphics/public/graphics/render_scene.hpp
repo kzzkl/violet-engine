@@ -76,6 +76,7 @@ private:
     const camera_component_meta* m_camera_meta;
 };
 
+class skybox;
 class gpu_buffer_uploader;
 class vsm_manager;
 class render_scene
@@ -114,21 +115,30 @@ public:
     void remove_camera(render_id camera_id);
     void set_camera_position(render_id camera_id, const vec3f& position);
 
+    void set_skybox(skybox* skybox)
+    {
+        m_skybox = skybox;
+    }
+
+    skybox* get_skybox() const noexcept
+    {
+        return m_skybox;
+    }
+
+    void set_sun(std::uint32_t light_id)
+    {
+        m_sun_id = light_id;
+    }
+
+    vec3f get_sun_direction() const noexcept;
+    vec3f get_sun_irradiance() const noexcept;
+
     void set_skybox(texture_cube* skybox, texture_cube* irradiance, texture_cube* prefilter);
-    bool has_skybox() const noexcept
-    {
-        return m_scene_data.skybox != 0;
-    }
-
-    void set_atmosphere(const atmosphere& atmosphere)
-    {
-        m_atmosphere = atmosphere;
-    }
-
-    const atmosphere& get_atmosphere() const noexcept
-    {
-        return m_atmosphere;
-    }
+    void set_atmosphere(
+        const atmosphere& atmosphere,
+        std::uint32_t sun_light_id,
+        float sun_angular_radius,
+        texture_2d* transmittance_lut);
 
     void update(gpu_buffer_uploader* uploader);
 
@@ -394,6 +404,7 @@ private:
 
     vsm_manager* m_vsm_manager;
 
-    atmosphere m_atmosphere;
+    skybox* m_skybox{nullptr};
+    render_id m_sun_id{INVALID_RENDER_ID};
 };
 } // namespace violet

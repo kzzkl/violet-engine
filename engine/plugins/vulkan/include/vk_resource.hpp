@@ -126,7 +126,7 @@ public:
         return m_samples;
     }
 
-    rhi_texture_extent get_extent() const noexcept override
+    rhi_extent get_extent() const noexcept override
     {
         return m_extent;
     }
@@ -230,7 +230,7 @@ private:
 
     rhi_format m_format{RHI_FORMAT_UNDEFINED};
     rhi_sample_count m_samples{RHI_SAMPLE_COUNT_1};
-    rhi_texture_extent m_extent;
+    rhi_extent m_extent;
     std::uint32_t m_level_count{0};
     std::uint32_t m_layer_count{0};
 

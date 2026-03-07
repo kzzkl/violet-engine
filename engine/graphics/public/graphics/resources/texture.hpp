@@ -59,7 +59,7 @@ struct texture_data
 {
     struct mipmap
     {
-        rhi_texture_extent extent;
+        rhi_extent extent;
         std::vector<char> pixels;
     };
 
@@ -72,7 +72,7 @@ class texture_2d : public raw_texture
 public:
     texture_2d() = default;
     texture_2d(
-        rhi_texture_extent extent,
+        rhi_extent extent,
         rhi_format format,
         rhi_texture_flags flags,
         std::uint32_t level_count = 1,
@@ -87,7 +87,7 @@ class texture_cube : public raw_texture
 {
 public:
     texture_cube(
-        const rhi_texture_extent& extent,
+        rhi_extent extent,
         rhi_format format,
         rhi_texture_flags flags,
         std::uint32_t level_count = 1,

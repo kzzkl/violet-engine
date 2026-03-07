@@ -1,5 +1,6 @@
 #include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/material_manager.hpp"
+#include "graphics/skybox.hpp"
 #include <algorithm>
 #include <format>
 
@@ -267,6 +268,8 @@ void shading_pass::add_tile_shading_pass(
         lighting_stage stage;
     };
 
+    skybox* skybox = graph.get_scene().get_skybox();
+
     graph.get_scene().each_shading_model(
         [&](std::uint32_t shading_model_id, shading_model_base* shading_model)
         {
@@ -316,9 +319,9 @@ void shading_pass::add_tile_shading_pass(
 
                     data.stage = stage;
                 },
-                [shading_model,
-                 shading_model_id,
-                 tile_count = m_tile_count](const pass_data& data, rdg_command& command)
+                [shading_model, shading_model_id, tile_count = m_tile_count, skybox](
+                    const pass_data& data,
+                    rdg_command& command)
                 {
                     shading_model->bind(data.auxiliary_buffers, command);
 
@@ -328,6 +331,8 @@ void shading_pass::add_tile_shading_pass(
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,
                         .stage = static_cast<std::uint32_t>(data.stage),
+                        .sky_prefilter = skybox->get_prefilter_bindless(),
+                        .sky_irradiance = skybox->get_irradiance_bindless(),
                     };
 
                     if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)

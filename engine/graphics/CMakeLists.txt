@@ -33,13 +33,13 @@ add_library(violet-graphics STATIC
     private/resources/persistent_buffer.cpp
     private/resources/ramp_texture.cpp
     private/resources/texture.cpp
-    private/resources/transmittance_lut.cpp
     private/shading_models/pbr_shading_model.cpp
     private/shading_models/unlit_shading_model.cpp
     private/tools/cluster/cluster_builder.cpp
     private/tools/cluster/graph_partitioner.cpp
     private/tools/mesh_simplifier/mesh_simplifier.cpp
     private/tools/mesh_simplifier/quadric.cpp
+    private/tools/atmosphere_tool.cpp
     private/tools/geometry_tool.cpp
     private/tools/ibl_tool.cpp
     private/tools/texture_loader.cpp

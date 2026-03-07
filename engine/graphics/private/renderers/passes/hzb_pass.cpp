@@ -88,7 +88,7 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                     });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                rhi_texture_extent next_extent = data.next_buffer.get_extent();
+                rhi_extent next_extent = data.next_buffer.get_extent();
                 command.dispatch_2d(next_extent.width, next_extent.height);
             });
     }

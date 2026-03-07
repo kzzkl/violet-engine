@@ -31,7 +31,7 @@ render_camera::render_camera(
         },
         camera->render_target);
 
-    rhi_texture_extent extent = m_render_target->get_extent();
+    rhi_extent extent = m_render_target->get_extent();
 
     if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
     {
@@ -251,6 +251,11 @@ void render_scene::remove_light(render_id light_id)
     m_non_shadow_casting_lights.remove(mapping.light_id);
 
     m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+
+    if (light_id == m_sun_id)
+    {
+        m_sun_id = INVALID_RENDER_ID;
+    }
 }
 
 void render_scene::set_light_data(
@@ -429,16 +434,28 @@ void render_scene::set_camera_position(render_id camera_id, const vec3f& positio
     }
 }
 
-void render_scene::set_skybox(
-    texture_cube* skybox,
-    texture_cube* irradiance,
-    texture_cube* prefilter)
+vec3f render_scene::get_sun_direction() const noexcept
 {
-    m_scene_data.skybox = skybox->get_srv(RHI_TEXTURE_DIMENSION_CUBE)->get_bindless();
-    m_scene_data.irradiance = irradiance->get_srv(RHI_TEXTURE_DIMENSION_CUBE)->get_bindless();
-    m_scene_data.prefilter = prefilter->get_srv(RHI_TEXTURE_DIMENSION_CUBE)->get_bindless();
+    if (m_sun_id == INVALID_RENDER_ID)
+    {
+        return {0.0f, 0.0f, 1.0f};
+    }
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    const auto& mapping = m_light_mappings.at(m_sun_id);
+    return mapping.cast_shadow ? m_shadow_casting_lights[mapping.light_id].direction :
+                                 m_non_shadow_casting_lights[mapping.light_id].direction;
+}
+
+vec3f render_scene::get_sun_irradiance() const noexcept
+{
+    if (m_sun_id == INVALID_RENDER_ID)
+    {
+        return {0.0f, 0.0f, 0.0f};
+    }
+
+    const auto& mapping = m_light_mappings.at(m_sun_id);
+    return mapping.cast_shadow ? m_shadow_casting_lights[mapping.light_id].color :
+                                 m_non_shadow_casting_lights[mapping.light_id].color;
 }
 
 void render_scene::update(gpu_buffer_uploader* uploader)

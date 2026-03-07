@@ -59,6 +59,7 @@ void imgui_system::initialize_font()
     texture_data::mipmap font_mipmap_data;
     font_mipmap_data.extent.width = font_width;
     font_mipmap_data.extent.height = font_height;
+    font_mipmap_data.extent.depth = 1;
     font_mipmap_data.pixels.resize(4ull * font_width * font_height);
     std::memcpy(font_mipmap_data.pixels.data(), pixels, font_mipmap_data.pixels.size());
 

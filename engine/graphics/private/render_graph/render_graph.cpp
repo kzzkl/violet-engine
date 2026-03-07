@@ -340,7 +340,7 @@ rdg_texture* render_graph::add_texture(
 
 rdg_texture* render_graph::add_texture(
     std::string_view name,
-    rhi_texture_extent extent,
+    rhi_extent extent,
     rhi_format format,
     rhi_texture_flags flags,
     std::uint32_t level_count,

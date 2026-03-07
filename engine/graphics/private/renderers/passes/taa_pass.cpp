@@ -101,7 +101,7 @@ void taa_pass::resolve(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
-            rhi_texture_extent extent = data.current_render_target.get_texture()->get_extent();
+            rhi_extent extent = data.current_render_target.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

@@ -48,7 +48,7 @@ void tone_mapping_pass::add(render_graph& graph, const parameter& parameter)
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-            rhi_texture_extent extent = data.hdr_texture.get_texture()->get_extent();
+            rhi_extent extent = data.hdr_texture.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

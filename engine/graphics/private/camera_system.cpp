@@ -168,7 +168,7 @@ void camera_system::update(render_scene_manager& scene_manager)
                 {
                     camera_meta.render_target_extent = camera.get_extent();
 
-                    rhi_texture_extent hzb_extent = {
+                    rhi_extent hzb_extent = {
                         .width = previous_pow2(camera_meta.render_target_extent.width),
                         .height = previous_pow2(camera_meta.render_target_extent.height),
                     };

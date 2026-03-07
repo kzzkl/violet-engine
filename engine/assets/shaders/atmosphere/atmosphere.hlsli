@@ -36,6 +36,50 @@ float ray_sphere_intersection(float radius, float r, float mu)
     return max(0.0, (-r * mu + sqrt(discriminant)));
 }
 
+float3 get_rayleigh_scattering(float h, float rayleigh_density_height, float3 rayleigh_scattering)
+{
+    return rayleigh_scattering * exp(-h / rayleigh_density_height);
+}
+
+float get_rayleigh_phase(float cos_theta)
+{
+    return 3.0 / (16.0 * PI) * (1.0 + cos_theta * cos_theta);
+}
+
+float get_mie_scattering(float h, float mie_density_height, float mie_scattering)
+{
+    return mie_scattering * exp(-h / mie_density_height);
+}
+
+float get_mie_absorption(float h, float mie_density_height, float mie_absorption)
+{
+    return mie_absorption * exp(-h / mie_density_height);
+}
+
+float get_mie_extinction(float h, float mie_density_height, float mie_scattering, float mie_absorption)
+{
+    float rho = exp(-h / mie_density_height);
+    return (mie_scattering + mie_absorption) * rho;
+}
+
+float get_mie_phase(float cos_theta, float mie_asymmetry)
+{
+    float g = mie_asymmetry;
+    float g2 = g * g;
+    
+    float a = 3.0 / (8.0 * PI);
+    float b = (1.0 - g2) / (2.0 + g2);
+    float c = 1.0 + cos_theta * cos_theta;
+    float d = pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
+
+    return a * b * c / d;
+}
+
+float3 get_ozone_absorption(float h, float ozone_center_height, float ozone_width, float3 ozone_absorption)
+{
+    return ozone_absorption * max(0.0, 1.0 - (abs(h - ozone_center_height) / ozone_width));
+}
+
 void get_transmittance_lut_r_mu(float planet_radius, float atmosphere_radius, float2 uv, out float r, out float mu)
 {
     float x_mu = uv.x;
@@ -68,80 +112,41 @@ void get_transmittance_lut_uv(float planet_radius, float atmosphere_radius, floa
     uv = float2(x_mu, x_r);
 }
 
-struct atmosphere
+float3 get_sky_view_lut_direction(float2 uv)
 {
-    float3 rayleigh_scattering;
-    float rayleigh_density_height;
+    float phi = (uv.x - 0.5) * TWO_PI;
 
-    float mie_scattering;
-    float mie_asymmetry;
-    float mie_absorption;
-    float mie_density_height;
+    float v = (uv.y - 0.5) * 2.0;
+    float theta = sign(v) * v * v * HALF_PI;
 
-    float3 ozone_absorption;
-    float ozone_center_height;
-    float ozone_width;
+    float cos_theta = cos(theta);
+    float sin_theta = sin(theta);
+    float cos_phi = cos(phi);
+    float sin_phi = sin(phi);
 
-    float planet_radius;
-    float atmosphere_height;
+    float3 direction;
+    direction.x = cos_theta * sin_phi;
+    direction.y = sin_theta;
+    direction.z = cos_theta * cos_phi;
 
-    float3 get_rayleigh_coefficient(float h)
-    {
-        float rho_h = exp(-h / rayleigh_density_height);
-        return rayleigh_scattering * rho_h;
-    }
+    return normalize(direction);
+}
 
-    float get_rayleigh_phase(float cos_theta)
-    {
-        return 3.0 / (16.0 * PI) * (1.0 + cos_theta * cos_theta);
-    }
+float2 get_sky_view_lut_uv(float3 direction)
+{
+    float2 uv;
+    uv.x = atan2(direction.x, direction.z) / TWO_PI + 0.5;
 
-    float3 get_mie_coefficient(float h)
-    {
-        float rho_h = exp(-h / mie_density_height);
-        return mie_scattering * rho_h;
-    }
+    float theta = asin(direction.y);
+    uv.y = 0.5 + 0.5 * sign(theta) * sqrt(abs(theta) / HALF_PI);
+    
+    return uv;
+}
 
-    float get_mie_phase(float cos_theta)
-    {
-        float g = mie_asymmetry;
-        float g2 = g * g;
-        
-        float a = 3.0 / (8.0 * PI);
-        float b = (1.0 - g2) / (2.0 + g2);
-        float c = 1.0 + cos_theta * cos_theta;
-        float d = pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
+float3 sun_disk(float3 view_dir, float3 sun_dir, float3 transmittance, float sun_angular_radius)
+{
+    float cos_theta = dot(view_dir, -sun_dir);
+    float cos_radius = cos(sun_angular_radius);
 
-        return a * b * c / d;
-    }
-
-    float3 get_mie_absorption(float h)
-    {
-        float rho_h = exp(-h / mie_density_height);
-        return mie_absorption * rho_h;
-    }
-
-    float3 get_ozone_absorption(float h)
-    {
-        float rho = max(0.0, 1.0 - (abs(h - ozone_center_height) / ozone_width));
-        return ozone_absorption * rho;
-    }
-
-    float3 scattering(float3 p, float3 in_dir, float3 out_dir)
-    {
-        float cos_theta = dot(in_dir, out_dir);
-
-        float h = length(p) - planet_radius;
-        float3 rayleigh = get_rayleigh_coefficient(h) * get_rayleigh_phase(cos_theta);
-        float3 mie = get_mie_coefficient(h) * get_mie_phase(cos_theta);
-        
-        return rayleigh + mie;
-    }
-
-    float3 sun_disk(float3 view_dir, float3 sun_dir, float3 transmittance, float sun_angular_radius = 0.00465 * 2)
-    {
-        float cos_theta = dot(view_dir, -sun_dir);
-        float cos_radius = cos(sun_angular_radius);
-        return smoothstep(cos_radius, cos_radius + 0.02, cos_theta) * 1e9 * transmittance;
-    }
-};
+    return smoothstep(cos_radius, cos_radius + 0.01, cos_theta) * 1e9 * transmittance;
+}

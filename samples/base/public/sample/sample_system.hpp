@@ -27,9 +27,9 @@ public:
 protected:
     entity load_model(std::string_view model_path, load_options options = LOAD_OPTION_NONE);
 
-    entity get_light() const noexcept
+    entity get_sky() const noexcept
     {
-        return m_light;
+        return m_sky;
     }
 
     entity get_camera() const noexcept
@@ -46,7 +46,7 @@ private:
     void initialize_scene(std::string_view skybox_path);
 
     std::unique_ptr<skybox> m_skybox;
-    entity m_light;
+    entity m_sky;
     entity m_camera;
 
     std::vector<std::unique_ptr<geometry>> m_geometries;

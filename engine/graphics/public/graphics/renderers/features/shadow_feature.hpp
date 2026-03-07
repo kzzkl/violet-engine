@@ -81,6 +81,6 @@ private:
 
     float m_slope_scale_depth_bias{0.5f};
     float m_normal_bias{1.0f};
-    float m_constant_bias{1.0f};
+    float m_constant_bias{0.01f};
 };
 } // namespace violet

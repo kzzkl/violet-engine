@@ -401,7 +401,7 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
 
 void deferred_renderer::add_skybox_pass(render_graph& graph)
 {
-    if (!graph.get_scene().has_skybox())
+    if (graph.get_scene().get_skybox() == nullptr)
     {
         return;
     }
@@ -410,7 +410,6 @@ void deferred_renderer::add_skybox_pass(render_graph& graph)
         .render_target = m_render_target,
         .depth_buffer = m_depth_buffer,
         .clear = graph.get_scene().get_instance_count() == 0,
-        .use_atmospheric_scattering = false,
     });
 }
 

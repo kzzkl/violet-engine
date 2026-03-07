@@ -1668,7 +1668,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                 command.set_parameter(1, RDG_PARAMETER_SCENE);
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
-                rhi_texture_extent extent = data.debug_output.get_extent();
+                rhi_extent extent = data.debug_output.get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }
@@ -1709,7 +1709,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                 command.set_parameter(1, RDG_PARAMETER_SCENE);
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
-                rhi_texture_extent extent = data.debug_output.get_extent();
+                rhi_extent extent = data.debug_output.get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }

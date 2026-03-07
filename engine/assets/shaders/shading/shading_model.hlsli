@@ -16,7 +16,11 @@ struct constant_common
     uint light_id;
     uint shadow_mask;
     uint stage;
+    uint sky_prefilter;
+    uint sky_irradiance;
     uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 static const uint LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED = 0;

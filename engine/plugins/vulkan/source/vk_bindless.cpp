@@ -13,7 +13,8 @@ vk_bindless_manager::vk_bindless_manager(vk_context* context)
         },
         {
             .type = RHI_PARAMETER_BINDING_TYPE_SAMPLER,
-            .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .stages =
+                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = 0,
         },
     };

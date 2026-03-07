@@ -5,6 +5,7 @@
 
 namespace violet
 {
+class skybox;
 class environment_system : public system
 {
 public:
@@ -14,7 +15,16 @@ public:
 
     void update(render_scene_manager& scene_manager);
 
+    bool need_record() const noexcept
+    {
+        return !m_update_queue.empty();
+    }
+
+    void record(rhi_command* command);
+
 private:
     std::uint32_t m_system_version{0};
+
+    std::vector<skybox*> m_update_queue;
 };
 } // namespace violet

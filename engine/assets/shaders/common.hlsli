@@ -101,9 +101,6 @@ struct scene_data
     uint cluster_buffer;
     uint vertex_buffer;
     uint index_buffer;
-    uint skybox;
-    uint irradiance;
-    uint prefilter;
 };
 
 static const uint CAMERA_PERSPECTIVE = 0;

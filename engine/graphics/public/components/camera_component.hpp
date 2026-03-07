@@ -55,9 +55,9 @@ public:
         return result;
     }
 
-    rhi_texture_extent get_extent() const
+    rhi_extent get_extent() const
     {
-        rhi_texture_extent result = {};
+        rhi_extent result = {};
 
         std::visit(
             [&result](auto&& arg)

@@ -55,7 +55,7 @@ private:
     void add_tone_mapping_pass(render_graph& graph);
     void add_present_pass(render_graph& graph);
 
-    rhi_texture_extent m_render_extent;
+    rhi_extent m_render_extent;
 
     std::vector<rdg_texture*> m_gbuffers;
     rdg_texture* m_visibility_buffer{nullptr};

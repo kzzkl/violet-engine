@@ -14,7 +14,7 @@ void raw_texture::set_texture(rhi_ptr<rhi_texture>&& texture)
 }
 
 texture_2d::texture_2d(
-    rhi_texture_extent extent,
+    rhi_extent extent,
     rhi_format format,
     rhi_texture_flags flags,
     std::uint32_t level_count,
@@ -43,7 +43,7 @@ texture_2d::texture_2d(const texture_data& data, texture_options options)
 }
 
 texture_cube::texture_cube(
-    const rhi_texture_extent& extent,
+    rhi_extent extent,
     rhi_format format,
     rhi_texture_flags flags,
     std::uint32_t level_count,

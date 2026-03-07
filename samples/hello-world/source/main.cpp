@@ -3,6 +3,7 @@
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/scene_component.hpp"
+#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/materials/pbr_material.hpp"
@@ -13,6 +14,7 @@
 #include "graphics/renderers/features/shadow_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/renderers/features/vsm_feature.hpp"
+#include "math/euler.hpp"
 #include "sample/sample_system.hpp"
 #include <imgui.h>
 
@@ -62,7 +64,7 @@ public:
         });
         auto& plane_transform = world.get_component<transform_component>(m_plane);
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        plane_transform.set_scale({10000.0f, 0.5f, 10000.0f});
+        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
 
         // for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
         // {
@@ -187,50 +189,68 @@ private:
             }
         }
 
-        if (ImGui::CollapsingHeader("Light"))
+        if (ImGui::CollapsingHeader("Sky"))
         {
-            static float rotate_x = 0.0f;
-            static float rotate_y = 0.0f;
-
             bool transform_dirty = false;
             bool ligth_dirty = false;
+            bool skybox_dirty = false;
 
             static float color[3] = {1.0f, 1.0f, 1.0f};
+            if (ImGui::ColorEdit3("Sun Color", color))
+            {
+                ligth_dirty = true;
+            }
+
             static float intensity = 10.0f;
-
-            if (ImGui::ColorEdit3("Color", color))
+            if (ImGui::SliderFloat("Sun Intensity", &intensity, 0.0f, 30.0f))
             {
                 ligth_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 30.0f))
+            if (ligth_dirty)
             {
-                ligth_dirty = true;
+                auto& light = world.get_component<light_component>(get_sky());
+                light.color = {.x = color[0], .y = color[1], .z = color[2]};
+                light.color *= intensity;
             }
 
-            if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
+            static vec3f euler = euler::from_quaternion(
+                world.get_component<const transform_component>(get_sky()).get_rotation());
+
+            if (ImGui::SliderFloat("Sun Rotate X", &euler.x, 0.0, math::PI))
             {
                 transform_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
+            if (ImGui::SliderFloat("Sun Rotate Y", &euler.y, 0.0, math::TWO_PI))
             {
                 transform_dirty = true;
             }
 
             if (transform_dirty)
             {
-                auto& transform = world.get_component<transform_component>(get_light());
-                transform.set_rotation(
-                    quaternion::from_euler(
-                        vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
+                auto& transform = world.get_component<transform_component>(get_sky());
+                transform.set_rotation(quaternion::from_euler(euler));
             }
 
-            if (ligth_dirty)
+            auto* skybox = world.get_component<skybox_component>(get_sky()).skybox;
+
+            static bool dynamic_sky = skybox->is_dynamic_sky();
+            if (ImGui::Checkbox("Dynamic Sky", &dynamic_sky))
             {
-                auto& light = world.get_component<light_component>(get_light());
-                light.color = {.x = color[0], .y = color[1], .z = color[2]};
-                light.color *= intensity;
+                skybox->set_dynamic_sky(dynamic_sky);
+            }
+
+            if (skybox->is_dynamic_sky())
+            {
+                static float sun_angular_radius = skybox->get_sun_angular_radius();
+                if (ImGui::SliderFloat("Sun Angular Radius", &sun_angular_radius, 0.0f, 0.1f))
+                {
+                    skybox->set_sun_angular_radius(sun_angular_radius);
+                }
+            }
+            else
+            {
             }
         }
 

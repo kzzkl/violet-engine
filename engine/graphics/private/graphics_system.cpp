@@ -180,53 +180,10 @@ void graphics_system::begin_frame()
 
 void graphics_system::end_frame()
 {
-    auto& device = render_device::instance();
-
-    m_scene_manager->update(m_gpu_buffer_uploader.get());
-    m_vsm_manager->update(m_gpu_buffer_uploader.get());
-
-    rhi_command* command = nullptr;
-
-    if (!m_gpu_buffer_uploader->empty())
-    {
-        if (command == nullptr)
-        {
-            command = device.allocate_command();
-        }
-
-        command->begin_label("Upload Data");
-        m_gpu_buffer_uploader->record(command);
-        command->end_label();
-    }
-
-    auto& skinning = get_system<skinning_system>();
-    if (skinning.need_record())
-    {
-        if (command == nullptr)
-        {
-            command = device.allocate_command();
-        }
-
-        command->begin_label("Skinning");
-        skinning.morphing(command);
-        skinning.skinning(command);
-        command->end_label();
-    }
-
     std::vector<execute_batch> batches;
 
-    if (command != nullptr)
-    {
-        execute_batch prepare_batch;
-        prepare_batch.commands.push_back(command);
-        prepare_batch.signal_fences.push_back({
-            .fence = m_update_fence.get(),
-            .stages = RHI_PIPELINE_STAGE_END,
-            .value = ++m_update_fence_value,
-        });
-
-        batches.push_back(prepare_batch);
-    }
+    upload_gpu_data(batches);
+    prepare_rendering_data(batches);
 
     std::vector<rhi_swapchain*> swapchains;
 
@@ -234,6 +191,7 @@ void graphics_system::end_frame()
     render(render_batch, swapchains);
     batches.push_back(render_batch);
 
+    auto& device = render_device::instance();
     device.execute(batches);
 
     for (rhi_swapchain* swapchain : swapchains)
@@ -242,6 +200,80 @@ void graphics_system::end_frame()
     }
 
     device.end_frame();
+}
+
+void graphics_system::upload_gpu_data(std::vector<execute_batch>& batches)
+{
+    m_scene_manager->update(m_gpu_buffer_uploader.get());
+    m_vsm_manager->update(m_gpu_buffer_uploader.get());
+
+    if (m_gpu_buffer_uploader->empty())
+    {
+        return;
+    }
+
+    rhi_command* command = render_device::instance().allocate_command();
+
+    command->begin_label("Upload Data");
+    m_gpu_buffer_uploader->record(command);
+    command->end_label();
+
+    execute_batch batch;
+    batch.commands.push_back(command);
+    batch.signal_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_END,
+        .value = ++m_update_fence_value,
+    });
+
+    batches.push_back(batch);
+}
+
+void graphics_system::prepare_rendering_data(std::vector<execute_batch>& batches)
+{
+    auto& device = render_device::instance();
+
+    auto& skinning = get_system<skinning_system>();
+    auto& atmosphere = get_system<environment_system>();
+
+    if (!skinning.need_record() && !atmosphere.need_record())
+    {
+        return;
+    }
+
+    rhi_command* command = device.allocate_command();
+    command->begin_label("Prepare");
+
+    if (skinning.need_record())
+    {
+        command->begin_label("Skinning");
+        skinning.record(command);
+        command->end_label();
+    }
+
+    if (atmosphere.need_record())
+    {
+        command->begin_label("Atmosphere");
+        atmosphere.record(command);
+        command->end_label();
+    }
+
+    command->end_label();
+
+    execute_batch batch;
+    batch.commands.push_back(command);
+    batch.wait_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_TRANSFER,
+        .value = m_update_fence_value,
+    });
+    batch.signal_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_END,
+        .value = ++m_update_fence_value,
+    });
+
+    batches.push_back(batch);
 }
 
 void graphics_system::render(execute_batch& batch, std::vector<rhi_swapchain*>& swapchains)

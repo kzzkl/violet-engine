@@ -51,7 +51,7 @@ void motion_vector_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
-            rhi_texture_extent extent = data.motion_vector.get_texture()->get_extent();
+            rhi_extent extent = data.motion_vector.get_texture()->get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

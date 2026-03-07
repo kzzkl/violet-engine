@@ -178,14 +178,15 @@ enum rhi_texture_layout : std::uint8_t
     RHI_TEXTURE_LAYOUT_TRANSFER_DST,
 };
 
-struct rhi_texture_extent
+struct rhi_extent
 {
     std::uint32_t width;
     std::uint32_t height;
+    std::uint32_t depth{1};
 
-    bool operator==(const rhi_texture_extent& other) const noexcept
+    bool operator==(const rhi_extent& other) const noexcept
     {
-        return width == other.width && height == other.height;
+        return width == other.width && height == other.height && depth == other.depth;
     }
 };
 
@@ -213,7 +214,7 @@ using rhi_texture_flags = std::uint32_t;
 
 struct rhi_texture_desc
 {
-    rhi_texture_extent extent;
+    rhi_extent extent;
     rhi_format format;
     rhi_texture_flags flags;
 
@@ -231,7 +232,7 @@ public:
 
     virtual rhi_format get_format() const noexcept = 0;
     virtual rhi_sample_count get_samples() const noexcept = 0;
-    virtual rhi_texture_extent get_extent() const noexcept = 0;
+    virtual rhi_extent get_extent() const noexcept = 0;
 
     virtual std::uint32_t get_level_count() const noexcept = 0;
     virtual std::uint32_t get_layer_count() const noexcept = 0;
@@ -801,7 +802,8 @@ struct rhi_texture_region
 {
     std::int32_t offset_x;
     std::int32_t offset_y;
-    rhi_texture_extent extent;
+    std::int32_t offset_z;
+    rhi_extent extent;
 
     std::uint32_t level;
     std::uint32_t layer;
@@ -858,7 +860,7 @@ public:
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
         std::uint32_t attachment_count,
-        const rhi_texture_extent& render_area = {}) = 0;
+        const rhi_extent& render_area = {}) = 0;
     virtual void end_render_pass() = 0;
 
     virtual void set_pipeline(rhi_raster_pipeline* raster_pipeline) = 0;

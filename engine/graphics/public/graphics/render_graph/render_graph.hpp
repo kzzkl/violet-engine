@@ -35,7 +35,7 @@ public:
         rhi_texture_layout final_layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
     rdg_texture* add_texture(
         std::string_view name,
-        rhi_texture_extent extent,
+        rhi_extent extent,
         rhi_format format,
         rhi_texture_flags flags,
         std::uint32_t level_count = 1,

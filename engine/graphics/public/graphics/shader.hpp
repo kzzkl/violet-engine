@@ -136,9 +136,6 @@ struct shader
         std::uint32_t cluster_buffer;
         std::uint32_t vertex_buffer;
         std::uint32_t index_buffer;
-        std::uint32_t skybox;
-        std::uint32_t irradiance;
-        std::uint32_t prefilter;
     };
 
     static constexpr parameter scene = {
@@ -200,7 +197,8 @@ struct shader
         },
         {
             .type = RHI_PARAMETER_BINDING_TYPE_SAMPLER,
-            .stages = RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
+            .stages =
+                RHI_SHADER_STAGE_VERTEX | RHI_SHADER_STAGE_FRAGMENT | RHI_SHADER_STAGE_COMPUTE,
             .size = 0,
         },
     };
@@ -313,7 +311,11 @@ struct shading_model_cs : public shader_cs
         std::uint32_t light_id;
         std::uint32_t shadow_mask;
         std::uint32_t stage;
+        std::uint32_t sky_prefilter;
+        std::uint32_t sky_irradiance;
         std::uint32_t padding0;
+        std::uint32_t padding1;
+        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {

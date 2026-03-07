@@ -85,14 +85,14 @@ struct pbr_shading_model
 
         SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-        TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
+        TextureCube<float3> prefilter_map = ResourceDescriptorHeap[constant.common.sky_prefilter];
         float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
 
         Texture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
         float2 brdf = brdf_lut.SampleLevel(linear_clamp_sampler, float2(NdotV, roughness), 0.0);
         float3 specular = F0 * brdf.x + brdf.y;
 
-        TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
+        TextureCube<float3> irradiance_map = ResourceDescriptorHeap[constant.common.sky_irradiance];
         float3 irradiance = irradiance_map.SampleLevel(linear_clamp_sampler, N, 0.0);
         float3 diffuse = albedo * kd / PI;
 

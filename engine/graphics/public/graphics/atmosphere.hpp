@@ -10,7 +10,7 @@ struct atmosphere
     float rayleigh_density_height{8000.0f};
 
     float mie_scattering{3.996e-6f};
-    float mie_asymmetry{0.8e-6f};
+    float mie_asymmetry{0.8f};
     float mie_absorption{4.4e-6f};
     float mie_density_height{1200.0f};
 
@@ -20,5 +20,18 @@ struct atmosphere
 
     float planet_radius{6360000.0f};
     float atmosphere_height{100000.0f};
+
+    bool operator==(const atmosphere& other) const noexcept
+    {
+        return rayleigh_scattering == other.rayleigh_scattering &&
+               rayleigh_density_height == other.rayleigh_density_height &&
+               mie_scattering == other.mie_scattering && mie_asymmetry == other.mie_asymmetry &&
+               mie_absorption == other.mie_absorption &&
+               mie_density_height == other.mie_density_height &&
+               ozone_absorption == other.ozone_absorption &&
+               ozone_center_height == other.ozone_center_height &&
+               ozone_width == other.ozone_width && planet_radius == other.planet_radius &&
+               atmosphere_height == other.atmosphere_height;
+    }
 };
 } // namespace violet

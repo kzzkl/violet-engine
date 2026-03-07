@@ -41,6 +41,10 @@ private:
 
     void begin_frame();
     void end_frame();
+
+    void upload_gpu_data(std::vector<execute_batch>& batches);
+    void prepare_rendering_data(std::vector<execute_batch>& batches);
+
     void render(execute_batch& batch, std::vector<rhi_swapchain*>& swapchains);
     void render(
         execute_batch& batch,

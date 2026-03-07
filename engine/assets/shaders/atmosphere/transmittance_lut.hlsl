@@ -7,12 +7,11 @@ struct constant_data
     float rayleigh_density_height;
 
     float mie_scattering;
-    float mie_asymmetry;
     float mie_absorption;
     float mie_density_height;
 
-    float3 ozone_absorption;
     float ozone_center_height;
+    float3 ozone_absorption;
     float ozone_width;
 
     float planet_radius;
@@ -54,9 +53,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         float d_i = i * ds;
         float h = sqrt(d_i * d_i + 2.0 * r * mu * d_i + r * r) - constant.planet_radius;
 
-        float3 rayleigh = constant.rayleigh_scattering * exp(-h / constant.rayleigh_density_height);
-        float mie = (constant.mie_scattering + constant.mie_absorption) * exp(-h / constant.mie_density_height);
-        float3 ozone = constant.ozone_absorption * max(0.0, 1.0 - 0.5 * abs(h - constant.ozone_center_height) / constant.ozone_width);
+        float3 rayleigh = get_rayleigh_scattering(h, constant.rayleigh_density_height, constant.rayleigh_scattering);
+        float mie = get_mie_extinction(h, constant.mie_density_height, constant.mie_scattering, constant.mie_absorption);
+        float3 ozone = get_ozone_absorption(h, constant.ozone_center_height, constant.ozone_width, constant.ozone_absorption);
 
         result += (rayleigh + mie + ozone) * ds;
     }

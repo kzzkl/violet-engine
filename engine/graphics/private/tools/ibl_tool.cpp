@@ -146,7 +146,7 @@ private:
                     });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                rhi_texture_extent extent = data.cube_map.get_texture()->get_extent();
+                rhi_extent extent = data.cube_map.get_texture()->get_extent();
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -245,7 +245,7 @@ private:
                     });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                rhi_texture_extent extent = data.irradiance_map.get_texture()->get_extent();
+                rhi_extent extent = data.irradiance_map.get_texture()->get_extent();
                 command.dispatch_3d(extent.width, extent.height, 6, 8, 8, 1);
             });
     }
@@ -288,7 +288,7 @@ private:
                         .compute_shader = render_device::instance().get_shader<prefilter_cs>(),
                     });
 
-                    rhi_texture_extent extent = data.prefilter_map.get_extent();
+                    rhi_extent extent = data.prefilter_map.get_extent();
                     command.set_constant(
                         prefilter_cs::constant_data{
                             .cube_map = data.cube_map.get_bindless(),
@@ -308,36 +308,49 @@ private:
     }
 };
 
-void ibl_tool::generate_cube_map(rhi_texture* env_map, rhi_texture* cube_map)
+void ibl_tool::generate_cube_map(rhi_texture* env_map, rhi_texture* cube_map, rhi_command* command)
 {
     render_graph graph("Generate Cube Map");
 
     ibl_renderer::render_cube_map(graph, env_map, cube_map);
 
-    auto& device = render_device::instance();
-
-    rhi_command* command = device.allocate_command();
     graph.compile();
-    graph.record(command);
 
-    device.execute_sync(command);
+    if (command == nullptr)
+    {
+        auto& device = render_device::instance();
+        command = device.allocate_command();
+        graph.record(command);
+        device.execute_sync(command);
+    }
+    else
+    {
+        graph.record(command);
+    }
 }
 
 void ibl_tool::generate_ibl(
     rhi_texture* cube_map,
     rhi_texture* irradiance_map,
-    rhi_texture* prefilter_map)
+    rhi_texture* prefilter_map,
+    rhi_command* command)
 {
     render_graph graph("Generate IBL");
 
     ibl_renderer::render_ibl(graph, cube_map, irradiance_map, prefilter_map);
 
-    auto& device = render_device::instance();
-
-    rhi_command* command = device.allocate_command();
     graph.compile();
-    graph.record(command);
 
-    device.execute_sync(command);
+    if (command == nullptr)
+    {
+        auto& device = render_device::instance();
+        command = device.allocate_command();
+        graph.record(command);
+        device.execute_sync(command);
+    }
+    else
+    {
+        graph.record(command);
+    }
 }
 } // namespace violet
