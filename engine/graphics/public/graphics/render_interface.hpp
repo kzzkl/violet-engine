@@ -147,6 +147,7 @@ enum rhi_texture_dimension : std::uint8_t
 {
     RHI_TEXTURE_DIMENSION_2D,
     RHI_TEXTURE_DIMENSION_2D_ARRAY,
+    RHI_TEXTURE_DIMENSION_3D,
     RHI_TEXTURE_DIMENSION_CUBE,
 };
 

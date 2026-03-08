@@ -69,6 +69,11 @@ render_id render_camera::get_id() const noexcept
     return m_camera_meta->id;
 }
 
+const vec3f& render_camera::get_position() const noexcept
+{
+    return m_camera_meta->position;
+}
+
 const mat4f& render_camera::get_matrix_v() const noexcept
 {
     return m_camera_meta->matrix_v;
@@ -77,6 +82,16 @@ const mat4f& render_camera::get_matrix_v() const noexcept
 const mat4f& render_camera::get_matrix_p() const noexcept
 {
     return m_camera_meta->matrix_p;
+}
+
+const mat4f& render_camera::get_matrix_vp() const noexcept
+{
+    return m_camera_meta->matrix_vp;
+}
+
+const mat4f& render_camera::get_matrix_vp_no_jitter() const noexcept
+{
+    return m_camera_meta->matrix_vp_no_jitter;
 }
 
 rhi_texture* render_camera::get_hzb() const noexcept

@@ -125,6 +125,13 @@ private:
                 auto& transform = world.get_component<transform_component>(m_root);
                 transform.set_position({0.0f, 0.0f, translate});
             }
+
+            static float scale = 1.0f;
+            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 50.0f))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_scale({scale, scale, scale});
+            }
         }
 
         if (ImGui::CollapsingHeader("Material"))

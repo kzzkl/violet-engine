@@ -213,6 +213,7 @@ void camera_system::update(render_scene_manager& scene_manager)
 
                 render_scene->set_camera_position(camera_meta.id, data.position);
 
+                camera_meta.position = data.position;
                 camera_meta.matrix_v = data.matrix_v;
                 camera_meta.matrix_p = data.matrix_p;
                 camera_meta.matrix_vp = data.matrix_vp;

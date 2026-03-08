@@ -39,9 +39,7 @@ add_library(violet-graphics STATIC
     private/tools/cluster/graph_partitioner.cpp
     private/tools/mesh_simplifier/mesh_simplifier.cpp
     private/tools/mesh_simplifier/quadric.cpp
-    private/tools/atmosphere_tool.cpp
     private/tools/geometry_tool.cpp
-    private/tools/ibl_tool.cpp
     private/tools/texture_loader.cpp
     private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp

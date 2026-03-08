@@ -10,6 +10,8 @@ class render_scene;
 class camera_component_meta
 {
 public:
+    vec3f position;
+
     mat4f matrix_v;
     mat4f matrix_p;
     mat4f matrix_vp;

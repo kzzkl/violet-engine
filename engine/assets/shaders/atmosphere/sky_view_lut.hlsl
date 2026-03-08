@@ -2,17 +2,7 @@
 
 struct constant_data
 {
-    float3 rayleigh_scattering;
-    float rayleigh_density_height;
-    float mie_scattering;
-    float mie_asymmetry;
-    float mie_absorption;
-    float mie_density_height;
-    float3 ozone_absorption;
-    float ozone_center_height;
-    float ozone_width;
-    float planet_radius;
-    float atmosphere_radius;
+    atmosphere_data atmosphere;
 
     uint sky_view_lut;
     float3 sun_direction;
@@ -38,15 +28,17 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
+    atmosphere_data atmosphere = constant.atmosphere;
+
     float2 uv = get_compute_texcoord(dtid.xy, width, height);
     float3 view = get_sky_view_lut_direction(uv);
 
-    float3 eye = float3(0.0, max(camera.position.y + constant.planet_radius, constant.planet_radius + 1.0), 0.0);
+    float3 eye = float3(0.0, max(camera.position.y + atmosphere.planet_radius, atmosphere.planet_radius + 1.0), 0.0);
 
-    float distance = ray_sphere_intersection(eye, view, 0.0, constant.planet_radius);
+    float distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.planet_radius);
     if (distance < 0.0)
     {
-        distance = ray_sphere_intersection(eye, view, 0.0, constant.atmosphere_radius);
+        distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
     }
 
     Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
@@ -55,8 +47,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float ds = distance / constant.sample_count;
 
     float cos_theta = dot(-view, constant.sun_direction);
-    float3 rayleigh_phase = get_rayleigh_phase(cos_theta);
-    float mie_phase = get_mie_phase(cos_theta, constant.mie_asymmetry);
+    float3 rayleigh_phase = atmosphere.get_rayleigh_phase(cos_theta);
+    float mie_phase = atmosphere.get_mie_phase(cos_theta);
 
     float3 p = eye;
     float3 in_scatter = 0.0;
@@ -68,19 +60,19 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         float r = length(p);
         float mu = dot(normalize(p), -constant.sun_direction);
 
-        float h = r - constant.planet_radius;
+        float h = r - atmosphere.planet_radius;
 
-        float3 rayleigh_scattering = get_rayleigh_scattering(h, constant.rayleigh_density_height, constant.rayleigh_scattering);
-        float mie_scattering = get_mie_scattering(h, constant.mie_density_height, constant.mie_scattering);
+        float3 rayleigh_scattering = atmosphere.get_rayleigh_scattering(h);
+        float mie_scattering = atmosphere.get_mie_scattering(h);
 
         float3 extinction = 0.0;
         extinction += rayleigh_scattering;
-        extinction += mie_scattering + get_mie_absorption(h, constant.mie_density_height, constant.mie_absorption);
-        extinction += get_ozone_absorption(h, constant.ozone_center_height, constant.ozone_width, constant.ozone_absorption);
+        extinction += mie_scattering + atmosphere.get_mie_absorption(h);
+        extinction += atmosphere.get_ozone_absorption(h);
         optical_depth += extinction * ds;
-
+        
         float2 uv;
-        get_transmittance_lut_uv(constant.planet_radius, constant.atmosphere_radius, r, mu, uv);
+        get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
 
         float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
         float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;

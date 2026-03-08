@@ -44,8 +44,11 @@ public:
         return m_camera->orthographic.size;
     }
 
+    const vec3f& get_position() const noexcept;
     const mat4f& get_matrix_v() const noexcept;
     const mat4f& get_matrix_p() const noexcept;
+    const mat4f& get_matrix_vp() const noexcept;
+    const mat4f& get_matrix_vp_no_jitter() const noexcept;
 
     const rhi_viewport& get_viewport() const noexcept
     {
