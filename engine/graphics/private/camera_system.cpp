@@ -212,6 +212,7 @@ void camera_system::update(render_scene_manager& scene_manager)
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
 
                 render_scene->set_camera_position(camera_meta.id, data.position);
+                render_scene->set_camera_background(camera_meta.id, camera.background);
 
                 camera_meta.position = data.position;
                 camera_meta.matrix_v = data.matrix_v;

@@ -277,7 +277,7 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                     pass.add_buffer_srv(m_recheck_instances, RHI_PIPELINE_STAGE_COMPUTE);
             }
 
-            data.instance_count = graph.get_scene().get_instance_count();
+            data.instance_count = graph.get_context().get_instance_count();
         },
         [stage = m_stage](const pass_data& data, rdg_command& command)
         {

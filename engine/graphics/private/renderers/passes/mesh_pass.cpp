@@ -19,7 +19,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
 
         rdg_raster_pipeline override_pipeline;
 
-        const render_scene* scene;
+        const render_context* context;
     };
 
     graph.add_pass<pass_data>(
@@ -64,7 +64,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
             data.material_path = parameter.material_path;
             data.override_pipeline = parameter.override_pipeline;
 
-            data.scene = &graph.get_scene();
+            data.context = &graph.get_context();
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -78,7 +78,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
             {
                 bool first_batch = true;
 
-                data.scene->each_batch(
+                data.context->each_batch(
                     data.surface_type,
                     data.material_path,
                     [&](render_id id,
@@ -122,7 +122,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
                 command.set_index_buffer();
 
-                data.scene->each_batch(
+                data.context->each_batch(
                     data.surface_type,
                     data.material_path,
                     [&](render_id id,

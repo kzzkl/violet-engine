@@ -3,7 +3,7 @@
 #include "core/engine.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/material.hpp"
-#include "graphics/skybox.hpp"
+#include "graphics/resources/texture.hpp"
 
 namespace violet
 {
@@ -45,7 +45,6 @@ private:
     void initialize_render();
     void initialize_scene(std::string_view skybox_path);
 
-    std::unique_ptr<skybox> m_skybox;
     entity m_sky;
     entity m_camera;
 

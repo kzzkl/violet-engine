@@ -36,7 +36,7 @@ void bounds_projection_pass::add(render_graph& graph, const parameter& parameter
         [&](pass_data& data, rdg_pass& pass)
         {
             pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
-            data.instance_count = graph.get_scene().get_instance_count();
+            data.instance_count = graph.get_context().get_instance_count();
         },
         [](const pass_data& data, rdg_command& command)
         {

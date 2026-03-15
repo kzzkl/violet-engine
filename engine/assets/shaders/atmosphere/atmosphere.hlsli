@@ -13,7 +13,7 @@ struct atmosphere_data
     float ozone_width;
     float planet_radius;
     float atmosphere_radius;
-    uint padding0;
+    float sun_angular_radius;
 
     float3 get_rayleigh_scattering(float h)
     {

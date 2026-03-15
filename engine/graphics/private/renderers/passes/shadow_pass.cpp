@@ -603,8 +603,8 @@ void shadow_pass::light_cull(render_graph& graph)
                 pass.add_buffer_uav(m_visible_vsm_ids, RHI_PIPELINE_STAGE_COMPUTE);
             data.virtual_page_dispatch_buffer =
                 pass.add_buffer_uav(m_virtual_page_dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.light_count = graph.get_scene().get_light_count(true);
-            data.camera_id = graph.get_camera().get_id();
+            data.light_count = graph.get_context().get_light_count(true);
+            data.camera_id = graph.get_context().get_camera_id();
             data.vsm_directional_buffer =
                 pass.add_buffer_srv(m_vsm_directional_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
@@ -1135,7 +1135,7 @@ void shadow_pass::instance_cull(render_graph& graph)
                 data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             }
 
-            data.instance_count = graph.get_scene().get_instance_count();
+            data.instance_count = graph.get_context().get_instance_count();
         },
         [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
         {

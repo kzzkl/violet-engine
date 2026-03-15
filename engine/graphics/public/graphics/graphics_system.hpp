@@ -33,12 +33,6 @@ public:
 #endif
 
 private:
-    struct render_context
-    {
-        const camera_component* camera;
-        const camera_component_meta* camera_meta;
-    };
-
     void begin_frame();
     void end_frame();
 
@@ -47,9 +41,10 @@ private:
 
     void render(execute_batch& batch, std::vector<rhi_swapchain*>& swapchains);
     void render(
+        const camera_component* camera,
+        const camera_component_meta* camera_meta,
         execute_batch& batch,
-        std::vector<rhi_swapchain*>& swapchains,
-        const render_context& context);
+        std::vector<rhi_swapchain*>& swapchains);
 
     rhi_fence* allocate_fence();
 

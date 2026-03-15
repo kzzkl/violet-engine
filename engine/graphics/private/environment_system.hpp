@@ -17,14 +17,18 @@ public:
 
     bool need_record() const noexcept
     {
-        return !m_update_queue.empty();
+        return !m_skybox_update_queue.empty() || !m_atmosphere_update_queue.empty();
     }
 
     void record(rhi_command* command);
 
 private:
+    void update_skybox(rhi_command* command, entity entity);
+    void update_atmosphere(rhi_command* command, entity entity);
+
     std::uint32_t m_system_version{0};
 
-    std::vector<skybox*> m_update_queue;
+    std::vector<entity> m_skybox_update_queue;
+    std::vector<entity> m_atmosphere_update_queue;
 };
 } // namespace violet

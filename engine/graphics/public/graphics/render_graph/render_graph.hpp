@@ -20,8 +20,7 @@ class render_graph
 public:
     render_graph(
         std::string_view name,
-        const render_scene* scene = nullptr,
-        const render_camera* camera = nullptr,
+        const render_context* context = nullptr,
         rdg_allocator* allocator = nullptr) noexcept;
     render_graph(const render_graph&) = delete;
     ~render_graph();
@@ -77,14 +76,9 @@ public:
     void compile();
     void record(rhi_command* command);
 
-    const render_scene& get_scene() const noexcept
+    const render_context& get_context() const noexcept
     {
-        return *m_scene;
-    }
-
-    const render_camera& get_camera() const noexcept
-    {
-        return *m_camera;
+        return *m_context;
     }
 
     const std::vector<rdg_resource*>& get_resources() const noexcept
@@ -149,8 +143,7 @@ private:
     rdg_allocator* m_allocator{nullptr};
     std::unique_ptr<rdg_allocator> m_default_allocator;
 
-    const render_scene* m_scene;
-    const render_camera* m_camera;
+    const render_context* m_context;
 
     rdg_profiling* m_profiling{nullptr};
 };

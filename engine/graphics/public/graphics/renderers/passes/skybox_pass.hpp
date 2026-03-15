@@ -16,18 +16,5 @@ public:
     };
 
     void add(render_graph& graph, const parameter& parameter);
-
-private:
-    static constexpr float distance_per_slice = 2000.0f;
-
-    void add_sky_view_lut_pass(render_graph& graph, const parameter& parameter);
-    void add_sky_pass(render_graph& graph, const parameter& parameter);
-    void add_aerial_perspective_lut_pass(render_graph& graph, const parameter& parameter);
-    void add_aerial_perspective_pass(render_graph& graph, const parameter& parameter);
-
-    rdg_texture* m_sky_view_lut;
-    rdg_texture* m_aerial_perspective_lut;
-
-    skybox* m_skybox;
 };
 } // namespace violet

@@ -10,100 +10,6 @@
 
 namespace violet
 {
-render_camera::render_camera(
-    const camera_component* camera,
-    const camera_component_meta* camera_meta)
-    : m_camera(camera),
-      m_camera_meta(camera_meta)
-{
-    std::visit(
-        [&](auto&& arg)
-        {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, rhi_swapchain*>)
-            {
-                m_render_target = arg->get_texture();
-            }
-            else if constexpr (std::is_same_v<T, rhi_texture*>)
-            {
-                m_render_target = arg;
-            }
-        },
-        camera->render_target);
-
-    rhi_extent extent = m_render_target->get_extent();
-
-    if (camera->viewport.width == 0.0f || camera->viewport.height == 0.0f)
-    {
-        m_viewport = {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(extent.width),
-            .height = static_cast<float>(extent.height),
-            .min_depth = 0.0f,
-            .max_depth = 1.0f,
-        };
-    }
-    else
-    {
-        m_viewport = camera->viewport;
-    }
-
-    if (camera->scissor_rects.empty())
-    {
-        m_scissor_rects.push_back({
-            .min_x = 0,
-            .min_y = 0,
-            .max_x = extent.width,
-            .max_y = extent.height,
-        });
-    }
-    else
-    {
-        m_scissor_rects = camera->scissor_rects;
-    }
-}
-
-render_id render_camera::get_id() const noexcept
-{
-    return m_camera_meta->id;
-}
-
-const vec3f& render_camera::get_position() const noexcept
-{
-    return m_camera_meta->position;
-}
-
-const mat4f& render_camera::get_matrix_v() const noexcept
-{
-    return m_camera_meta->matrix_v;
-}
-
-const mat4f& render_camera::get_matrix_p() const noexcept
-{
-    return m_camera_meta->matrix_p;
-}
-
-const mat4f& render_camera::get_matrix_vp() const noexcept
-{
-    return m_camera_meta->matrix_vp;
-}
-
-const mat4f& render_camera::get_matrix_vp_no_jitter() const noexcept
-{
-    return m_camera_meta->matrix_vp_no_jitter;
-}
-
-rhi_texture* render_camera::get_hzb() const noexcept
-{
-    return m_camera_meta->hzb.get();
-}
-
-rhi_parameter* render_camera::get_camera_parameter() const noexcept
-{
-    return m_camera_meta->parameter.get();
-}
-
 render_scene::render_scene(vsm_manager* vsm_manager)
     : m_vsm_manager(vsm_manager)
 {
@@ -257,7 +163,7 @@ render_id render_scene::add_light(std::uint32_t type)
 
 void render_scene::remove_light(render_id light_id)
 {
-    auto& mapping = m_light_mappings[light_id];
+    const auto& mapping = m_light_mappings[light_id];
     if (mapping.cast_shadow)
     {
         set_light_shadow(light_id, false);
@@ -267,10 +173,12 @@ void render_scene::remove_light(render_id light_id)
 
     m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
 
-    if (light_id == m_sun_id)
-    {
-        m_sun_id = INVALID_RENDER_ID;
-    }
+    // if (light_id == m_environment.sun_id)
+    // {
+    //     m_environment.sun_id = INVALID_RENDER_ID;
+    //     m_environment.sun_direction = {.x = 0.0f, .y = 0.0f, .z = 1.0f};
+    //     m_environment.sun_irradiance = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+    // }
 }
 
 void render_scene::set_light_data(
@@ -279,7 +187,7 @@ void render_scene::set_light_data(
     const vec3f& position,
     const vec3f& direction)
 {
-    auto& mapping = m_light_mappings[light_id];
+    const auto& mapping = m_light_mappings[light_id];
 
     gpu_light* light = nullptr;
 
@@ -310,6 +218,12 @@ void render_scene::set_light_data(
     light->color = color;
     light->position = position;
     light->direction = direction;
+
+    if (light_id == m_sun_id)
+    {
+        m_sun_direction = direction;
+        m_sun_irradiance = color;
+    }
 }
 
 void render_scene::set_light_shadow(render_id light_id, bool cast_shadow)
@@ -426,8 +340,13 @@ void render_scene::remove_camera(render_id camera_id)
 
     remove_vsm_by_camera(camera_id);
 
-    m_cameras[camera_id].camera_id = INVALID_RENDER_ID;
-    m_cameras[camera_id].vsms.clear();
+    auto& camera = m_cameras[camera_id];
+
+    camera.camera_id = INVALID_RENDER_ID;
+    camera.vsms.clear();
+    camera.environment_map = nullptr;
+    camera.irradiance_sh = nullptr;
+    camera.prefilter_map = nullptr;
 
     m_camera_allocator.free(camera_id);
 }
@@ -449,28 +368,87 @@ void render_scene::set_camera_position(render_id camera_id, const vec3f& positio
     }
 }
 
-vec3f render_scene::get_sun_direction() const noexcept
+void render_scene::set_camera_background(render_id camera_id, background_type background_type)
 {
-    if (m_sun_id == INVALID_RENDER_ID)
+    auto& camera = m_cameras[camera_id];
+
+    if (camera.background_type == background_type)
     {
-        return {0.0f, 0.0f, 1.0f};
+        return;
     }
 
-    const auto& mapping = m_light_mappings.at(m_sun_id);
-    return mapping.cast_shadow ? m_shadow_casting_lights[mapping.light_id].direction :
-                                 m_non_shadow_casting_lights[mapping.light_id].direction;
+    camera.background_type = background_type;
+
+    if (background_type == BACKGROUND_TYPE_SKYBOX)
+    {
+        camera.environment_map = nullptr;
+        camera.irradiance_sh = nullptr;
+        camera.prefilter_map = nullptr;
+    }
+    else if (background_type == BACKGROUND_TYPE_ATMOSPHERE)
+    {
+        auto& device = render_device::instance();
+
+        camera.environment_map = device.create_texture({
+            .extent = {.width = 64, .height = 64, .depth = 1},
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .level_count = 1,
+            .layer_count = 6,
+        });
+        camera.environment_map->set_name("Environment Map");
+
+        camera.irradiance_sh = device.create_buffer({
+            .size = 9 * sizeof(vec4f),
+            .flags = RHI_BUFFER_STORAGE,
+        });
+        camera.irradiance_sh->set_name("Irradiance SH");
+
+        rhi_extent prefilter_map_extent = {.width = 64, .height = 64, .depth = 1};
+        camera.prefilter_map = device.create_texture({
+            .extent = prefilter_map_extent,
+            .format = RHI_FORMAT_R11G11B10_FLOAT,
+            .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+            .level_count = rhi_get_level_count(prefilter_map_extent),
+            .layer_count = 6,
+        });
+        camera.prefilter_map->set_name("Prefilter Map");
+    }
 }
 
-vec3f render_scene::get_sun_irradiance() const noexcept
+void render_scene::set_skybox(
+    rhi_texture* environment_map,
+    rhi_buffer* irradiance_sh,
+    rhi_texture* prefilter_map)
 {
-    if (m_sun_id == INVALID_RENDER_ID)
+    m_environment_map = environment_map;
+    m_irradiance_sh = irradiance_sh;
+    m_prefilter_map = prefilter_map;
+}
+
+void render_scene::set_atmosphere(
+    const atmosphere& atmosphere,
+    render_id sun_id,
+    rhi_texture* transmittance_lut)
+{
+    m_atmosphere = atmosphere;
+    m_sun_id = sun_id;
+    m_transmittance_lut = transmittance_lut;
+
+    const gpu_light* light = nullptr;
+
+    const auto& mapping = m_light_mappings[sun_id];
+    if (mapping.cast_shadow)
     {
-        return {0.0f, 0.0f, 0.0f};
+        light = &m_shadow_casting_lights[mapping.light_id];
+    }
+    else
+    {
+        light = &m_non_shadow_casting_lights[mapping.light_id];
     }
 
-    const auto& mapping = m_light_mappings.at(m_sun_id);
-    return mapping.cast_shadow ? m_shadow_casting_lights[mapping.light_id].color :
-                                 m_non_shadow_casting_lights[mapping.light_id].color;
+    m_sun_direction = light->direction;
+    m_sun_irradiance = light->color;
 }
 
 void render_scene::update(gpu_buffer_uploader* uploader)
@@ -509,9 +487,9 @@ void render_scene::update(gpu_buffer_uploader* uploader)
     if (m_scene_states & RENDER_SCENE_STATE_DATA_DIRTY)
     {
         m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
-        m_scene_data.mesh_count = get_mesh_count();
+        m_scene_data.mesh_count = m_meshes.get_size();
         m_scene_data.instance_buffer = m_instances.get_buffer()->get_srv()->get_bindless();
-        m_scene_data.instance_count = get_instance_count();
+        m_scene_data.instance_count = m_instances.get_size();
 
         m_scene_data.shadow_casting_light_buffer =
             m_shadow_casting_lights.get_buffer()->get_srv()->get_bindless();
@@ -528,36 +506,6 @@ void render_scene::update(gpu_buffer_uploader* uploader)
     m_scene_states = 0;
 
     update_vsm();
-}
-
-rhi_buffer* render_scene::get_vsm_buffer() const noexcept
-{
-    return m_vsm_manager->get_vsm_buffer();
-}
-
-rhi_buffer* render_scene::get_vsm_virtual_page_table() const noexcept
-{
-    return m_vsm_manager->get_vsm_virtual_page_table();
-}
-
-rhi_buffer* render_scene::get_vsm_physical_page_table() const noexcept
-{
-    return m_vsm_manager->get_vsm_physical_page_table();
-}
-
-rhi_texture* render_scene::get_vsm_physical_shadow_map_static() const noexcept
-{
-    return m_vsm_manager->get_vsm_physical_shadow_map_static();
-}
-
-rhi_texture* render_scene::get_vsm_physical_shadow_map_final() const noexcept
-{
-    return m_vsm_manager->get_vsm_physical_shadow_map_final();
-}
-
-rhi_texture* render_scene::get_vsm_hzb() const noexcept
-{
-    return m_vsm_manager->get_vsm_hzb();
 }
 
 void render_scene::add_instance_to_batch(render_id instance_id, const material* material)
@@ -916,5 +864,198 @@ void render_scene::update_vsm()
 
         vsm_data.dirty = false;
     }
+}
+
+render_context::render_context(
+    const camera_component* camera,
+    const camera_component_meta* camera_meta)
+    : m_scene(camera_meta->scene),
+      m_camera(camera),
+      m_camera_meta(camera_meta)
+{
+    std::visit(
+        [&](auto&& arg)
+        {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, rhi_swapchain*>)
+            {
+                m_render_target = arg->get_texture();
+            }
+            else if constexpr (std::is_same_v<T, rhi_texture*>)
+            {
+                m_render_target = arg;
+            }
+        },
+        m_camera->render_target);
+
+    rhi_extent extent = m_render_target->get_extent();
+
+    if (m_camera->viewport.width == 0.0f || m_camera->viewport.height == 0.0f)
+    {
+        m_viewport = {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(extent.width),
+            .height = static_cast<float>(extent.height),
+            .min_depth = 0.0f,
+            .max_depth = 1.0f,
+        };
+    }
+    else
+    {
+        m_viewport = m_camera->viewport;
+    }
+
+    if (m_camera->scissor_rects.empty())
+    {
+        m_scissor_rects.push_back({
+            .min_x = 0,
+            .min_y = 0,
+            .max_x = extent.width,
+            .max_y = extent.height,
+        });
+    }
+    else
+    {
+        m_scissor_rects = m_camera->scissor_rects;
+    }
+
+    const auto& camera_data = m_scene->m_cameras[m_camera_meta->id];
+
+    if (camera_data.background_type == BACKGROUND_TYPE_SKYBOX)
+    {
+        m_environment_map = m_scene->m_environment_map;
+        m_irradiance_sh = m_scene->m_irradiance_sh;
+        m_prefilter_map = m_scene->m_prefilter_map;
+    }
+    else if (camera_data.background_type == BACKGROUND_TYPE_ATMOSPHERE)
+    {
+        m_environment_map = camera_data.environment_map.get();
+        m_irradiance_sh = camera_data.irradiance_sh.get();
+        m_prefilter_map = camera_data.prefilter_map.get();
+
+        m_sun_transmittance_lut_uv =
+            get_atmosphere().get_transmittance_lut_uv(get_camera_position(), get_sun_direction());
+    }
+}
+
+render_id render_context::get_camera_id() const noexcept
+{
+    return m_camera_meta->id;
+}
+
+camera_type render_context::get_camera_type() const noexcept
+{
+    return m_camera->type;
+}
+
+float render_context::get_camera_near() const noexcept
+{
+    return m_camera->near;
+}
+
+float render_context::get_camera_far() const noexcept
+{
+    return m_camera->far;
+}
+
+float render_context::get_camera_perspective_fov() const noexcept
+{
+    return m_camera->perspective.fov;
+}
+
+float render_context::get_camera_orthographic_size() const noexcept
+{
+    return m_camera->orthographic.size;
+}
+
+const vec3f& render_context::get_camera_position() const noexcept
+{
+    return m_camera_meta->position;
+}
+
+const mat4f& render_context::get_camera_matrix_v() const noexcept
+{
+    return m_camera_meta->matrix_v;
+}
+
+const mat4f& render_context::get_camera_matrix_p() const noexcept
+{
+    return m_camera_meta->matrix_p;
+}
+
+const mat4f& render_context::get_camera_matrix_vp() const noexcept
+{
+    return m_camera_meta->matrix_vp;
+}
+
+const mat4f& render_context::get_camera_matrix_vp_no_jitter() const noexcept
+{
+    return m_camera_meta->matrix_vp_no_jitter;
+}
+
+background_type render_context::get_background_type() const noexcept
+{
+    return m_camera->background;
+}
+
+rhi_texture* render_context::get_hzb() const noexcept
+{
+    return m_camera_meta->hzb.get();
+}
+
+rhi_buffer* render_context::get_vsm_buffer() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_buffer();
+}
+
+rhi_buffer* render_context::get_vsm_virtual_page_table() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_virtual_page_table();
+}
+
+rhi_buffer* render_context::get_vsm_physical_page_table() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_physical_page_table();
+}
+
+rhi_texture* render_context::get_vsm_physical_shadow_map_static() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_physical_shadow_map_static();
+}
+
+rhi_texture* render_context::get_vsm_physical_shadow_map_final() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_physical_shadow_map_final();
+}
+
+rhi_texture* render_context::get_vsm_hzb() const noexcept
+{
+    return m_scene->m_vsm_manager->get_vsm_hzb();
+}
+
+rhi_parameter* render_context::get_camera_parameter() const noexcept
+{
+    return m_camera_meta->parameter.get();
+}
+
+rhi_parameter* render_context::get_scene_parameter() const noexcept
+{
+    return m_scene->m_scene_parameter.get();
+}
+
+std::uint32_t render_context::get_sun_id(bool& cast_shadow) const noexcept
+{
+    std::uint32_t sun_id = m_scene->m_sun_id;
+
+    const auto& mapping = m_scene->m_light_mappings[sun_id];
+    cast_shadow = mapping.cast_shadow;
+
+    if (mapping.cast_shadow)
+    {
+        return m_scene->m_shadow_casting_lights.get_index(mapping.light_id);
+    }
+
+    return m_scene->m_non_shadow_casting_lights.get_index(mapping.light_id);
 }
 } // namespace violet

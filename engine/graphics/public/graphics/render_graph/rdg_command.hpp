@@ -1,15 +1,11 @@
 #pragma once
 
-#include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pipeline.hpp"
 #include <array>
 #include <span>
 
 namespace violet
 {
-class render_scene;
-class render_camera;
-
 enum rdg_parameter_type : std::uint8_t
 {
     RDG_PARAMETER_BINDLESS,
@@ -17,14 +13,11 @@ enum rdg_parameter_type : std::uint8_t
     RDG_PARAMETER_CAMERA,
 };
 
+class render_context;
 class rdg_command
 {
 public:
-    rdg_command(
-        rhi_command* command,
-        rdg_allocator* allocator,
-        const render_scene* scene,
-        const render_camera* camera);
+    rdg_command(rhi_command* command, const render_context* context);
 
     void set_pipeline(const rdg_raster_pipeline& pipeline);
     void set_pipeline(const rdg_compute_pipeline& pipeline);
@@ -202,10 +195,8 @@ private:
     std::uint32_t m_subpass_index{0};
 
     rhi_command* m_command;
-    rdg_allocator* m_allocator;
 
-    const render_scene* m_scene;
-    const render_camera* m_camera;
+    const render_context* m_context;
 
     std::array<rhi_parameter*, 3> m_built_in_parameters;
 

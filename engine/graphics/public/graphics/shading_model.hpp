@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/render_graph/rdg_command.hpp"
+#include "graphics/render_graph/rdg_reference.hpp"
 #include "graphics/shader.hpp"
 
 namespace violet
@@ -62,9 +63,8 @@ private:
 };
 
 template <typename T>
-concept has_extra_shading_constant = requires(T t) {
-    t.get_constant();
-} && (!std::is_void_v<decltype(std::declval<T>().get_constant())>);
+concept has_extra_shading_constant = requires(T t) { t.get_constant(); } &&
+                                     (!std::is_void_v<decltype(std::declval<T>().get_constant())>);
 
 template <typename T>
 class shading_model : public shading_model_base

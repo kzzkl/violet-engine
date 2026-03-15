@@ -14,6 +14,12 @@ enum camera_type
     CAMERA_ORTHOGRAPHIC = 1,
 };
 
+enum background_type
+{
+    BACKGROUND_TYPE_SKYBOX = 0,
+    BACKGROUND_TYPE_ATMOSPHERE = 1,
+};
+
 class renderer;
 class camera_component
 {
@@ -40,6 +46,8 @@ public:
 
     rhi_viewport viewport;
     std::vector<rhi_scissor_rect> scissor_rects;
+
+    background_type background{background_type::BACKGROUND_TYPE_SKYBOX};
 
     bool has_render_target() const
     {

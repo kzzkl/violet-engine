@@ -16,9 +16,12 @@ struct constant_common
     uint light_id;
     uint shadow_mask;
     uint stage;
-    uint sky_prefilter;
-    uint sky_irradiance;
+    uint prefilter_map;
+    uint irradiance_sh;
+    uint sun_id;
+    uint transmittance_lut;
     uint padding0;
+    float2 transmittance_lut_uv;
     uint padding1;
     uint padding2;
 };
@@ -62,6 +65,14 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         Texture2D<float> shadow_mask = ResourceDescriptorHeap[constant.shadow_mask];
 
         light_data light = lights[constant.light_id];
+
+        if (constant.light_id == constant.sun_id)
+        {
+            Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
+            float3 transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), constant.transmittance_lut_uv, 0.0);
+            light.color *= transmittance;
+        }
+
         lighting = shading_model.evaluate_direct_lighting(light, shadow_mask[coord]);
     }
     else if (constant.stage == LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED)
@@ -69,7 +80,19 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.non_shadow_casting_light_buffer];
         for (int i = 0; i < scene.non_shadow_casting_light_count; ++i)
         {
-            lighting += shading_model.evaluate_direct_lighting(lights[i], 1.0);
+            light_data light = lights[i];
+
+            if (constant.sun_id != 0xFFFFFFFF)
+            {
+                if (i == constant.sun_id)
+                {
+                    Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
+                    float3 transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), constant.transmittance_lut_uv, 0.0);
+                    light.color *= transmittance;
+                }
+            }
+
+            lighting += shading_model.evaluate_direct_lighting(light, 1.0);
         }
     }
     else if (constant.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)

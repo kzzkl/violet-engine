@@ -191,6 +191,21 @@ struct rhi_extent
     }
 };
 
+inline std::uint32_t rhi_get_level_count(rhi_extent extent)
+{
+    std::uint32_t level_count = 0;
+
+    while (extent.height > 0 && extent.width > 0)
+    {
+        extent.height >>= 1;
+        extent.width >>= 1;
+
+        ++level_count;
+    }
+
+    return level_count;
+}
+
 enum rhi_sample_count : std::uint8_t
 {
     RHI_SAMPLE_COUNT_1,

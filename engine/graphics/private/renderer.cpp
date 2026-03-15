@@ -9,7 +9,7 @@ renderer::~renderer() {}
 
 void renderer::render(render_graph& graph)
 {
-    rhi_extent extent = graph.get_camera().get_render_target()->get_extent();
+    rhi_extent extent = graph.get_context().get_render_target()->get_extent();
     for (const auto& feature : m_features)
     {
         if (feature->is_enable())
@@ -24,6 +24,8 @@ void renderer::render(render_graph& graph)
     {
         graph.set_profiling(m_profiling.get());
     }
+
+    ++m_frame;
 }
 
 void renderer::set_profiling(bool enable)

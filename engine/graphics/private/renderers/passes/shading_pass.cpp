@@ -1,6 +1,5 @@
 #include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/material_manager.hpp"
-#include "graphics/skybox.hpp"
 #include <algorithm>
 #include <format>
 
@@ -94,10 +93,15 @@ void shading_pass::add(render_graph& graph, const parameter& parameter)
     add_clear_pass(graph, parameter);
     add_tile_classify_pass(graph, parameter);
 
-    const auto& scene = graph.get_scene();
+    const auto& context = graph.get_context();
+
+    if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
+    {
+        m_sun_id = context.get_sun_id(m_sun_cast_shadow);
+    }
 
     // Shadow casting lights.
-    std::uint32_t shadow_casting_light_count = scene.get_light_count(true);
+    std::uint32_t shadow_casting_light_count = context.get_light_count(true);
     for (std::uint32_t light_id = 0; light_id < shadow_casting_light_count; ++light_id)
     {
         add_shadow_mask_pass(graph, parameter, light_id);
@@ -105,7 +109,7 @@ void shading_pass::add(render_graph& graph, const parameter& parameter)
     }
 
     // Non-shadow casting lights.
-    if (scene.get_light_count(false) > 0)
+    if (context.get_light_count(false) > 0)
     {
         add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED);
     }
@@ -264,13 +268,20 @@ void shading_pass::add_tile_shading_pass(
         rdg_buffer_ref shading_dispatch_buffer;
         rdg_texture_srv shadow_mask;
         std::uint32_t light_id;
+        std::uint32_t sun_id;
+        bool sun_cast_shadow;
+        rhi_texture_srv* transmittance_lut;
+        vec2f transmittance_lut_uv;
+
+        rdg_texture_srv prefilter_map;
+        rdg_buffer_srv irradiance_sh;
 
         lighting_stage stage;
     };
 
-    skybox* skybox = graph.get_scene().get_skybox();
+    const auto& context = graph.get_context();
 
-    graph.get_scene().each_shading_model(
+    context.each_shading_model(
         [&](std::uint32_t shading_model_id, shading_model_base* shading_model)
         {
             graph.add_pass<pass_data>(
@@ -316,12 +327,34 @@ void shading_pass::add_tile_shading_pass(
                             pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
                         data.light_id = light_id;
                     }
+                    else if (stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
+                    {
+                        data.prefilter_map = pass.add_texture_srv(
+                            parameter.prefilter_map,
+                            RHI_PIPELINE_STAGE_COMPUTE,
+                            RHI_TEXTURE_DIMENSION_CUBE);
+                        data.irradiance_sh = pass.add_buffer_srv(
+                            parameter.irradiance_sh,
+                            RHI_PIPELINE_STAGE_COMPUTE);
+                    }
+
+                    if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
+                    {
+                        data.sun_id = m_sun_id;
+                        data.sun_cast_shadow = m_sun_cast_shadow;
+                        data.transmittance_lut = context.get_transmittance_lut()->get_srv();
+                        data.transmittance_lut_uv = context.get_sun_transmittance_lut_uv();
+                    }
+                    else
+                    {
+                        data.sun_id = 0xFFFFFFFF;
+                        data.sun_cast_shadow = true;
+                        data.transmittance_lut = nullptr;
+                    }
 
                     data.stage = stage;
                 },
-                [shading_model, shading_model_id, tile_count = m_tile_count, skybox](
-                    const pass_data& data,
-                    rdg_command& command)
+                [=, tile_count = m_tile_count](const pass_data& data, rdg_command& command)
                 {
                     shading_model->bind(data.auxiliary_buffers, command);
 
@@ -331,14 +364,26 @@ void shading_pass::add_tile_shading_pass(
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,
                         .stage = static_cast<std::uint32_t>(data.stage),
-                        .sky_prefilter = skybox->get_prefilter_bindless(),
-                        .sky_irradiance = skybox->get_irradiance_bindless(),
+                        .transmittance_lut = data.transmittance_lut == nullptr ?
+                                                 0 :
+                                                 data.transmittance_lut->get_bindless(),
+                        .transmittance_lut_uv = data.transmittance_lut_uv,
                     };
 
                     if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
                     {
                         constant.light_id = data.light_id;
                         constant.shadow_mask = data.shadow_mask.get_bindless();
+                        constant.sun_id = data.sun_cast_shadow ? data.sun_id : 0xFFFFFFFF;
+                    }
+                    else if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED)
+                    {
+                        constant.sun_id = data.sun_cast_shadow ? 0xFFFFFFFF : data.sun_id;
+                    }
+                    else if (data.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
+                    {
+                        constant.prefilter_map = data.prefilter_map.get_bindless();
+                        constant.irradiance_sh = data.irradiance_sh.get_bindless();
                     }
 
                     for (std::uint32_t gbuffer : shading_model->get_required_gbuffers())

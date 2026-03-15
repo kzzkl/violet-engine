@@ -21,46 +21,8 @@ PushConstant(constant_data, constant);
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-float4 integrate(uint slice_id, uint slice_count, float3 eye, float3 view, Texture2D<float3> transmittance_lut)
+float4 integrate(atmosphere_data atmosphere, float distance, float3 eye, float3 view, Texture2D<float3> transmittance_lut)
 {
-    atmosphere_data atmosphere = constant.atmosphere;
-
-    float slice = (float(slice_id) + 0.5) / slice_count;
-    slice *= slice;
-    slice *= slice_count;
-
-    float slice_end = slice * constant.distance_per_slice;
-
-    float3 position_end = eye + view * slice_end;
-    float position_end_height = length(position_end);
-    if (position_end_height <= atmosphere.planet_radius + 0.01)
-    {
-        position_end = normalize(position_end) * (atmosphere.planet_radius + 0.01);
-        view = normalize(position_end - eye);
-        slice_end = length(position_end - eye);
-    }
-
-    float plant_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.planet_radius);
-    float atmosphere_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
-
-    float max_distance = 0.0;
-    if (plant_distance < 0.0)
-    {
-        if (atmosphere_distance < 0.0)
-        {
-            return 0.0;
-        }
-        else
-        {
-            max_distance = atmosphere_distance;
-        }
-    }
-    else
-    {
-        max_distance = min(plant_distance, atmosphere_distance);
-    }
-    max_distance = min(max_distance, slice_end);
-
     float cos_theta = dot(-view, constant.sun_direction);
     float3 rayleigh_phase = atmosphere.get_rayleigh_phase(cos_theta);
     float mie_phase = atmosphere.get_mie_phase(cos_theta);
@@ -73,7 +35,7 @@ float4 integrate(uint slice_id, uint slice_count, float3 eye, float3 view, Textu
     float3 throughput = 1.0;
     for (int i = 0; i < constant.sample_count; ++i)
     {
-        float curr_t = max_distance * (float(i) + 0.3) / constant.sample_count;
+        float curr_t = distance * (float(i) + 0.3) / constant.sample_count;
         float dt = curr_t - prev_t;
         prev_t = curr_t;
 
@@ -127,15 +89,40 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float3 eye = float3(0.0, max(camera.position.y + atmosphere.planet_radius, atmosphere.planet_radius), 0.0);
+    float3 eye = float3(0.0, max(camera.position.y + atmosphere.planet_radius, atmosphere.planet_radius + 1.0), 0.0);
 
     float2 uv = get_compute_texcoord(dtid.xy, width, height);
     float3 view = normalize(lerp(
         lerp(constant.frustum_top_left, constant.frustum_top_right, uv.x),
         lerp(constant.frustum_bottom_left, constant.frustum_bottom_right, uv.x), uv.y));
 
+    float plant_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.planet_radius);
+    float atmosphere_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
+
+    float max_distance = 0.0;
+    if (plant_distance < 0.0)
+    {
+        max_distance = atmosphere_distance < 0.0 ? 0.0 : atmosphere_distance;
+    }
+    else
+    {
+        max_distance = min(plant_distance, atmosphere_distance);
+    }
+
     for (uint slice_id = 0; slice_id < depth; ++slice_id)
     {
-        aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = integrate(slice_id, depth, eye, view, transmittance_lut);
+        float slice = (float(slice_id) + 0.5) / depth;
+        slice *= slice;
+        slice *= depth;
+
+        float slice_end = min(max_distance, slice * constant.distance_per_slice);
+        if (slice_end <= 0.0)
+        {
+            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = 0.0;
+        }
+        else
+        {
+            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = integrate(atmosphere, slice_end, eye, view, transmittance_lut);
+        }
     }
 }

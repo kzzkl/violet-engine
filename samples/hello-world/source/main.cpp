@@ -3,7 +3,6 @@
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/scene_component.hpp"
-#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/geometries/box_geometry.hpp"
 #include "graphics/materials/pbr_material.hpp"
@@ -238,26 +237,6 @@ private:
             {
                 auto& transform = world.get_component<transform_component>(get_sky());
                 transform.set_rotation(quaternion::from_euler(euler));
-            }
-
-            auto* skybox = world.get_component<skybox_component>(get_sky()).skybox;
-
-            static bool dynamic_sky = skybox->is_dynamic_sky();
-            if (ImGui::Checkbox("Dynamic Sky", &dynamic_sky))
-            {
-                skybox->set_dynamic_sky(dynamic_sky);
-            }
-
-            if (skybox->is_dynamic_sky())
-            {
-                static float sun_angular_radius = skybox->get_sun_angular_radius();
-                if (ImGui::SliderFloat("Sun Angular Radius", &sun_angular_radius, 0.0f, 0.1f))
-                {
-                    skybox->set_sun_angular_radius(sun_angular_radius);
-                }
-            }
-            else
-            {
             }
         }
 

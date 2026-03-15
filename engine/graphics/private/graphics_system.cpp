@@ -280,7 +280,7 @@ void graphics_system::render(execute_batch& batch, std::vector<rhi_swapchain*>& 
 {
     auto& world = get_world();
 
-    std::vector<render_context> render_queue;
+    std::vector<std::pair<const camera_component*, const camera_component_meta*>> render_queue;
 
     world.get_view()
         .read<camera_component>()
@@ -299,14 +299,14 @@ void graphics_system::render(execute_batch& batch, std::vector<rhi_swapchain*>& 
         render_queue,
         [](const auto& a, const auto& b)
         {
-            return a.camera->priority > b.camera->priority;
+            return a.first->priority > b.first->priority;
         });
 
     auto& device = render_device::instance();
 
-    for (const auto& context : render_queue)
+    for (auto& [camera, camera_meta] : render_queue)
     {
-        render(batch, swapchains, context);
+        render(camera, camera_meta, batch, swapchains);
     }
 
     batch.wait_fences.push_back({
@@ -325,9 +325,10 @@ void graphics_system::render(execute_batch& batch, std::vector<rhi_swapchain*>& 
 }
 
 void graphics_system::render(
+    const camera_component* camera,
+    const camera_component_meta* camera_meta,
     execute_batch& batch,
-    std::vector<rhi_swapchain*>& swapchains,
-    const render_context& context)
+    std::vector<rhi_swapchain*>& swapchains)
 {
     auto& device = render_device::instance();
 
@@ -356,17 +357,16 @@ void graphics_system::render(
                 swapchain = arg;
             }
         },
-        context.camera->render_target);
+        camera->render_target);
 
     if (skip)
     {
         return;
     }
 
-    render_camera render_camera(context.camera, context.camera_meta);
-    render_graph graph("Camera", context.camera_meta->scene, &render_camera, m_allocator.get());
-
-    context.camera->renderer->render(graph);
+    render_context context(camera, camera_meta);
+    render_graph graph("Camera", &context, m_allocator.get());
+    camera->renderer->render(graph);
 
     rhi_command* command = device.allocate_command();
     graph.compile();

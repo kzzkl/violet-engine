@@ -13,6 +13,7 @@ enum rdg_pass_type
     RDG_PASS_TRANSFER,
 };
 
+class rdg_allocator;
 class rdg_pass : public rdg_node
 {
 public:

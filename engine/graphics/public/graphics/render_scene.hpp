@@ -5,81 +5,11 @@
 #include "graphics/geometry.hpp"
 #include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
-#include "graphics/resources/texture.hpp"
 #include <unordered_map>
 #include <vector>
 
 namespace violet
 {
-class camera_component_meta;
-class render_camera
-{
-public:
-    render_camera(const camera_component* camera, const camera_component_meta* camera_meta);
-
-    render_id get_id() const noexcept;
-
-    camera_type get_type() const noexcept
-    {
-        return m_camera->type;
-    }
-
-    float get_near() const noexcept
-    {
-        return m_camera->near;
-    }
-
-    float get_far() const noexcept
-    {
-        return m_camera->far;
-    }
-
-    float get_perspective_fov() const noexcept
-    {
-        return m_camera->perspective.fov;
-    }
-
-    float get_orthographic_size() const noexcept
-    {
-        return m_camera->orthographic.size;
-    }
-
-    const vec3f& get_position() const noexcept;
-    const mat4f& get_matrix_v() const noexcept;
-    const mat4f& get_matrix_p() const noexcept;
-    const mat4f& get_matrix_vp() const noexcept;
-    const mat4f& get_matrix_vp_no_jitter() const noexcept;
-
-    const rhi_viewport& get_viewport() const noexcept
-    {
-        return m_viewport;
-    }
-
-    const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
-    {
-        return m_scissor_rects;
-    }
-
-    rhi_texture* get_render_target() const noexcept
-    {
-        return m_render_target;
-    }
-
-    rhi_texture* get_hzb() const noexcept;
-
-    rhi_parameter* get_camera_parameter() const noexcept;
-
-private:
-    rhi_texture* m_render_target;
-
-    rhi_viewport m_viewport;
-    std::vector<rhi_scissor_rect> m_scissor_rects;
-
-    const camera_component* m_camera;
-    const camera_component_meta* m_camera_meta;
-};
-
-class skybox;
 class gpu_buffer_uploader;
 class vsm_manager;
 class render_scene
@@ -117,125 +47,18 @@ public:
     render_id add_camera();
     void remove_camera(render_id camera_id);
     void set_camera_position(render_id camera_id, const vec3f& position);
+    void set_camera_background(render_id camera_id, background_type background_type);
 
-    void set_skybox(skybox* skybox)
-    {
-        m_skybox = skybox;
-    }
-
-    skybox* get_skybox() const noexcept
-    {
-        return m_skybox;
-    }
-
-    void set_sun(std::uint32_t light_id)
-    {
-        m_sun_id = light_id;
-    }
-
-    vec3f get_sun_direction() const noexcept;
-    vec3f get_sun_irradiance() const noexcept;
-
-    void set_skybox(texture_cube* skybox, texture_cube* irradiance, texture_cube* prefilter);
+    void set_skybox(
+        rhi_texture* environment_map,
+        rhi_buffer* irradiance_sh,
+        rhi_texture* prefilter_map);
     void set_atmosphere(
         const atmosphere& atmosphere,
-        std::uint32_t sun_light_id,
-        float sun_angular_radius,
-        texture_2d* transmittance_lut);
+        render_id sun_id,
+        rhi_texture* transmittance_lut);
 
     void update(gpu_buffer_uploader* uploader);
-
-    std::uint32_t get_mesh_count() const noexcept
-    {
-        return m_meshes.get_size();
-    }
-
-    std::uint32_t get_instance_count() const noexcept
-    {
-        return m_instances.get_size();
-    }
-
-    std::uint32_t get_light_count(bool cast_shadow) const noexcept
-    {
-        return cast_shadow ? m_shadow_casting_lights.get_size() :
-                             m_non_shadow_casting_lights.get_size();
-    }
-
-    std::uint32_t get_batch_count() const noexcept
-    {
-        return 4 * 1024;
-    }
-
-    std::uint32_t get_instance_capacity() const noexcept
-    {
-        return m_instance_capacity;
-    }
-
-    std::uint32_t get_batch_capacity() const noexcept
-    {
-        return 4 * 1024;
-    }
-
-    rhi_parameter* get_scene_parameter() const noexcept
-    {
-        return m_scene_parameter.get();
-    }
-
-    rhi_buffer* get_vsm_directional_buffer() const noexcept
-    {
-        return m_vsm_directional_buffer.get_buffer()->get_rhi();
-    }
-
-    rhi_buffer* get_vsm_buffer() const noexcept;
-    rhi_buffer* get_vsm_virtual_page_table() const noexcept;
-    rhi_buffer* get_vsm_physical_page_table() const noexcept;
-    rhi_texture* get_vsm_physical_shadow_map_static() const noexcept;
-    rhi_texture* get_vsm_physical_shadow_map_final() const noexcept;
-    rhi_texture* get_vsm_hzb() const noexcept;
-
-    template <typename Functor>
-    void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
-    {
-        m_batches.each(
-            [&](render_id id, const gpu_batch& batch)
-            {
-                if (batch.surface_type != surface_type || batch.material_path != material_path ||
-                    batch.instance_count == 0)
-                {
-                    return;
-                }
-
-                functor(id, batch.pipeline, batch.instance_offset, batch.instance_count);
-            });
-    }
-
-    template <typename Functor>
-    void each_material_resolve_pipeline(Functor&& functor) const
-    {
-        for (render_id pipeline_id = 1; pipeline_id < m_material_resolve_pipelines.size();
-             ++pipeline_id)
-        {
-            const auto& [pipeline, instance_count] = m_material_resolve_pipelines[pipeline_id];
-            if (instance_count > 0)
-            {
-                functor(pipeline_id, pipeline);
-            }
-        }
-    }
-
-    template <typename Functor>
-    void each_shading_model(Functor&& functor) const
-    {
-        for (render_id shading_model_id = 1; shading_model_id < m_shading_models.size();
-             ++shading_model_id)
-        {
-            const auto& [shading_model, instance_count] = m_shading_models[shading_model_id];
-            if (instance_count > 0)
-            {
-                functor(shading_model_id, shading_model);
-            }
-        }
-    }
 
 private:
     struct gpu_batch
@@ -333,7 +156,7 @@ private:
             render_id camera_id;
         };
 
-        std::array<vsm, 16> vsms; // vsm_id, camera_id
+        std::array<vsm, 16> vsms;
     };
 
     struct camera_data
@@ -348,6 +171,11 @@ private:
         vec3f position;
 
         std::vector<vsm> vsms;
+
+        background_type background_type{BACKGROUND_TYPE_SKYBOX};
+        rhi_ptr<rhi_texture> environment_map;
+        rhi_ptr<rhi_buffer> irradiance_sh;
+        rhi_ptr<rhi_texture> prefilter_map;
     };
 
     struct vsm_data
@@ -401,13 +229,208 @@ private:
     std::uint32_t m_instance_capacity{1};
 
     render_scene_states m_scene_states{0};
-
     shader::scene_data m_scene_data{};
     rhi_ptr<rhi_parameter> m_scene_parameter;
 
     vsm_manager* m_vsm_manager;
 
-    skybox* m_skybox{nullptr};
+    rhi_texture* m_environment_map;
+    rhi_buffer* m_irradiance_sh;
+    rhi_texture* m_prefilter_map;
+
+    atmosphere m_atmosphere;
     render_id m_sun_id{INVALID_RENDER_ID};
+    vec3f m_sun_direction;
+    vec3f m_sun_irradiance;
+    rhi_texture* m_transmittance_lut;
+
+    friend class render_context;
+};
+
+class camera_component;
+class camera_component_meta;
+class render_context
+{
+public:
+    render_context(const camera_component* camera, const camera_component_meta* camera_meta);
+
+    render_id get_camera_id() const noexcept;
+    camera_type get_camera_type() const noexcept;
+    float get_camera_near() const noexcept;
+    float get_camera_far() const noexcept;
+    float get_camera_perspective_fov() const noexcept;
+    float get_camera_orthographic_size() const noexcept;
+    const vec3f& get_camera_position() const noexcept;
+    const mat4f& get_camera_matrix_v() const noexcept;
+    const mat4f& get_camera_matrix_p() const noexcept;
+    const mat4f& get_camera_matrix_vp() const noexcept;
+    const mat4f& get_camera_matrix_vp_no_jitter() const noexcept;
+    background_type get_background_type() const noexcept;
+
+    const rhi_viewport& get_viewport() const noexcept
+    {
+        return m_viewport;
+    }
+
+    const std::vector<rhi_scissor_rect>& get_scissor_rects() const noexcept
+    {
+        return m_scissor_rects;
+    }
+
+    rhi_texture* get_render_target() const noexcept
+    {
+        return m_render_target;
+    }
+
+    rhi_texture* get_hzb() const noexcept;
+
+    std::uint32_t get_mesh_count() const noexcept
+    {
+        return m_scene->m_meshes.get_size();
+    }
+
+    std::uint32_t get_instance_count() const noexcept
+    {
+        return m_scene->m_instances.get_size();
+    }
+
+    std::uint32_t get_light_count(bool cast_shadow) const noexcept
+    {
+        return cast_shadow ? m_scene->m_shadow_casting_lights.get_size() :
+                             m_scene->m_non_shadow_casting_lights.get_size();
+    }
+
+    std::uint32_t get_batch_count() const noexcept
+    {
+        return 4 * 1024;
+    }
+
+    std::uint32_t get_instance_capacity() const noexcept
+    {
+        return m_scene->m_instance_capacity;
+    }
+
+    std::uint32_t get_batch_capacity() const noexcept
+    {
+        return 4 * 1024;
+    }
+
+    rhi_buffer* get_vsm_directional_buffer() const noexcept
+    {
+        return m_scene->m_vsm_directional_buffer.get_buffer()->get_rhi();
+    }
+
+    rhi_buffer* get_vsm_buffer() const noexcept;
+    rhi_buffer* get_vsm_virtual_page_table() const noexcept;
+    rhi_buffer* get_vsm_physical_page_table() const noexcept;
+    rhi_texture* get_vsm_physical_shadow_map_static() const noexcept;
+    rhi_texture* get_vsm_physical_shadow_map_final() const noexcept;
+    rhi_texture* get_vsm_hzb() const noexcept;
+
+    rhi_parameter* get_camera_parameter() const noexcept;
+    rhi_parameter* get_scene_parameter() const noexcept;
+
+    const atmosphere& get_atmosphere() const noexcept
+    {
+        return m_scene->m_atmosphere;
+    }
+
+    rhi_texture* get_environment_map() const noexcept
+    {
+        return m_environment_map;
+    }
+
+    rhi_texture* get_prefilter_map() const noexcept
+    {
+        return m_prefilter_map;
+    }
+
+    rhi_buffer* get_irradiance_sh() const noexcept
+    {
+        return m_irradiance_sh;
+    }
+
+    rhi_texture* get_transmittance_lut() const noexcept
+    {
+        return m_scene->m_transmittance_lut;
+    }
+
+    vec2f get_sun_transmittance_lut_uv() const noexcept
+    {
+        return m_sun_transmittance_lut_uv;
+    }
+
+    std::uint32_t get_sun_id(bool& cast_shadow) const noexcept;
+
+    vec3f get_sun_direction() const noexcept
+    {
+        return m_scene->m_sun_direction;
+    }
+
+    vec3f get_sun_irradiance() const noexcept
+    {
+        return m_scene->m_sun_irradiance;
+    }
+
+    template <typename Functor>
+    void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
+    {
+        m_scene->m_batches.each(
+            [&](render_id id, const render_scene::gpu_batch& batch)
+            {
+                if (batch.surface_type != surface_type || batch.material_path != material_path ||
+                    batch.instance_count == 0)
+                {
+                    return;
+                }
+
+                functor(id, batch.pipeline, batch.instance_offset, batch.instance_count);
+            });
+    }
+
+    template <typename Functor>
+    void each_material_resolve_pipeline(Functor&& functor) const
+    {
+        for (render_id pipeline_id = 1; pipeline_id < m_scene->m_material_resolve_pipelines.size();
+             ++pipeline_id)
+        {
+            const auto& [pipeline, instance_count] =
+                m_scene->m_material_resolve_pipelines[pipeline_id];
+            if (instance_count > 0)
+            {
+                functor(pipeline_id, pipeline);
+            }
+        }
+    }
+
+    template <typename Functor>
+    void each_shading_model(Functor&& functor) const
+    {
+        for (render_id shading_model_id = 1; shading_model_id < m_scene->m_shading_models.size();
+             ++shading_model_id)
+        {
+            const auto& [shading_model, instance_count] =
+                m_scene->m_shading_models[shading_model_id];
+            if (instance_count > 0)
+            {
+                functor(shading_model_id, shading_model);
+            }
+        }
+    }
+
+private:
+    rhi_texture* m_render_target;
+    rhi_viewport m_viewport;
+    std::vector<rhi_scissor_rect> m_scissor_rects;
+
+    rhi_texture* m_environment_map;
+    rhi_buffer* m_irradiance_sh;
+    rhi_texture* m_prefilter_map;
+
+    const render_scene* m_scene;
+    const camera_component* m_camera;
+    const camera_component_meta* m_camera_meta;
+
+    vec2f m_sun_transmittance_lut_uv;
 };
 } // namespace violet

@@ -11,6 +11,7 @@ struct constant_data
     uint skybox_texture;
     uint sky_view_lut;
     uint transmittance_lut;
+    float2 transmittance_lut_uv;
 };
 PushConstant(constant_data, constant);
 
@@ -60,12 +61,12 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
     result.texcoord = normalize(vertices[indexes[vertex_id]]);
 
 #ifdef DYNAMIC_SKY
-    float r = max(camera.position.y + constant.planet_radius, constant.planet_radius + 1.0);
-    float mu = -constant.sun_direction.y;
-    float2 transmittance_uv;
-    get_transmittance_lut_uv(constant.planet_radius, constant.atmosphere_radius, r, mu, transmittance_uv);
+    // float r = max(camera.position.y + constant.planet_radius, constant.planet_radius + 1.0);
+    // float mu = -constant.sun_direction.y;
+    // float2 transmittance_uv;
+    // get_transmittance_lut_uv(constant.planet_radius, constant.atmosphere_radius, r, mu, transmittance_uv);
     Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
-    result.transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), transmittance_uv, 0.0);
+    result.transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), constant.transmittance_lut_uv, 0.0);
 #endif
 
     return result;
