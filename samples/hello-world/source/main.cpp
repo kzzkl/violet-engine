@@ -193,6 +193,15 @@ private:
                     1.0f,
                     100.0f);
             }
+
+            const auto& camera_transform =
+                world.get_component<const transform_component>(get_camera());
+            vec3f camera_position = camera_transform.get_position();
+            ImGui::Text(
+                "x: %f, y: %f, z: %f",
+                camera_position.x,
+                camera_position.y,
+                camera_position.z);
         }
 
         if (ImGui::CollapsingHeader("Sky"))

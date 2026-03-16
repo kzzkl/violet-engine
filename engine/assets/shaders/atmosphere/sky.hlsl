@@ -96,6 +96,6 @@ float4 fs_main(vs_output input) : SV_TARGET
     return float4(sky + sun * constant.sun_irradiance, 1.0);
 #else
     TextureCube<float4> sky_texture = ResourceDescriptorHeap[constant.skybox_texture];
-    return sky_texture.Sample(get_linear_clamp_sampler(), view);
+    return sky_texture.SampleLevel(get_linear_clamp_sampler(), view, 0.0);
 #endif
 }
