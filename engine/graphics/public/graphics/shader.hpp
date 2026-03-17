@@ -314,9 +314,10 @@ struct shading_model_cs : public shader_cs
         std::uint32_t prefilter_map;
         std::uint32_t irradiance_sh;
         std::uint32_t sun_id;
+        float planet_radius;
+        float atmosphere_radius;
         std::uint32_t transmittance_lut;
         std::uint32_t padding0;
-        vec2f transmittance_lut_uv;
         std::uint32_t padding1;
         std::uint32_t padding2;
     };

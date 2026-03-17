@@ -4,6 +4,7 @@
 #include "common.hlsli"
 #include "gbuffer.hlsli"
 #include "virtual_shadow_map/vsm_common.hlsli"
+#include "atmosphere/atmosphere.hlsli"
 
 struct constant_common
 {
@@ -19,9 +20,10 @@ struct constant_common
     uint prefilter_map;
     uint irradiance_sh;
     uint sun_id;
+    float planet_radius;
+    float atmosphere_radius;
     uint transmittance_lut;
     uint padding0;
-    float2 transmittance_lut_uv;
     uint padding1;
     uint padding2;
 };
@@ -29,6 +31,20 @@ struct constant_common
 static const uint LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED = 0;
 static const uint LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED = 1;
 static const uint LIGHTING_STAGE_INDIRECT_LIGHTING = 2;
+
+float3 get_sun_transmittance(constant_common constant, float3 position, float3 sun_direction)
+{
+    float r = max(position.y + constant.planet_radius, constant.planet_radius + 1.0);
+    float mu = -sun_direction.y;
+
+    float2 uv;
+    get_transmittance_lut_uv(constant.planet_radius, constant.atmosphere_radius, r, mu, uv);
+
+    Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
+    float3 transmittance = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
+    return transmittance;
+}
 
 template <typename ShadingModel>
 void evaluate_lighting(constant_common constant, scene_data scene, camera_data camera, uint3 gtid, uint3 gid)
@@ -65,12 +81,9 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         Texture2D<float> shadow_mask = ResourceDescriptorHeap[constant.shadow_mask];
 
         light_data light = lights[constant.light_id];
-
         if (constant.light_id == constant.sun_id)
         {
-            Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
-            float3 transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), constant.transmittance_lut_uv, 0.0);
-            light.color *= transmittance;
+            light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
         }
 
         lighting = shading_model.evaluate_direct_lighting(light, shadow_mask[coord]);
@@ -81,15 +94,9 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         for (int i = 0; i < scene.non_shadow_casting_light_count; ++i)
         {
             light_data light = lights[i];
-
-            if (constant.sun_id != 0xFFFFFFFF)
+            if (i == constant.sun_id)
             {
-                if (i == constant.sun_id)
-                {
-                    Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
-                    float3 transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), constant.transmittance_lut_uv, 0.0);
-                    light.color *= transmittance;
-                }
+                light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
             }
 
             lighting += shading_model.evaluate_direct_lighting(light, 1.0);

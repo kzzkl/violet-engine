@@ -159,10 +159,80 @@ float2 get_sky_view_lut_uv(float3 direction)
     return uv;
 }
 
+bool move_to_atmosphere(inout float3 eye, float3 view, float atmosphere_radius)
+{
+    float height = length(eye);
+    if (height < atmosphere_radius)
+    {
+        return true;
+    }
+
+    float atmosphere_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere_radius);
+    if (atmosphere_distance < 0.0)
+    {
+        return false;
+    }
+
+    eye = eye + view * atmosphere_distance - eye / height;
+    return true;
+}
+
 float3 sun_disk(float3 view_dir, float3 sun_dir, float3 transmittance, float sun_angular_radius)
 {
     float cos_theta = dot(view_dir, -sun_dir);
     float cos_radius = cos(sun_angular_radius);
 
     return smoothstep(cos_radius, cos_radius + 0.01, cos_theta) * 1e9 * transmittance;
+}
+
+float4 integrate_atmosphere(
+    atmosphere_data atmosphere,
+    float3 eye,
+    float3 view,
+    float3 sun_direction,
+    float distance,
+    float sample_count,
+    Texture2D<float3> transmittance_lut)
+{
+    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
+
+    float dt = distance / sample_count;
+
+    float cos_theta = dot(-view, sun_direction);
+    float3 rayleigh_phase = atmosphere.get_rayleigh_phase(cos_theta);
+    float mie_phase = atmosphere.get_mie_phase(cos_theta);
+
+    float3 p = eye + view * dt * 0.5;
+    float3 in_scatter = 0.0;
+    float3 optical_depth = 0.0;
+    float3 throughput = 1.0;
+    for (int i = 0; i < sample_count; ++i)
+    {
+        float r = length(p);
+        float mu = dot(p / r, -sun_direction);
+
+        float h = r - atmosphere.planet_radius;
+
+        float3 rayleigh_scattering = atmosphere.get_rayleigh_scattering(h);
+        float mie_scattering = atmosphere.get_mie_scattering(h);
+
+        float3 extinction = 0.0;
+        extinction += rayleigh_scattering;
+        extinction += mie_scattering + atmosphere.get_mie_absorption(h);
+        extinction += atmosphere.get_ozone_absorption(h);
+        optical_depth += extinction * dt;
+        
+        float2 uv;
+        get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
+
+        float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
+        float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;
+        float3 t1 = exp(-optical_depth);
+        in_scatter += t0 * s * t1 * dt;
+        throughput *= t1;
+
+        p += view * dt;
+    }
+
+    return float4(in_scatter, dot(throughput, 1.0 / 3.0));
 }

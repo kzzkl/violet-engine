@@ -355,11 +355,6 @@ public:
         return m_scene->m_transmittance_lut;
     }
 
-    vec2f get_sun_transmittance_lut_uv() const noexcept
-    {
-        return m_sun_transmittance_lut_uv;
-    }
-
     std::uint32_t get_sun_id(bool& cast_shadow) const noexcept;
 
     vec3f get_sun_direction() const noexcept
@@ -430,7 +425,5 @@ private:
     const render_scene* m_scene;
     const camera_component* m_camera;
     const camera_component_meta* m_camera_meta;
-
-    vec2f m_sun_transmittance_lut_uv;
 };
 } // namespace violet

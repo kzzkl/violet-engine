@@ -933,9 +933,6 @@ render_context::render_context(
         m_environment_map = camera_data.environment_map.get();
         m_irradiance_sh = camera_data.irradiance_sh.get();
         m_prefilter_map = camera_data.prefilter_map.get();
-
-        m_sun_transmittance_lut_uv =
-            get_atmosphere().get_transmittance_lut_uv(get_camera_position(), get_sun_direction());
     }
 }
 

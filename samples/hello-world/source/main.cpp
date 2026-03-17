@@ -119,14 +119,14 @@ private:
             }
 
             static float translate = 0.0f;
-            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
+            if (ImGui::SliderFloat("Translate", &translate, -50000.0f, 5.0))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_position({0.0f, 0.0f, translate});
+                transform.set_position({0.0f, translate, 0.0f});
             }
 
             static float scale = 1.0f;
-            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 50.0f))
+            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 5000.0f))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
                 transform.set_scale({scale, scale, scale});
@@ -159,7 +159,7 @@ private:
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
             auto& controller = world.get_component<first_person_control_component>(get_camera());
-            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 50.0f);
+            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 5000.0f);
 
             const char* camera_types[] = {"Perspective", "Orthographic"};
             static int camera_type = static_cast<int>(main_camera.type);

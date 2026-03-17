@@ -1,8 +1,6 @@
 #pragma once
 
 #include "math/types.hpp"
-#include <algorithm>
-#include <cmath>
 
 namespace violet
 {
@@ -24,34 +22,6 @@ struct atmosphere
     float atmosphere_height;
 
     float sun_angular_radius;
-
-    vec2f get_transmittance_lut_uv(const vec3f& eye, const vec3f& sun_direction) const
-    {
-        float r = std::max(eye.y + planet_radius, planet_radius + 1.0f);
-        float mu = -sun_direction.y;
-
-        return get_transmittance_lut_uv(r, mu);
-    }
-
-    vec2f get_transmittance_lut_uv(float r, float mu) const
-    {
-        float atmosphere_radius = planet_radius + atmosphere_height;
-
-        float h =
-            std::sqrt((atmosphere_radius * atmosphere_radius) - (planet_radius * planet_radius));
-        float rho = std::sqrt((r * r) - (planet_radius * planet_radius));
-
-        float discriminant = (r * r * (mu * mu - 1.0f)) + (atmosphere_radius * atmosphere_radius);
-        float d = std::max(0.0f, ((-r * mu) + std::sqrt(discriminant)));
-
-        float d_min = atmosphere_radius - r;
-        float d_max = rho + h;
-
-        float x_mu = (d - d_min) / (d_max - d_min);
-        float x_r = rho / h;
-
-        return {x_mu, x_r};
-    }
 };
 
 struct atmosphere_data

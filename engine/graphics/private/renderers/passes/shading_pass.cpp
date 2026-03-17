@@ -270,8 +270,9 @@ void shading_pass::add_tile_shading_pass(
         std::uint32_t light_id;
         std::uint32_t sun_id;
         bool sun_cast_shadow;
+        float planet_radius;
+        float atmosphere_radius;
         rhi_texture_srv* transmittance_lut;
-        vec2f transmittance_lut_uv;
 
         rdg_texture_srv prefilter_map;
         rdg_buffer_srv irradiance_sh;
@@ -340,10 +341,14 @@ void shading_pass::add_tile_shading_pass(
 
                     if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
                     {
+                        const auto& atmosphere = context.get_atmosphere();
+
                         data.sun_id = m_sun_id;
                         data.sun_cast_shadow = m_sun_cast_shadow;
+                        data.planet_radius = atmosphere.planet_radius;
+                        data.atmosphere_radius =
+                            atmosphere.planet_radius + atmosphere.atmosphere_height;
                         data.transmittance_lut = context.get_transmittance_lut()->get_srv();
-                        data.transmittance_lut_uv = context.get_sun_transmittance_lut_uv();
                     }
                     else
                     {
@@ -364,10 +369,11 @@ void shading_pass::add_tile_shading_pass(
                         .worklist_buffer = data.worklist_buffer.get_bindless(),
                         .worklist_offset = shading_model_id * tile_count,
                         .stage = static_cast<std::uint32_t>(data.stage),
+                        .planet_radius = data.planet_radius,
+                        .atmosphere_radius = data.atmosphere_radius,
                         .transmittance_lut = data.transmittance_lut == nullptr ?
                                                  0 :
                                                  data.transmittance_lut->get_bindless(),
-                        .transmittance_lut_uv = data.transmittance_lut_uv,
                     };
 
                     if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)

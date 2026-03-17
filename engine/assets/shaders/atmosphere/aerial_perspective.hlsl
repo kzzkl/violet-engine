@@ -39,8 +39,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     Texture3D<float4> aerial_perspective_lut = ResourceDescriptorHeap[constant.aerial_perspective_lut];
 
+    uint lut_width;
+    uint lut_height;
+    uint lut_depth;
+    aerial_perspective_lut.GetDimensions(width, height, lut_depth);
+
     float slice = distance / constant.distance_per_slice;
-    float w = sqrt(slice / 32.0);
+    float w = sqrt(slice / lut_depth);
 
     float4 aerial_perspective = aerial_perspective_lut.SampleLevel(get_linear_clamp_sampler(), float3(uv, w), 0.0);
     float3 in_scatter = aerial_perspective.xyz;

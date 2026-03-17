@@ -111,7 +111,7 @@ bool sample_system::initialize(const dictionary& config)
             });
 
     initialize_render();
-    initialize_scene(config["skybox"]);
+    initialize_scene(config.contains("skybox") ? config["skybox"] : "");
 
     m_swapchain->resize();
 
@@ -427,11 +427,16 @@ void sample_system::initialize_scene(std::string_view skybox_path)
     m_sky = world.create();
     world.add_component<transform_component, light_component, scene_component>(m_sky);
 
-    // world.add_component<skybox_component>(m_sky);
-    // auto& skybox = world.get_component<skybox_component>(m_sky);
-    // skybox.environment_map_path = skybox_path;
-
-    world.add_component<atmosphere_component>(m_sky);
+    if (!skybox_path.empty())
+    {
+        world.add_component<skybox_component>(m_sky);
+        auto& skybox = world.get_component<skybox_component>(m_sky);
+        skybox.environment_map_path = skybox_path;
+    }
+    else
+    {
+        world.add_component<atmosphere_component>(m_sky);
+    }
 
     auto& light_transform = world.get_component<transform_component>(m_sky);
     light_transform.set_rotation(
@@ -455,6 +460,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
     auto& main_camera = world.get_component<camera_component>(m_camera);
     main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
     main_camera.render_target = m_swapchain.get();
-    main_camera.background = BACKGROUND_TYPE_ATMOSPHERE;
+    main_camera.background =
+        skybox_path.empty() ? BACKGROUND_TYPE_ATMOSPHERE : BACKGROUND_TYPE_SKYBOX;
 }
 } // namespace violet

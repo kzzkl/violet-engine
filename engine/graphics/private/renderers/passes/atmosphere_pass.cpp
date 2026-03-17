@@ -3,6 +3,38 @@
 
 namespace violet
 {
+namespace
+{
+vec2f get_transmittance_lut_uv(float r, float mu, float planet_radius, float atmosphere_radius)
+{
+    float h = std::sqrt((atmosphere_radius * atmosphere_radius) - (planet_radius * planet_radius));
+    float rho = std::sqrt((r * r) - (planet_radius * planet_radius));
+
+    float discriminant = (r * r * (mu * mu - 1.0f)) + (atmosphere_radius * atmosphere_radius);
+    float d = std::max(0.0f, ((-r * mu) + std::sqrt(discriminant)));
+
+    float d_min = atmosphere_radius - r;
+    float d_max = rho + h;
+
+    float x_mu = (d - d_min) / (d_max - d_min);
+    float x_r = rho / h;
+
+    return {x_mu, x_r};
+}
+
+vec2f get_transmittance_lut_uv(
+    const vec3f& eye,
+    const vec3f& sun_direction,
+    float planet_radius,
+    float atmosphere_radius)
+{
+    float r = std::max(eye.y + planet_radius, planet_radius + 1.0f);
+    float mu = -sun_direction.y;
+
+    return get_transmittance_lut_uv(r, mu, planet_radius, atmosphere_radius);
+}
+} // namespace
+
 static constexpr float AERIAL_PERSPECTIVE_SLICE_DISTANCE = 2000.0f;
 
 struct sky_view_lut_cs : public shader_cs
@@ -226,15 +258,14 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
 
     const auto& context = graph.get_context();
 
-    mat4f matrix_vp_inv = matrix::inverse(context.get_camera_matrix_vp_no_jitter());
+    mat4f matrix_p = context.get_camera_matrix_p();
+    mat4f matrix_v_inv = matrix::inverse(context.get_camera_matrix_v());
 
     auto get_corner_direction = [&](const vec2f& ndc)
     {
-        vec4f corner0 = matrix::mul(vec4f(ndc.x, ndc.y, 0.2f, 1.0f), matrix_vp_inv);
-        corner0 /= corner0.w;
-        vec4f corner1 = matrix::mul(vec4f(ndc.x, ndc.y, 0.5f, 1.0f), matrix_vp_inv);
-        corner1 /= corner1.w;
-        return vector::normalize(vec3f(corner0 - corner1));
+        vec4f direction =
+            vector::normalize(vec4f(ndc.x / matrix_p[0][0], ndc.y / matrix_p[1][1], 1.0f, 0.0));
+        return vec3f(matrix::mul(direction, matrix_v_inv));
     };
 
     vec3f frustum_top_left = get_corner_direction({-1.0f, 1.0f});
@@ -374,7 +405,12 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
             data.sun_irradiance = context.get_sun_irradiance();
 
             data.transmittance_lut = context.get_transmittance_lut()->get_srv();
-            data.transmittance_lut_uv = context.get_sun_transmittance_lut_uv();
+            data.transmittance_lut_uv = get_transmittance_lut_uv(
+                context.get_camera_position(),
+                data.sun_direction,
+                data.atmosphere.planet_radius,
+                data.atmosphere.atmosphere_radius);
+            ;
         },
         [](const pass_data& data, rdg_command& command)
         {

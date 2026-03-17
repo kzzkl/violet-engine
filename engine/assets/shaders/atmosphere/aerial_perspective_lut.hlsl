@@ -21,54 +21,6 @@ PushConstant(constant_data, constant);
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-float4 integrate(atmosphere_data atmosphere, float distance, float3 eye, float3 view, Texture2D<float3> transmittance_lut)
-{
-    float cos_theta = dot(-view, constant.sun_direction);
-    float3 rayleigh_phase = atmosphere.get_rayleigh_phase(cos_theta);
-    float mie_phase = atmosphere.get_mie_phase(cos_theta);
-
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-
-    float prev_t = 0.0;
-    float3 in_scatter = 0.0;
-    float3 optical_depth = 0.0;
-    float3 throughput = 1.0;
-    for (int i = 0; i < constant.sample_count; ++i)
-    {
-        float curr_t = distance * (float(i) + 0.3) / constant.sample_count;
-        float dt = curr_t - prev_t;
-        prev_t = curr_t;
-
-        float3 position = eye + view * curr_t;
-
-        float r = length(position);
-        float mu = dot(normalize(position), -constant.sun_direction);
-
-        float h = r - atmosphere.planet_radius;
-
-        float3 rayleigh_scattering = atmosphere.get_rayleigh_scattering(h);
-        float mie_scattering = atmosphere.get_mie_scattering(h);
-
-        float3 extinction = 0.0;
-        extinction += rayleigh_scattering;
-        extinction += mie_scattering + atmosphere.get_mie_absorption(h);
-        extinction += atmosphere.get_ozone_absorption(h);
-        optical_depth += extinction * dt;
-
-        float2 uv;
-        get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
-
-        float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
-        float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;
-        float3 t1 = exp(-optical_depth);
-
-        in_scatter += t0 * s * t1 * dt;
-        throughput *= t1;
-    }
-
-    return float4(in_scatter * constant.sun_irradiance, dot(throughput, 1.0 / 3.0));
-}
-
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
@@ -89,24 +41,27 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float3 eye = float3(0.0, max(camera.position.y + atmosphere.planet_radius, atmosphere.planet_radius + 1.0), 0.0);
+    float3 eye = camera.position + float3(0.0, atmosphere.planet_radius, 0.0);
+    eye.y = max(eye.y, atmosphere.planet_radius + 1.0);
 
     float2 uv = get_compute_texcoord(dtid.xy, width, height);
     float3 view = normalize(lerp(
         lerp(constant.frustum_top_left, constant.frustum_top_right, uv.x),
         lerp(constant.frustum_bottom_left, constant.frustum_bottom_right, uv.x), uv.y));
 
-    float plant_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.planet_radius);
-    float atmosphere_distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
-
-    float max_distance = 0.0;
-    if (plant_distance < 0.0)
+    if (!move_to_atmosphere(eye, view, atmosphere.atmosphere_radius))
     {
-        max_distance = atmosphere_distance < 0.0 ? 0.0 : atmosphere_distance;
+        for (uint slice_id = 0; slice_id < depth; ++slice_id)
+        {
+            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = 0.0;
+        }
+        return;
     }
-    else
+
+    float distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.planet_radius);
+    if (distance < 0.0)
     {
-        max_distance = min(plant_distance, atmosphere_distance);
+        distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
     }
 
     for (uint slice_id = 0; slice_id < depth; ++slice_id)
@@ -115,14 +70,16 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         slice *= slice;
         slice *= depth;
 
-        float slice_end = min(max_distance, slice * constant.distance_per_slice);
+        float slice_end = min(distance, slice * constant.distance_per_slice);
         if (slice_end <= 0.0)
         {
             aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = 0.0;
         }
         else
         {
-            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = integrate(atmosphere, slice_end, eye, view, transmittance_lut);
+            float4 result = integrate_atmosphere(atmosphere, eye, view, constant.sun_direction, slice_end, constant.sample_count, transmittance_lut);
+            result.xyz *= constant.sun_irradiance;
+            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = result;
         }
     }
 }
