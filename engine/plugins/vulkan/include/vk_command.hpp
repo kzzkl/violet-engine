@@ -24,7 +24,7 @@ public:
         rhi_render_pass* render_pass,
         const rhi_attachment* attachments,
         std::uint32_t attachment_count,
-        const rhi_texture_extent& render_area) override;
+        const rhi_extent& render_area) override;
     void end_render_pass() override;
 
     void set_pipeline(rhi_raster_pipeline* raster_pipeline) override;

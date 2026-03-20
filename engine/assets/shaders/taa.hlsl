@@ -7,7 +7,6 @@ struct constant_data
     uint history_render_target;
     uint depth_buffer;
     uint motion_vector;
-    uint resolved_render_target;
 };
 PushConstant(constant_data, constant);
 
@@ -107,8 +106,7 @@ float3 clip_color(float3 history_color, uint2 st)
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    Texture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
-    RWTexture2D<float4> resolved = ResourceDescriptorHeap[constant.resolved_render_target];
+    RWTexture2D<float4> current = ResourceDescriptorHeap[constant.current_render_target];
 
     uint width;
     uint height;
@@ -128,7 +126,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float2 history_texcoord = texcoord;
 #endif
 
-    if (constant.history_render_target != 0 && !any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
+    if (!any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
     {
         float3 current_color = current[dtid.xy].rgb;
 
@@ -136,10 +134,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         float3 history_color = history.SampleLevel(get_linear_clamp_sampler(), history_texcoord, 0.0).rgb;
         history_color = clip_color(history_color, dtid.xy);
 
-        resolved[dtid.xy] = float4(lerp(current_color, history_color, 0.9), 1.0);
-    }
-    else
-    {
-        resolved[dtid.xy] = current[dtid.xy];
+        current[dtid.xy] = float4(lerp(current_color, history_color, 0.9), 1.0);
     }
 }

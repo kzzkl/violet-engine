@@ -155,4 +155,22 @@ uint get_lru_offset(uint lru_index)
     return lru_index * PHYSICAL_PAGE_TABLE_PAGE_COUNT;
 }
 
+bool sample_shadow_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table, out float depth)
+{
+    float2 virtual_page_coord_f = uv * VIRTUAL_PAGE_TABLE_SIZE;
+    uint2 virtual_page_coord = floor(virtual_page_coord_f);
+    float2 virtual_page_local_uv = frac(virtual_page_coord_f);
+
+    uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
+
+    vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
+
+    bool valid = virtual_page.flags & (VIRTUAL_PAGE_FLAG_CACHE_VALID | VIRTUAL_PAGE_FLAG_REQUEST);
+
+    uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
+    depth = asfloat(physical_shadow_map[physical_texel]);
+
+    return valid;
+}
+
 #endif

@@ -1,5 +1,6 @@
 #include "sample/sample_system.hpp"
 #include "common/log.hpp"
+#include "components/atmosphere_component.hpp"
 #include "components/camera_component.hpp"
 #include "components/first_person_control_component.hpp"
 #include "components/hierarchy_component.hpp"
@@ -13,6 +14,7 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/render_graph/rdg_profiling.hpp"
 #include "graphics/tools/geometry_tool.hpp"
+#include "math/quaternion.hpp"
 #include "sample/assimp_loader.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 #include "sample/gltf_loader.hpp"
@@ -28,7 +30,8 @@ namespace
 void imgui_profiling_event(
     const std::vector<rdg_profiling::node>& nodes,
     std::uint32_t index,
-    float frame_time)
+    float frame_time,
+    std::string_view path)
 {
     const auto& node = nodes[index];
 
@@ -43,7 +46,7 @@ void imgui_profiling_event(
         flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    std::string name = std::format("{}##{}", node.name, index);
+    std::string name = std::format("{}##{}", node.name, path);
     bool open = ImGui::TreeNodeEx(name.c_str(), flags);
 
     ImGui::TableNextColumn();
@@ -58,7 +61,7 @@ void imgui_profiling_event(
     {
         for (std::uint32_t c : node.children)
         {
-            imgui_profiling_event(nodes, c, frame_time);
+            imgui_profiling_event(nodes, c, frame_time, std::format("{}:{}", path, node.name));
         }
 
         ImGui::TreePop();
@@ -109,7 +112,7 @@ bool sample_system::initialize(const dictionary& config)
             });
 
     initialize_render();
-    initialize_scene(config["skybox"]);
+    initialize_scene(config.contains("skybox") ? config["skybox"] : "");
 
     m_swapchain->resize();
 
@@ -396,7 +399,7 @@ void sample_system::imgui_profiling(rdg_profiling* profiling)
             ImGui::TableHeadersRow();
 
             const auto& nodes = profiling->get_nodes();
-            imgui_profiling_event(nodes, 0, nodes[0].time_ms);
+            imgui_profiling_event(nodes, 0, nodes[0].time_ms, "");
 
             ImGui::EndTable();
         }
@@ -422,21 +425,25 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 {
     auto& world = get_world();
 
-    m_skybox = std::make_unique<skybox>(skybox_path);
+    m_sky = world.create();
+    world.add_component<transform_component, light_component, scene_component>(m_sky);
 
-    entity scene_skybox = world.create();
-    world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
-    auto& skybox = world.get_component<skybox_component>(scene_skybox);
-    skybox.skybox = m_skybox.get();
+    if (!skybox_path.empty())
+    {
+        world.add_component<skybox_component>(m_sky);
+        auto& skybox = world.get_component<skybox_component>(m_sky);
+        skybox.environment_map_path = skybox_path;
+    }
+    else
+    {
+        world.add_component<atmosphere_component>(m_sky);
+    }
 
-    m_light = world.create();
-    world.add_component<transform_component, light_component, scene_component>(m_light);
+    auto& light_transform = world.get_component<transform_component>(m_sky);
+    light_transform.set_rotation(
+        quaternion::from_euler(vec3f{math::to_radians(145.0f), math::to_radians(45.0f), 0.0f}));
 
-    auto& light_transform = world.get_component<transform_component>(m_light);
-    light_transform.set_position({10.0f, 10.0f, 10.0f});
-    light_transform.lookat({0.0f, 0.0f, 0.0f});
-
-    auto& main_light = world.get_component<light_component>(m_light);
+    auto& main_light = world.get_component<light_component>(m_sky);
     main_light.type = LIGHT_DIRECTIONAL;
     main_light.color = {.x = 10.0f, .y = 10.0f, .z = 10.0f};
     main_light.cast_shadow = true;
@@ -454,5 +461,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
     auto& main_camera = world.get_component<camera_component>(m_camera);
     main_camera.renderer = std::make_unique<deferred_renderer_imgui>();
     main_camera.render_target = m_swapchain.get();
+    main_camera.background =
+        skybox_path.empty() ? BACKGROUND_TYPE_ATMOSPHERE : BACKGROUND_TYPE_SKYBOX;
 }
 } // namespace violet

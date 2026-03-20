@@ -43,7 +43,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
 rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, texture_options options)
 {
     auto level_count = static_cast<std::uint32_t>(data.mipmaps.size());
-    rhi_texture_extent extent = data.mipmaps[0].extent;
+    rhi_extent extent = data.mipmaps[0].extent;
 
     bool need_generate_mipmaps =
         data.mipmaps.size() == 1 && (options & TEXTURE_OPTION_GENERATE_MIPMAPS);
@@ -111,7 +111,7 @@ rhi_ptr<rhi_texture> texture_loader::load(
 
     auto layer_count = static_cast<std::uint32_t>(paths.size());
     auto level_count = static_cast<std::uint32_t>(data->mipmaps.size());
-    rhi_texture_extent extent = data->mipmaps[0].extent;
+    rhi_extent extent = data->mipmaps[0].extent;
 
     bool need_generate_mipmaps =
         data->mipmaps.size() == 1 && (options & TEXTURE_OPTION_GENERATE_MIPMAPS);
@@ -533,7 +533,7 @@ void texture_loader::generate_mipmaps(
     std::uint32_t level_count,
     std::uint32_t layer)
 {
-    rhi_texture_extent extent = texture->get_extent();
+    rhi_extent extent = texture->get_extent();
 
     std::array<rhi_texture_barrier, 2> texture_barriers;
     texture_barriers[0] = {

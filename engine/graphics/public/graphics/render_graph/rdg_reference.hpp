@@ -179,9 +179,9 @@ public:
         return get_data().texture.layer_count;
     }
 
-    rhi_texture_extent get_extent() const noexcept
+    rhi_extent get_extent() const noexcept
     {
-        rhi_texture_extent extent = get_texture()->get_extent();
+        rhi_extent extent = get_texture()->get_extent();
         extent.width = std::max(extent.width >> get_level(), 1u);
         extent.height = std::max(extent.height >> get_level(), 1u);
         return extent;

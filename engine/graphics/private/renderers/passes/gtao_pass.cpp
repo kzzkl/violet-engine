@@ -81,7 +81,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
-            rhi_texture_extent extent = data.ao_buffer.get_extent();
+            rhi_extent extent = data.ao_buffer.get_extent();
             command.dispatch_2d(extent.width, extent.height);
         });
 }

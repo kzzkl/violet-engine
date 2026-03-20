@@ -5,27 +5,17 @@
 
 namespace violet
 {
-rdg_command::rdg_command(
-    rhi_command* command,
-    rdg_allocator* allocator,
-    const render_scene* scene,
-    const render_camera* camera)
+rdg_command::rdg_command(rhi_command* command, const render_context* context)
     : m_command(command),
-      m_allocator(allocator),
-      m_scene(scene),
-      m_camera(camera)
+      m_context(context)
 {
     m_built_in_parameters[RDG_PARAMETER_BINDLESS] =
         render_device::instance().get_bindless_parameter();
 
-    if (scene != nullptr)
+    if (m_context != nullptr)
     {
-        m_built_in_parameters[RDG_PARAMETER_SCENE] = scene->get_scene_parameter();
-    }
-
-    if (camera != nullptr)
-    {
-        m_built_in_parameters[RDG_PARAMETER_CAMERA] = camera->get_camera_parameter();
+        m_built_in_parameters[RDG_PARAMETER_SCENE] = m_context->get_scene_parameter();
+        m_built_in_parameters[RDG_PARAMETER_CAMERA] = m_context->get_camera_parameter();
     }
 }
 
@@ -57,12 +47,12 @@ void rdg_command::set_pipeline(const rdg_compute_pipeline& pipeline)
 
 void rdg_command::set_viewport()
 {
-    set_viewport(m_camera->get_viewport());
+    set_viewport(m_context->get_viewport());
 }
 
 void rdg_command::set_scissor()
 {
-    set_scissor(m_camera->get_scissor_rects());
+    set_scissor(m_context->get_scissor_rects());
 }
 
 void rdg_command::set_index_buffer()

@@ -161,9 +161,9 @@ float mesh_simplifier::evaluate_edge(std::uint32_t edge_index)
             adjacent_triangles,
             [&](std::uint32_t triangle)
             {
-                float edge_length = vector::length(p1 - p0);
-                if (vector::length(position - p0) > edge_length ||
-                    vector::length(position - p1) > edge_length)
+                float max_midpoint_deviation = vector::length(p1 - p0);
+                float midpoint_deviation = vector::length(position - (p0 + p1) * 0.5f);
+                if (midpoint_deviation > max_midpoint_deviation)
                 {
                     return false;
                 }

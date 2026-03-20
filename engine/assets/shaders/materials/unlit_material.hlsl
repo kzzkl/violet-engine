@@ -11,7 +11,7 @@ struct unlit_material
         gbuffer.roughness = 0.0;
         gbuffer.metallic = 0.0;
         gbuffer.emissive = 0.0;
-        gbuffer.normal = 0.0;
+        gbuffer.normal = vertex.normal;
         return gbuffer;
     }
 };

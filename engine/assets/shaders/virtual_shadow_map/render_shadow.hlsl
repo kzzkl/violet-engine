@@ -7,6 +7,7 @@ struct constant_data
     uint vsm_virtual_page_table;
     uint vsm_physical_shadow_map;
     uint draw_info_buffer;
+    float slope_scale_depth_bias;
 };
 PushConstant(constant_data, constant);
 
@@ -68,6 +69,9 @@ void fs_main(vs_output input)
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     uint virtual_page_index = get_virtual_page_index(input.vsm_id, virtual_page_coord);
     vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
+
+    float slope_scale_depth_bias = max(abs(ddx(position_ndc.z)), abs(ddy(position_ndc.z))) * constant.slope_scale_depth_bias;
+    position_ndc.z -= slope_scale_depth_bias;
 
     if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
     {

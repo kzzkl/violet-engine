@@ -1,5 +1,6 @@
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_device.hpp"
+#include "graphics/render_graph/rdg_allocator.hpp"
 #include <cassert>
 
 namespace violet

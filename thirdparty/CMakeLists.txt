@@ -9,13 +9,13 @@ add_subdirectory(assimp)
 #dxc
 add_library(dxcompiler STATIC IMPORTED GLOBAL)
 target_include_directories(dxcompiler INTERFACE ${VIOLET_THIRDPARTY_DIR}/dxc/inc)
-set_target_properties(dxcompiler PROPERTIES IMPORTED_LOCATION ${VIOLET_THIRDPARTY_DIR}/dxc/lib/dxcompiler.lib)
-set_target_properties(dxcompiler PROPERTIES IMPORTED_IMPLIB  ${VIOLET_THIRDPARTY_DIR}/dxc/lib/dxcompiler.lib)
+set_target_properties(dxcompiler PROPERTIES IMPORTED_LOCATION ${VIOLET_THIRDPARTY_DIR}/dxc/lib/x64/dxcompiler.lib)
+set_target_properties(dxcompiler PROPERTIES IMPORTED_IMPLIB  ${VIOLET_THIRDPARTY_DIR}/dxc/lib/x64/dxcompiler.lib)
 
 install(
     FILES
-    ${VIOLET_THIRDPARTY_DIR}/dxc/bin/dxcompiler.dll
-    ${VIOLET_THIRDPARTY_DIR}/dxc/bin/dxil.dll
+    ${VIOLET_THIRDPARTY_DIR}/dxc/bin/x64/dxcompiler.dll
+    ${VIOLET_THIRDPARTY_DIR}/dxc/bin/x64/dxil.dll
     DESTINATION bin)
 
 # Catch2

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "graphics/skybox.hpp"
+#include <string>
 
 namespace violet
 {
 struct skybox_component
 {
-    skybox* skybox;
+    std::string environment_map_path;
 };
 } // namespace violet

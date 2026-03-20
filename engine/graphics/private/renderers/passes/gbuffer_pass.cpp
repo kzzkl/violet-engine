@@ -172,7 +172,7 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
 
     add_material_classify_pass(graph);
 
-    graph.get_scene().each_material_resolve_pipeline(
+    graph.get_context().each_material_resolve_pipeline(
         [&](std::uint32_t pipeline_id, const rdg_compute_pipeline& pipeline)
         {
             add_material_resolve_pass(graph, parameter, pipeline_id, pipeline);

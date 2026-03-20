@@ -24,7 +24,7 @@ void vk_command::begin_render_pass(
     rhi_render_pass* render_pass,
     const rhi_attachment* attachments,
     std::uint32_t attachment_count,
-    const rhi_texture_extent& render_area)
+    const rhi_extent& render_area)
 {
     assert(m_current_render_pass == nullptr);
 
@@ -355,7 +355,7 @@ void vk_command::copy_texture(
     image_copy.extent = {
         .width = src_region.extent.width,
         .height = src_region.extent.height,
-        .depth = 1,
+        .depth = src_region.extent.depth,
     };
 
     image_copy.srcOffset = {

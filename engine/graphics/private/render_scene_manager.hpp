@@ -9,6 +9,14 @@ class render_scene_manager
 public:
     render_scene_manager(vsm_manager* vsm_manager);
 
+    void clear_states()
+    {
+        for (auto& scene : m_scenes)
+        {
+            scene->clear_states();
+        }
+    }
+
     void update(gpu_buffer_uploader* uploader);
 
     render_scene* get_scene(std::uint32_t layer);

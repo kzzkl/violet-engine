@@ -91,6 +91,7 @@ struct bloom_merge_cs : public shader_cs
 
     struct constant_data
     {
+        vec2f bloom_texel_size;
         std::uint32_t render_target;
         std::uint32_t bloom;
         float intensity;
@@ -134,7 +135,7 @@ struct bloom_debug_bloom_cs : public shader_cs
 
 void bloom_pass::add(render_graph& graph, const parameter& parameter)
 {
-    rhi_texture_extent extent = parameter.render_target->get_extent();
+    rhi_extent extent = parameter.render_target->get_extent();
     extent.width /= 2;
     extent.height /= 2;
 
@@ -466,15 +467,19 @@ void bloom_pass::merge(render_graph& graph, const parameter& parameter)
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
+            auto bloom_extent = data.bloom.get_extent();
             command.set_constant(
                 bloom_merge_cs::constant_data{
+                    .bloom_texel_size = vec2f(
+                        1.0f / static_cast<float>(bloom_extent.width),
+                        1.0f / static_cast<float>(bloom_extent.height)),
                     .render_target = data.render_target.get_bindless(),
                     .bloom = data.bloom.get_bindless(),
                     .intensity = data.intensity,
                 });
 
-            auto extent = data.render_target.get_extent();
-            command.dispatch_2d(extent.width, extent.height);
+            auto render_target_extent = data.render_target.get_extent();
+            command.dispatch_2d(render_target_extent.width, render_target_extent.height);
         });
 
     if (parameter.debug_mode == DEBUG_MODE_BLOOM)

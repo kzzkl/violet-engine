@@ -35,123 +35,10 @@ void skinning_system::update()
     m_system_version = get_world().get_version();
 }
 
-void skinning_system::morphing(rhi_command* command)
+void skinning_system::record(rhi_command* command)
 {
-    if (m_morphing_queue.empty())
-    {
-        return;
-    }
-
-    auto& device = render_device::instance();
-
-    command->begin_label("Morphing");
-
-    command->set_pipeline(device.get_pipeline({
-        .compute_shader = device.get_shader<morphing_cs>(),
-    }));
-    command->set_parameter(0, device.get_bindless_parameter());
-
-    for (const auto& morphing_data : m_morphing_queue)
-    {
-        morphing_data.morph_target_buffer->update_morph(
-            command,
-            morphing_data.morph_vertex_buffer,
-            std::span(morphing_data.weights, morphing_data.weight_count));
-    }
-
-    command->end_label();
-}
-
-void skinning_system::skinning(rhi_command* command)
-{
-    if (m_skinning_queue.empty())
-    {
-        return;
-    }
-
-    auto& device = render_device::instance();
-    auto* geometry_manager = device.get_geometry_manager();
-
-    command->begin_label("Skinning");
-
-    for (const auto& skinning_data : m_skinning_queue)
-    {
-        geometry* original_geometry = skinning_data.original_geometry;
-        geometry* skinned_geometry = skinning_data.skinned_geometry;
-
-        skinning_cs::constant_data constant = {
-            .position_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
-                GEOMETRY_BUFFER_POSITION),
-            .normal_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
-                GEOMETRY_BUFFER_NORMAL),
-            .tangent_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
-                GEOMETRY_BUFFER_TANGENT),
-            .position_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
-                GEOMETRY_BUFFER_POSITION),
-            .normal_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
-                GEOMETRY_BUFFER_NORMAL),
-            .tangent_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
-                GEOMETRY_BUFFER_TANGENT),
-            .vertex_buffer = geometry_manager->get_vertex_buffer()->get_uav()->get_bindless(),
-            .skeleton = skinning_data.skeleton->get_uav()->get_bindless(),
-        };
-
-        for (std::size_t i = 0; i < skinning_data.additional_buffers.size(); ++i)
-        {
-            if (skinning_data.additional_buffers[i] != nullptr)
-            {
-                constant.additional[i] =
-                    skinning_data.additional_buffers[i]->get_srv()->get_bindless();
-            }
-        }
-
-        command->set_pipeline(device.get_pipeline({
-            .compute_shader = skinning_data.shader,
-        }));
-        command->set_constant(&constant, sizeof(skinning_cs::constant_data));
-        command->set_parameter(0, device.get_bindless_parameter());
-        command->dispatch((skinning_data.vertex_count + 63) / 64, 1, 1);
-
-        rhi_buffer_barrier barrier = {
-            .buffer = geometry_manager->get_vertex_buffer()->get_rhi(),
-            .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
-            .src_access = RHI_ACCESS_SHADER_WRITE,
-            .dst_stages = RHI_PIPELINE_STAGE_VERTEX,
-            .dst_access = RHI_ACCESS_SHADER_READ,
-        };
-
-        std::vector<rhi_buffer_barrier> buffer_barriers;
-        buffer_barriers.reserve(3);
-
-        barrier.offset = constant.position_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_POSITION);
-        buffer_barriers.push_back(barrier);
-
-        barrier.offset = constant.normal_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_NORMAL);
-        buffer_barriers.push_back(barrier);
-
-        barrier.offset = constant.tangent_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_TANGENT);
-        buffer_barriers.push_back(barrier);
-
-        command->set_pipeline_barrier(
-            buffer_barriers.data(),
-            static_cast<std::uint32_t>(buffer_barriers.size()),
-            nullptr,
-            0);
-    }
-
-    command->end_label();
+    morphing(command);
+    skinning(command);
 }
 
 void skinning_system::update_skin()
@@ -292,9 +179,10 @@ void skinning_system::update_skeleton()
                     std::size_t frame_resource_count = device.get_frame_resource_count();
                     for (std::size_t i = 0; i < frame_resource_count; ++i)
                     {
-                        skinned_meta.bone_buffers.emplace_back(std::make_unique<structured_buffer>(
-                            sizeof(mat4f) * skeleton.bones.size(),
-                            RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE));
+                        skinned_meta.bone_buffers.emplace_back(
+                            std::make_unique<structured_buffer>(
+                                sizeof(mat4f) * skeleton.bones.size(),
+                                RHI_BUFFER_STORAGE | RHI_BUFFER_HOST_VISIBLE));
                     }
 
                     skinned_meta.current_index = 0;
@@ -351,5 +239,124 @@ void skinning_system::update_morph()
             };
             m_morphing_queue.push_back(data);
         });
+}
+
+void skinning_system::morphing(rhi_command* command)
+{
+    if (m_morphing_queue.empty())
+    {
+        return;
+    }
+
+    auto& device = render_device::instance();
+
+    command->begin_label("Morphing");
+
+    command->set_pipeline(device.get_pipeline({
+        .compute_shader = device.get_shader<morphing_cs>(),
+    }));
+    command->set_parameter(0, device.get_bindless_parameter());
+
+    for (const auto& morphing_data : m_morphing_queue)
+    {
+        morphing_data.morph_target_buffer->update_morph(
+            command,
+            morphing_data.morph_vertex_buffer,
+            std::span(morphing_data.weights, morphing_data.weight_count));
+    }
+
+    command->end_label();
+}
+
+void skinning_system::skinning(rhi_command* command)
+{
+    if (m_skinning_queue.empty())
+    {
+        return;
+    }
+
+    auto& device = render_device::instance();
+    auto* geometry_manager = device.get_geometry_manager();
+
+    command->begin_label("Skinning");
+
+    for (const auto& skinning_data : m_skinning_queue)
+    {
+        geometry* original_geometry = skinning_data.original_geometry;
+        geometry* skinned_geometry = skinning_data.skinned_geometry;
+
+        skinning_cs::constant_data constant = {
+            .position_input_address = geometry_manager->get_buffer_address(
+                original_geometry->get_id(),
+                GEOMETRY_BUFFER_POSITION),
+            .normal_input_address = geometry_manager->get_buffer_address(
+                original_geometry->get_id(),
+                GEOMETRY_BUFFER_NORMAL),
+            .tangent_input_address = geometry_manager->get_buffer_address(
+                original_geometry->get_id(),
+                GEOMETRY_BUFFER_TANGENT),
+            .position_output_address = geometry_manager->get_buffer_address(
+                skinned_geometry->get_id(),
+                GEOMETRY_BUFFER_POSITION),
+            .normal_output_address = geometry_manager->get_buffer_address(
+                skinned_geometry->get_id(),
+                GEOMETRY_BUFFER_NORMAL),
+            .tangent_output_address = geometry_manager->get_buffer_address(
+                skinned_geometry->get_id(),
+                GEOMETRY_BUFFER_TANGENT),
+            .vertex_buffer = geometry_manager->get_vertex_buffer()->get_uav()->get_bindless(),
+            .skeleton = skinning_data.skeleton->get_uav()->get_bindless(),
+        };
+
+        for (std::size_t i = 0; i < skinning_data.additional_buffers.size(); ++i)
+        {
+            if (skinning_data.additional_buffers[i] != nullptr)
+            {
+                constant.additional[i] =
+                    skinning_data.additional_buffers[i]->get_srv()->get_bindless();
+            }
+        }
+
+        command->set_pipeline(device.get_pipeline({
+            .compute_shader = skinning_data.shader,
+        }));
+        command->set_constant(&constant, sizeof(skinning_cs::constant_data));
+        command->set_parameter(0, device.get_bindless_parameter());
+        command->dispatch((skinning_data.vertex_count + 63) / 64, 1, 1);
+
+        rhi_buffer_barrier barrier = {
+            .buffer = geometry_manager->get_vertex_buffer()->get_rhi(),
+            .src_stages = RHI_PIPELINE_STAGE_COMPUTE,
+            .src_access = RHI_ACCESS_SHADER_WRITE,
+            .dst_stages = RHI_PIPELINE_STAGE_VERTEX,
+            .dst_access = RHI_ACCESS_SHADER_READ,
+        };
+
+        std::vector<rhi_buffer_barrier> buffer_barriers;
+        buffer_barriers.reserve(3);
+
+        barrier.offset = constant.position_output_address;
+        barrier.size =
+            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_POSITION);
+        buffer_barriers.push_back(barrier);
+
+        barrier.offset = constant.normal_output_address;
+        barrier.size =
+            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_NORMAL);
+        buffer_barriers.push_back(barrier);
+
+        barrier.offset = constant.tangent_output_address;
+        barrier.size =
+            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_TANGENT);
+        buffer_barriers.push_back(barrier);
+
+        command->set_pipeline_barrier(
+            buffer_barriers.data(),
+            static_cast<std::uint32_t>(buffer_barriers.size()),
+            nullptr,
+            0);
+    }
+
+    command->end_label();
 }
 } // namespace violet

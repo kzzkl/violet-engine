@@ -52,7 +52,7 @@ public:
                 command.set_constant(constant);
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                rhi_texture_extent extent = data.brdf_lut.get_texture()->get_extent();
+                rhi_extent extent = data.brdf_lut.get_texture()->get_extent();
                 command.dispatch_2d(extent.width, extent.height);
             });
     }

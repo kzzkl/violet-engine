@@ -168,7 +168,7 @@ void camera_system::update(render_scene_manager& scene_manager)
                 {
                     camera_meta.render_target_extent = camera.get_extent();
 
-                    rhi_texture_extent hzb_extent = {
+                    rhi_extent hzb_extent = {
                         .width = previous_pow2(camera_meta.render_target_extent.width),
                         .height = previous_pow2(camera_meta.render_target_extent.height),
                     };
@@ -212,7 +212,9 @@ void camera_system::update(render_scene_manager& scene_manager)
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
 
                 render_scene->set_camera_position(camera_meta.id, data.position);
+                render_scene->set_camera_background(camera_meta.id, camera.background);
 
+                camera_meta.position = data.position;
                 camera_meta.matrix_v = data.matrix_v;
                 camera_meta.matrix_p = data.matrix_p;
                 camera_meta.matrix_vp = data.matrix_vp;

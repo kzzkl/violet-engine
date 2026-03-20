@@ -90,6 +90,11 @@ public:
     void set_profiling(bool enable);
     rdg_profiling* get_profiling();
 
+    std::uint32_t get_frame() const noexcept
+    {
+        return m_frame;
+    }
+
 protected:
     template <typename T>
     T* add_feature()
@@ -114,5 +119,7 @@ protected:
 private:
     std::vector<std::unique_ptr<render_feature_base>> m_features;
     std::unique_ptr<rdg_profiling> m_profiling;
+
+    std::uint32_t m_frame{0};
 };
 } // namespace violet

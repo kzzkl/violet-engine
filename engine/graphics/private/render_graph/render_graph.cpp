@@ -285,12 +285,10 @@ bool is_read_access(rhi_access_flags access) noexcept
 
 render_graph::render_graph(
     std::string_view name,
-    const render_scene* scene,
-    const render_camera* camera,
+    const render_context* context,
     rdg_allocator* allocator) noexcept
     : m_allocator(allocator),
-      m_scene(scene),
-      m_camera(camera)
+      m_context(context)
 {
     if (m_allocator == nullptr)
     {
@@ -340,7 +338,7 @@ rdg_texture* render_graph::add_texture(
 
 rdg_texture* render_graph::add_texture(
     std::string_view name,
-    rhi_texture_extent extent,
+    rhi_extent extent,
     rhi_format format,
     rhi_texture_flags flags,
     std::uint32_t level_count,
@@ -424,7 +422,7 @@ void render_graph::compile()
 
 void render_graph::record(rhi_command* command)
 {
-    rdg_command cmd(command, m_allocator, m_scene, m_camera);
+    rdg_command cmd(command, m_context);
 
     std::size_t batch_index = 0;
     std::size_t group_index = 0;

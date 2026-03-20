@@ -9,6 +9,7 @@ add_library(violet-graphics STATIC
     private/render_graph/rdg_profiling.cpp
     private/render_graph/render_graph.cpp
     private/renderers/features/vsm_feature.cpp
+    private/renderers/passes/atmosphere_pass.cpp
     private/renderers/passes/blit_pass.cpp
     private/renderers/passes/bloom_pass.cpp
     private/renderers/passes/copy_depth_pass.cpp
@@ -18,6 +19,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/gbuffer_pass.cpp
     private/renderers/passes/gtao_pass.cpp
     private/renderers/passes/hzb_pass.cpp
+    private/renderers/passes/ibl_pass.cpp
     private/renderers/passes/mesh_pass.cpp
     private/renderers/passes/motion_vector_pass.cpp
     private/renderers/passes/scan_pass.cpp
@@ -40,7 +42,6 @@ add_library(violet-graphics STATIC
     private/tools/mesh_simplifier/mesh_simplifier.cpp
     private/tools/mesh_simplifier/quadric.cpp
     private/tools/geometry_tool.cpp
-    private/tools/ibl_tool.cpp
     private/tools/texture_loader.cpp
     private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp
@@ -63,7 +64,6 @@ add_library(violet-graphics STATIC
     private/rhi_plugin.cpp
     private/shader_compiler.cpp
     private/skinning_system.cpp
-    private/skybox.cpp
     private/transient_allocator.cpp)
 add_library(violet::graphics ALIAS violet-graphics)
 

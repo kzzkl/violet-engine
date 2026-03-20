@@ -124,7 +124,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
         vec4f{light.camera_position.x, light.camera_position.y, light.camera_position.z, 1.0f},
         matrix_v);
 
-    float cascade_radius = 2.56f;
+    float cascade_radius = VSM_CLIPMAP_CASCADE_0_RADIUS;
 
     auto& light_data = m_directional_lights[vsm_id];
     bool force_invalidate = light.light_direction != light_data.light_direction;
@@ -175,7 +175,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
             cascade_vsm.view_z - view_z_radius);
         cascade_vsm.page_coord = page_coord;
         cascade_vsm.view_z_radius = view_z_radius;
-        cascade_vsm.texel_size = cascade_page_size / static_cast<float>(VSM_PAGE_RESOLUTION);
+        cascade_vsm.texel_size = cascade_radius * 2.0f / static_cast<float>(VSM_VIRTUAL_RESOLUTION);
 
         m_vsms.mark_dirty(vsm_id + cascade);
     }

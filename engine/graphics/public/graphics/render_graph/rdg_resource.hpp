@@ -63,12 +63,12 @@ public:
         return RDG_RESOURCE_TEXTURE;
     }
 
-    void set_extent(const rhi_texture_extent& extent) noexcept
+    void set_extent(const rhi_extent& extent) noexcept
     {
         m_extent = extent;
     }
 
-    rhi_texture_extent get_extent() const noexcept
+    rhi_extent get_extent() const noexcept
     {
         return m_extent;
     }
@@ -158,7 +158,7 @@ public:
 private:
     rhi_texture* m_texture{nullptr};
 
-    rhi_texture_extent m_extent;
+    rhi_extent m_extent;
     rhi_format m_format;
     rhi_texture_flags m_flags;
 

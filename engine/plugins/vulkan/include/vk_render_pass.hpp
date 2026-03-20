@@ -19,7 +19,7 @@ public:
         VkCommandBuffer command_buffer,
         const rhi_attachment* attachments,
         std::size_t attachment_count,
-        const rhi_texture_extent& render_area);
+        const rhi_extent& render_area);
 
     void end(VkCommandBuffer command_buffer);
 

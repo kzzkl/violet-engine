@@ -20,8 +20,7 @@ public:
         return !m_morphing_queue.empty() || !m_skinning_queue.empty();
     }
 
-    void morphing(rhi_command* command);
-    void skinning(rhi_command* command);
+    void record(rhi_command* command);
 
 private:
     struct morphing_data
@@ -49,6 +48,9 @@ private:
     void update_skin();
     void update_skeleton();
     void update_morph();
+
+    void morphing(rhi_command* command);
+    void skinning(rhi_command* command);
 
     std::vector<morphing_data> m_morphing_queue;
     std::vector<skinning_data> m_skinning_queue;

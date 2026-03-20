@@ -28,9 +28,11 @@ public:
         std::uint32_t shadow_sample_count;
         float shadow_sample_radius;
 
-        float shadow_normal_offset;
+        float shadow_normal_bias;
         float shadow_constant_bias;
-        float shadow_receiver_plane_bias;
+
+        rdg_texture* prefilter_map;
+        rdg_buffer* irradiance_sh;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_id{0};
@@ -71,5 +73,8 @@ private:
     std::uint32_t m_shading_model_count{0};
 
     rdg_texture* m_shadow_mask{nullptr};
+
+    std::uint32_t m_sun_id;
+    bool m_sun_cast_shadow{false};
 };
 } // namespace violet

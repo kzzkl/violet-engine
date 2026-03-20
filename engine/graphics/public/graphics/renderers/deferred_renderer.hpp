@@ -48,13 +48,15 @@ private:
     void add_gtao_pass(render_graph& graph);
     void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
+    void add_sky_lut_pass(render_graph& graph);
+    void add_sky_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
     void add_bloom_pass(render_graph& graph);
     void add_tone_mapping_pass(render_graph& graph);
     void add_present_pass(render_graph& graph);
 
-    rhi_texture_extent m_render_extent;
+    rhi_extent m_render_extent;
 
     std::vector<rdg_texture*> m_gbuffers;
     rdg_texture* m_visibility_buffer{nullptr};
@@ -82,7 +84,14 @@ private:
     rdg_texture* m_vsm_hzb{nullptr};
     rdg_buffer* m_vsm_directional_buffer{nullptr};
 
+    rdg_texture* m_sky_view_lut{nullptr};
+    rdg_texture* m_aerial_perspective_lut{nullptr};
+    rdg_texture* m_prefilter_map{nullptr};
+    rdg_buffer* m_irradiance_sh{nullptr};
+
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     rdg_texture* m_debug_output{nullptr};
+
+    bool m_ibl_dirty{false};
 };
 } // namespace violet

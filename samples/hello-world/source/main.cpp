@@ -8,11 +8,13 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/renderers/features/vsm_feature.hpp"
+#include "math/euler.hpp"
 #include "sample/sample_system.hpp"
 #include <imgui.h>
 
@@ -33,7 +35,10 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
+        if (config.contains("model"))
+        {
+            m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
+        }
 
         auto& world = get_world();
 
@@ -64,31 +69,40 @@ public:
         plane_transform.set_position({0.0f, -1.0f, 0.0f});
         plane_transform.set_scale({10.0f, 0.05f, 10.0f});
 
-        for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
-        {
-            m_boxes[i] = world.create();
-            world.add_component<transform_component, mesh_component, scene_component>(m_boxes[i]);
+        // for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
+        // {
+        //     m_boxes[i] = world.create();
+        //     world.add_component<transform_component, mesh_component,
+        //     scene_component>(m_boxes[i]);
 
-            auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
-            box_mesh.geometry = m_box_geometry.get();
-            box_mesh.flags |= MESH_STATIC;
+        //     auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
+        //     box_mesh.geometry = m_box_geometry.get();
+        //     box_mesh.flags |= MESH_STATIC;
 
-            if (i % 2 == 0)
-            {
-                box_mesh.submeshes.push_back({
-                    .material = m_unlit_material.get(),
-                });
-            }
-            else
-            {
-                box_mesh.submeshes.push_back({
-                    .material = m_pbr_material.get(),
-                });
-            }
+        //     if (i % 2 == 0)
+        //     {
+        //         box_mesh.submeshes.push_back({
+        //             .material = m_unlit_material.get(),
+        //         });
+        //     }
+        //     else
+        //     {
+        //         box_mesh.submeshes.push_back({
+        //             .material = m_pbr_material.get(),
+        //         });
+        //     }
 
-            auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
-            box_transform.set_position({2.0f * static_cast<float>(i), 3.0f, 0.0f});
-        }
+        //     float scale = static_cast<float>(std::rand() % 100) + 1.0f;
+        //     vec3f position = {
+        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
+        //         static_cast<float>(std::rand() % 10) + 1.0f,
+        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
+        //     };
+
+        //     auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
+        //     box_transform.set_position(position);
+        //     box_transform.set_scale({scale, scale, scale});
+        // }
 
         return true;
     }
@@ -109,10 +123,17 @@ private:
             }
 
             static float translate = 0.0f;
-            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
+            if (ImGui::SliderFloat("Translate", &translate, -50000.0f, 5.0))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_position({0.0f, 0.0f, translate});
+                transform.set_position({0.0f, translate, 0.0f});
+            }
+
+            static float scale = 1.0f;
+            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 5000.0f))
+            {
+                auto& transform = world.get_component<transform_component>(m_root);
+                transform.set_scale({scale, scale, scale});
             }
         }
 
@@ -142,7 +163,7 @@ private:
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
             auto& controller = world.get_component<first_person_control_component>(get_camera());
-            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 20.0f);
+            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 5000.0f);
 
             const char* camera_types[] = {"Perspective", "Orthographic"};
             static int camera_type = static_cast<int>(main_camera.type);
@@ -176,61 +197,75 @@ private:
                     1.0f,
                     100.0f);
             }
+
+            const auto& camera_transform =
+                world.get_component<const transform_component>(get_camera());
+            vec3f camera_position = camera_transform.get_position();
+            ImGui::Text(
+                "x: %f, y: %f, z: %f",
+                camera_position.x,
+                camera_position.y,
+                camera_position.z);
         }
 
-        if (ImGui::CollapsingHeader("Light"))
+        if (ImGui::CollapsingHeader("Sky"))
         {
-            static float rotate_x = 0.0f;
-            static float rotate_y = 0.0f;
-
             bool transform_dirty = false;
             bool ligth_dirty = false;
+            bool skybox_dirty = false;
 
             static float color[3] = {1.0f, 1.0f, 1.0f};
+            if (ImGui::ColorEdit3("Sun Color", color))
+            {
+                ligth_dirty = true;
+            }
+
             static float intensity = 10.0f;
-
-            if (ImGui::ColorEdit3("Color", color))
+            if (ImGui::SliderFloat("Sun Intensity", &intensity, 0.0f, 30.0f))
             {
                 ligth_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 30.0f))
+            if (ligth_dirty)
             {
-                ligth_dirty = true;
+                auto& light = world.get_component<light_component>(get_sky());
+                light.color = {.x = color[0], .y = color[1], .z = color[2]};
+                light.color *= intensity;
             }
 
-            if (ImGui::SliderFloat("Rotate X", &rotate_x, 0.0, 360.0))
+            static vec3f euler = euler::from_quaternion(
+                world.get_component<const transform_component>(get_sky()).get_rotation());
+
+            if (ImGui::SliderFloat("Sun Rotate X", &euler.x, -math::HALF_PI, math::HALF_PI))
             {
                 transform_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Rotate Y", &rotate_y, 0.0, 360.0))
+            if (ImGui::SliderFloat("Sun Rotate Y", &euler.y, 0.0, math::TWO_PI))
             {
                 transform_dirty = true;
             }
 
             if (transform_dirty)
             {
-                auto& transform = world.get_component<transform_component>(get_light());
-                transform.set_rotation(
-                    quaternion::from_euler(
-                        vec3f{math::to_radians(rotate_x), math::to_radians(rotate_y), 0.0f}));
+                auto& transform = world.get_component<transform_component>(get_sky());
+                transform.set_rotation(quaternion::from_euler(euler));
             }
 
-            if (ligth_dirty)
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
+
+            static bool use_multi_scattering = atmosphere->get_use_multi_scattering();
+            if (ImGui::Checkbox("Multi Scattering", &use_multi_scattering))
             {
-                auto& light = world.get_component<light_component>(get_light());
-                light.color = {.x = color[0], .y = color[1], .z = color[2]};
-                light.color *= intensity;
+                atmosphere->set_use_multi_scattering(use_multi_scattering);
             }
         }
 
         if (ImGui::CollapsingHeader("Shadow"))
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
-            auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
-
-            auto* shadow = renderer->get_feature<shadow_feature>();
+            auto* shadow = main_camera.renderer->get_feature<shadow_feature>();
 
             static auto sample_mode = static_cast<std::int32_t>(shadow->get_sample_mode());
             static const char* sample_mode_items[] = {
@@ -254,14 +289,20 @@ private:
                 shadow->set_sample_radius(sample_radius * 0.01f);
             }
 
-            static float normal_offset = shadow->get_normal_offset();
-            if (ImGui::SliderFloat("Normal Offset", &normal_offset, 0.0f, 20.0f))
+            static float slope_scale_depth_bias = shadow->get_slope_scale_depth_bias();
+            if (ImGui::SliderFloat("Slope Scale Depth Bias", &slope_scale_depth_bias, 0.0f, 2.0f))
             {
-                shadow->set_normal_offset(normal_offset);
+                shadow->set_slope_scale_depth_bias(slope_scale_depth_bias);
+            }
+
+            static float normal_bias = shadow->get_normal_bias();
+            if (ImGui::SliderFloat("Normal Bias", &normal_bias, 0.0f, 2.0f))
+            {
+                shadow->set_normal_bias(normal_bias);
             }
 
             static float constant_bias = shadow->get_constant_bias();
-            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 0.5f))
+            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 2.0f))
             {
                 shadow->set_constant_bias(constant_bias);
             }
@@ -419,7 +460,7 @@ private:
     std::unique_ptr<unlit_material> m_unlit_material;
 
     entity m_plane;
-    std::array<entity, 2> m_boxes;
+    std::array<entity, 500> m_boxes;
 };
 } // namespace violet
 

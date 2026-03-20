@@ -13,9 +13,12 @@ public:
         rdg_texture* history_render_target;
         rdg_texture* depth_buffer;
         rdg_texture* motion_vector;
-        rdg_texture* resolved_render_target;
+        bool history_valid;
     };
 
     void add(render_graph& graph, const parameter& parameter);
+
+private:
+    void resolve(render_graph& graph, const parameter& parameter);
 };
 } // namespace violet
