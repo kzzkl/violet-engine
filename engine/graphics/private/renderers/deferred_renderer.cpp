@@ -1,5 +1,6 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
@@ -28,6 +29,7 @@ deferred_renderer::deferred_renderer()
     add_feature<taa_feature>();
     add_feature<gtao_feature>();
     add_feature<bloom_feature>();
+    add_feature<atmosphere_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -421,7 +423,14 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
             RHI_FORMAT_R16G16B16A16_FLOAT,
             RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
 
-        if (get_frame() % 10 == 0)
+        auto* atmosphere = get_feature<atmosphere_feature>();
+
+        if (context.is_sky_dirty())
+        {
+            m_ibl_dirty = true;
+        }
+
+        if (m_ibl_dirty && get_frame() % atmosphere->get_ibl_update_interval() == 0)
         {
             m_prefilter_map = graph.add_texture(
                 "Prefilter Map",
@@ -436,7 +445,10 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
                 .aerial_perspective_lut = m_aerial_perspective_lut,
                 .prefilter_map = m_prefilter_map,
                 .irradiance_sh = m_irradiance_sh,
+                .use_multi_scattering = atmosphere->get_use_multi_scattering(),
             });
+
+            m_ibl_dirty = false;
         }
         else
         {
@@ -451,6 +463,7 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
             graph.add_pass<atmosphere_lut_pass>({
                 .sky_view_lut = m_sky_view_lut,
                 .aerial_perspective_lut = m_aerial_perspective_lut,
+                .use_multi_scattering = atmosphere->get_use_multi_scattering(),
             });
         }
     }
@@ -459,28 +472,29 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
 void deferred_renderer::add_sky_pass(render_graph& graph)
 {
     const auto& context = graph.get_context();
-    // if (graph.get_context().get_background_type() == BACKGROUND_TYPE_SKYBOX)
-    // {
-    //     return;
-    // }
 
-    if (context.get_background_type() == BACKGROUND_TYPE_SKYBOX)
+    switch (context.get_background_type())
     {
+    case BACKGROUND_TYPE_SKYBOX: {
         graph.add_pass<skybox_pass>({
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
-            .clear = graph.get_context().get_instance_count() == 0,
+            .clear = context.get_instance_count() == 0,
         });
+        break;
     }
-    else if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
-    {
+    case BACKGROUND_TYPE_ATMOSPHERE: {
         graph.add_pass<atmosphere_pass>({
             .sky_view_lut = m_sky_view_lut,
             .aerial_perspective_lut = m_aerial_perspective_lut,
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
-            .clear = graph.get_context().get_instance_count() == 0,
+            .clear = context.get_instance_count() == 0,
         });
+        break;
+    }
+    default:
+        break;
     }
 }
 

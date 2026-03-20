@@ -45,11 +45,12 @@ struct sky_view_lut_cs : public shader_cs
     {
         atmosphere_data atmosphere;
 
-        std::uint32_t sky_view_lut;
         vec3f sun_direction;
-        std::uint32_t transmittance_lut;
+        std::uint32_t sky_view_lut;
         vec3f sun_irradiance;
         std::uint32_t sample_count;
+        std::uint32_t transmittance_lut;
+        std::uint32_t multi_scattering_lut;
     };
 
     static constexpr parameter_layout parameters = {
@@ -122,7 +123,7 @@ struct aerial_perspective_cs : public shader_cs
     };
 };
 
-struct sky_constant_data
+struct atmosphere_constant_data
 {
     vec3f sun_direction;
     float sun_angular_radius;
@@ -133,13 +134,14 @@ struct sky_constant_data
     std::uint32_t sky_view_lut;
     std::uint32_t transmittance_lut;
     vec2f transmittance_lut_uv;
+    std::uint32_t sky_view_lut_sampler;
 };
 
-struct sky_vs : public shader_vs
+struct atmosphere_vs : public shader_vs
 {
     static constexpr std::string_view path = "assets/shaders/atmosphere/sky.hlsl";
 
-    using constant_data = sky_constant_data;
+    using constant_data = atmosphere_constant_data;
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
@@ -147,11 +149,11 @@ struct sky_vs : public shader_vs
     };
 };
 
-struct sky_fs : public shader_fs
+struct atmosphere_fs : public shader_fs
 {
     static constexpr std::string_view path = "assets/shaders/atmosphere/sky.hlsl";
 
-    using constant_data = sky_constant_data;
+    using constant_data = atmosphere_constant_data;
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
@@ -200,6 +202,7 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
         vec3f sun_irradiance;
 
         rhi_texture_srv* transmittance_lut;
+        rhi_texture_srv* multi_scattering_lut;
     };
 
     graph.add_pass<pass_data>(
@@ -215,27 +218,39 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
             data.sun_direction = context.get_sun_direction();
             data.sun_irradiance = context.get_sun_irradiance();
             data.transmittance_lut = context.get_transmittance_lut()->get_srv();
+            data.multi_scattering_lut = parameter.use_multi_scattering ?
+                                            context.get_multi_scattering_lut()->get_srv() :
+                                            nullptr;
         },
         [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
+            std::vector<std::wstring> defines;
+
+            sky_view_lut_cs::constant_data constant = {
+                .atmosphere = data.atmosphere,
+                .sun_direction = data.sun_direction,
+                .sky_view_lut = data.sky_view_lut.get_bindless(),
+                .sun_irradiance = data.sun_irradiance,
+                .sample_count = 40,
+                .transmittance_lut = data.transmittance_lut->get_bindless(),
+            };
+
+            if (data.multi_scattering_lut != nullptr)
+            {
+                defines.emplace_back(L"-DUSE_MULTI_SCATTERING");
+                constant.multi_scattering_lut = data.multi_scattering_lut->get_bindless();
+            }
+
             command.set_pipeline({
-                .compute_shader = device.get_shader<sky_view_lut_cs>(),
+                .compute_shader = device.get_shader<sky_view_lut_cs>(defines),
             });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_CAMERA);
 
-            command.set_constant(
-                sky_view_lut_cs::constant_data{
-                    .atmosphere = data.atmosphere,
-                    .sky_view_lut = data.sky_view_lut.get_bindless(),
-                    .sun_direction = data.sun_direction,
-                    .transmittance_lut = data.transmittance_lut->get_bindless(),
-                    .sun_irradiance = data.sun_irradiance,
-                    .sample_count = 40,
-                });
+            command.set_constant(constant);
 
             auto extent = data.sky_view_lut.get_extent();
             command.dispatch_2d(extent.width, extent.height);
@@ -419,11 +434,21 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
 
             auto& device = render_device::instance();
 
+            rhi_sampler* sky_view_lut_sampler = device.get_sampler({
+                .mag_filter = RHI_FILTER_LINEAR,
+                .min_filter = RHI_FILTER_LINEAR,
+                .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+                .address_mode_v = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
+                .min_level = 0.0f,
+                .max_level = -1.0f,
+            });
+
             std::vector<std::wstring> defines = {L"-DDYNAMIC_SKY"};
 
             rdg_raster_pipeline pipeline = {
-                .vertex_shader = device.get_shader<sky_vs>(defines),
-                .fragment_shader = device.get_shader<sky_fs>(defines),
+                .vertex_shader = device.get_shader<atmosphere_vs>(defines),
+                .fragment_shader = device.get_shader<atmosphere_fs>(defines),
                 .depth_stencil_state =
                     device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_EQUAL>(),
             };
@@ -431,7 +456,7 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
             command.set_pipeline(pipeline);
 
             command.set_constant(
-                sky_constant_data{
+                atmosphere_constant_data{
                     .sun_direction = data.sun_direction,
                     .sun_angular_radius = data.atmosphere.sun_angular_radius,
                     .sun_irradiance = data.sun_irradiance,
@@ -440,6 +465,7 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
                     .sky_view_lut = data.sky_view_lut.get_bindless(),
                     .transmittance_lut = data.transmittance_lut->get_bindless(),
                     .transmittance_lut_uv = data.transmittance_lut_uv,
+                    .sky_view_lut_sampler = sky_view_lut_sampler->get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);

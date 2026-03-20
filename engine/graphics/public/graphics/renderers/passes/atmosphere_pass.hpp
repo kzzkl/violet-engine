@@ -13,6 +13,8 @@ public:
         rdg_texture* aerial_perspective_lut;
         rdg_texture* prefilter_map;
         rdg_buffer* irradiance_sh;
+
+        bool use_multi_scattering;
     };
 
     void add(render_graph& graph, const parameter& parameter);

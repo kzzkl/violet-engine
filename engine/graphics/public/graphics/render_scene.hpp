@@ -10,6 +10,14 @@
 
 namespace violet
 {
+enum render_scene_state : std::uint8_t
+{
+    RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY = 1 << 0,
+    RENDER_SCENE_STATE_BATCH_DIRTY = 1 << 1,
+    RENDER_SCENE_STATE_SKY_DIRTY = 1 << 2,
+};
+using render_scene_states = std::uint8_t;
+
 class gpu_buffer_uploader;
 class vsm_manager;
 class render_scene
@@ -56,9 +64,15 @@ public:
     void set_atmosphere(
         const atmosphere& atmosphere,
         render_id sun_id,
-        rhi_texture* transmittance_lut);
+        rhi_texture* transmittance_lut,
+        rhi_texture* multi_scattering_lut);
 
     void update(gpu_buffer_uploader* uploader);
+
+    void clear_states() noexcept
+    {
+        m_scene_states = 0;
+    }
 
 private:
     struct gpu_batch
@@ -111,13 +125,6 @@ private:
         // directional_vsm_buffer. for other types, vsm_address is the id of vsm.
         render_id vsm_address{INVALID_RENDER_ID};
     };
-
-    enum render_scene_state : std::uint8_t
-    {
-        RENDER_SCENE_STATE_DATA_DIRTY = 1 << 0,
-        RENDER_SCENE_STATE_BATCH_DIRTY = 1 << 1,
-    };
-    using render_scene_states = std::uint8_t;
 
     struct batch_key
     {
@@ -243,6 +250,7 @@ private:
     vec3f m_sun_direction;
     vec3f m_sun_irradiance;
     rhi_texture* m_transmittance_lut;
+    rhi_texture* m_multi_scattering_lut;
 
     friend class render_context;
 };
@@ -355,6 +363,11 @@ public:
         return m_scene->m_transmittance_lut;
     }
 
+    rhi_texture* get_multi_scattering_lut() const noexcept
+    {
+        return m_scene->m_multi_scattering_lut;
+    }
+
     std::uint32_t get_sun_id(bool& cast_shadow) const noexcept;
 
     vec3f get_sun_direction() const noexcept
@@ -365,6 +378,11 @@ public:
     vec3f get_sun_irradiance() const noexcept
     {
         return m_scene->m_sun_irradiance;
+    }
+
+    bool is_sky_dirty() const noexcept
+    {
+        return m_scene->m_scene_states & RENDER_SCENE_STATE_SKY_DIRTY;
     }
 
     template <typename Functor>

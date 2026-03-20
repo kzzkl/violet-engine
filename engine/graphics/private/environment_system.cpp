@@ -41,6 +41,25 @@ struct transmittance_lut_cs : public shader_cs
     };
 };
 
+struct multi_scattering_lut_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/atmosphere/multi_scattering_lut.hlsl";
+
+    struct constant_data
+    {
+        atmosphere_data atmosphere;
+
+        std::uint32_t transmittance_lut;
+        std::uint32_t multi_scattering_lut;
+        std::uint32_t sample_count;
+        std::uint32_t direction_count;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
 class environment_renderer
 {
 public:
@@ -90,6 +109,7 @@ public:
     {
         atmosphere atmosphere;
         rhi_texture* transmittance_lut;
+        rhi_texture* multi_scattering_lut;
     };
 
     void render_atmosphere(rhi_command* command, const atmosphere_parameter& parameter)
@@ -102,7 +122,14 @@ public:
             RHI_TEXTURE_LAYOUT_UNDEFINED,
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
+        m_multi_scattering_lut = graph.add_texture(
+            "Multi Scattering LUT",
+            parameter.multi_scattering_lut,
+            RHI_TEXTURE_LAYOUT_UNDEFINED,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
         add_transmittance_lut_pass(graph, parameter);
+        add_multi_scattering_lut_pass(graph, parameter);
 
         graph.compile();
         graph.record(command);
@@ -189,11 +216,55 @@ private:
             });
     }
 
+    void add_multi_scattering_lut_pass(render_graph& graph, const atmosphere_parameter& parameter)
+    {
+        struct pass_data
+        {
+            rdg_texture_srv transmittance_lut;
+            rdg_texture_uav multi_scattering_lut;
+            atmosphere_data atmosphere;
+        };
+
+        graph.add_pass<pass_data>(
+            "Multi Scattering LUT",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.transmittance_lut =
+                    pass.add_texture_srv(m_transmittance_lut, RHI_PIPELINE_STAGE_COMPUTE);
+                data.multi_scattering_lut =
+                    pass.add_texture_uav(m_multi_scattering_lut, RHI_PIPELINE_STAGE_COMPUTE);
+                data.atmosphere = parameter.atmosphere;
+            },
+            [=](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<multi_scattering_lut_cs>(),
+                });
+
+                command.set_constant(
+                    multi_scattering_lut_cs::constant_data{
+                        .atmosphere = data.atmosphere,
+                        .transmittance_lut = data.transmittance_lut.get_bindless(),
+                        .multi_scattering_lut = data.multi_scattering_lut.get_bindless(),
+                        .sample_count = 10,
+                        .direction_count = 64,
+                    });
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+                rhi_extent extent = data.multi_scattering_lut.get_extent();
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
+
     rdg_texture* m_environment_map;
     rdg_buffer* m_irradiance_sh;
     rdg_texture* m_prefilter_map;
 
     rdg_texture* m_transmittance_lut;
+    rdg_texture* m_multi_scattering_lut;
 };
 
 environment_system::environment_system()
@@ -256,7 +327,8 @@ void environment_system::update(render_scene_manager& scene_manager)
         }
     };
 
-    auto create_atmosphere_resources = [&](rhi_ptr<rhi_texture>& transmittance_lut)
+    auto create_atmosphere_resources =
+        [&](rhi_ptr<rhi_texture>& transmittance_lut, rhi_ptr<rhi_texture>& multi_scattering_lut)
     {
         auto& device = render_device::instance();
 
@@ -270,6 +342,18 @@ void environment_system::update(render_scene_manager& scene_manager)
                 .layer_count = 1,
             });
             transmittance_lut->set_name("Transmittance LUT");
+        }
+
+        if (multi_scattering_lut == nullptr)
+        {
+            multi_scattering_lut = device.create_texture({
+                .extent = {.width = 32, .height = 32},
+                .format = RHI_FORMAT_R11G11B10_FLOAT,
+                .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+                .level_count = 1,
+                .layer_count = 1,
+            });
+            multi_scattering_lut->set_name("Multi Scattering LUT");
         }
     };
 
@@ -319,7 +403,7 @@ void environment_system::update(render_scene_manager& scene_manager)
                 const scene_component& scene,
                 atmosphere_component_meta& meta)
             {
-                create_atmosphere_resources(meta.transmittance_lut);
+                create_atmosphere_resources(meta.transmittance_lut, meta.multi_scattering_lut);
 
                 if (meta.update(atmosphere))
                 {
@@ -330,7 +414,8 @@ void environment_system::update(render_scene_manager& scene_manager)
                 render_scene->set_atmosphere(
                     meta.atmosphere,
                     light_meta.id,
-                    meta.transmittance_lut.get());
+                    meta.transmittance_lut.get(),
+                    meta.multi_scattering_lut.get());
             },
             [this](auto& view)
             {
@@ -386,6 +471,7 @@ void environment_system::update_atmosphere(rhi_command* command, entity entity)
         environment_renderer::atmosphere_parameter{
             .atmosphere = meta.atmosphere,
             .transmittance_lut = meta.transmittance_lut.get(),
+            .multi_scattering_lut = meta.multi_scattering_lut.get(),
         });
 }
 } // namespace violet

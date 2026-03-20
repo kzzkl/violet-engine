@@ -100,8 +100,7 @@ bool graphics_system::initialize(const dictionary& config)
 #ifndef NDEBUG
                 m_debug_drawer->tick();
 #endif
-
-                auto& device = render_device::instance();
+                m_scene_manager->clear_states();
 
                 get_system<mesh_system>().update(*m_scene_manager);
                 get_system<skinning_system>().update();
@@ -109,6 +108,7 @@ bool graphics_system::initialize(const dictionary& config)
                 get_system<environment_system>().update(*m_scene_manager);
                 get_system<camera_system>().update(*m_scene_manager);
 
+                auto& device = render_device::instance();
                 device.get_material_manager()->update(m_gpu_buffer_uploader.get());
                 device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
             });

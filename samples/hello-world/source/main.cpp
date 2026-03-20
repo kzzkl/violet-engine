@@ -8,6 +8,7 @@
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
 #include "graphics/renderers/deferred_renderer.hpp"
+#include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
@@ -34,7 +35,10 @@ public:
             return false;
         }
 
-        m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
+        if (config.contains("model"))
+        {
+            m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
+        }
 
         auto& world = get_world();
 
@@ -232,7 +236,7 @@ private:
             static vec3f euler = euler::from_quaternion(
                 world.get_component<const transform_component>(get_sky()).get_rotation());
 
-            if (ImGui::SliderFloat("Sun Rotate X", &euler.x, 0.0, math::PI))
+            if (ImGui::SliderFloat("Sun Rotate X", &euler.x, -math::HALF_PI, math::HALF_PI))
             {
                 transform_dirty = true;
             }
@@ -247,14 +251,21 @@ private:
                 auto& transform = world.get_component<transform_component>(get_sky());
                 transform.set_rotation(quaternion::from_euler(euler));
             }
+
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
+
+            static bool use_multi_scattering = atmosphere->get_use_multi_scattering();
+            if (ImGui::Checkbox("Multi Scattering", &use_multi_scattering))
+            {
+                atmosphere->set_use_multi_scattering(use_multi_scattering);
+            }
         }
 
         if (ImGui::CollapsingHeader("Shadow"))
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
-            auto* renderer = static_cast<deferred_renderer*>(main_camera.renderer.get());
-
-            auto* shadow = renderer->get_feature<shadow_feature>();
+            auto* shadow = main_camera.renderer->get_feature<shadow_feature>();
 
             static auto sample_mode = static_cast<std::int32_t>(shadow->get_sample_mode());
             static const char* sample_mode_items[] = {

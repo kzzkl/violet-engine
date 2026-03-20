@@ -16,14 +16,14 @@ render_scene::render_scene(vsm_manager* vsm_manager)
     auto& device = render_device::instance();
 
     m_scene_parameter = device.create_parameter(shader::scene);
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 }
 
 render_scene::~render_scene() {}
 
 render_id render_scene::add_mesh()
 {
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
     return m_meshes.add();
 }
 
@@ -44,7 +44,7 @@ void render_scene::remove_mesh(render_id mesh_id)
 
     mesh = {};
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 }
 
 void render_scene::set_mesh_flags(render_id mesh_id, std::uint32_t flags)
@@ -84,7 +84,7 @@ render_id render_scene::add_instance(render_id mesh_id)
     auto& mesh = m_meshes[mesh_id];
     mesh.instances.push_back(instance_id);
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 
     return instance_id;
 }
@@ -100,7 +100,7 @@ void render_scene::remove_instance(render_id instance_id)
 
     m_instances.remove(instance_id);
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 }
 
 void render_scene::set_instance_geometry(
@@ -156,7 +156,7 @@ render_id render_scene::add_light(std::uint32_t type)
     auto& light = m_non_shadow_casting_lights[light_id];
     light.type = type;
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 
     return light_id;
 }
@@ -171,14 +171,12 @@ void render_scene::remove_light(render_id light_id)
 
     m_non_shadow_casting_lights.remove(mapping.light_id);
 
-    m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+    m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
 
-    // if (light_id == m_environment.sun_id)
-    // {
-    //     m_environment.sun_id = INVALID_RENDER_ID;
-    //     m_environment.sun_direction = {.x = 0.0f, .y = 0.0f, .z = 1.0f};
-    //     m_environment.sun_irradiance = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
-    // }
+    if (light_id == m_sun_id)
+    {
+        m_scene_states |= RENDER_SCENE_STATE_SKY_DIRTY;
+    }
 }
 
 void render_scene::set_light_data(
@@ -221,6 +219,11 @@ void render_scene::set_light_data(
 
     if (light_id == m_sun_id)
     {
+        if (m_sun_direction != direction)
+        {
+            m_scene_states |= RENDER_SCENE_STATE_SKY_DIRTY;
+        }
+
         m_sun_direction = direction;
         m_sun_irradiance = color;
     }
@@ -429,11 +432,13 @@ void render_scene::set_skybox(
 void render_scene::set_atmosphere(
     const atmosphere& atmosphere,
     render_id sun_id,
-    rhi_texture* transmittance_lut)
+    rhi_texture* transmittance_lut,
+    rhi_texture* multi_scattering_lut)
 {
     m_atmosphere = atmosphere;
     m_sun_id = sun_id;
     m_transmittance_lut = transmittance_lut;
+    m_multi_scattering_lut = multi_scattering_lut;
 
     const gpu_light* light = nullptr;
 
@@ -449,14 +454,16 @@ void render_scene::set_atmosphere(
 
     m_sun_direction = light->direction;
     m_sun_irradiance = light->color;
+
+    m_scene_states |= RENDER_SCENE_STATE_SKY_DIRTY;
 }
 
 void render_scene::update(gpu_buffer_uploader* uploader)
 {
-    m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STATE_DATA_DIRTY : 0;
-    m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STATE_DATA_DIRTY : 0;
-    m_scene_states |= update_light(uploader) ? RENDER_SCENE_STATE_DATA_DIRTY : 0;
-    m_scene_states |= update_batch(uploader) ? RENDER_SCENE_STATE_DATA_DIRTY : 0;
+    m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
+    m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
+    m_scene_states |= update_light(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
+    m_scene_states |= update_batch(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 
     auto* material_manager = render_device::instance().get_material_manager();
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -481,10 +488,10 @@ void render_scene::update(gpu_buffer_uploader* uploader)
         m_scene_data.index_buffer = index_buffer;
         m_scene_data.cluster_buffer = cluster_buffer;
 
-        m_scene_states |= RENDER_SCENE_STATE_DATA_DIRTY;
+        m_scene_states |= RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY;
     }
 
-    if (m_scene_states & RENDER_SCENE_STATE_DATA_DIRTY)
+    if (m_scene_states & RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY)
     {
         m_scene_data.mesh_buffer = m_meshes.get_buffer()->get_srv()->get_bindless();
         m_scene_data.mesh_count = m_meshes.get_size();
@@ -502,8 +509,6 @@ void render_scene::update(gpu_buffer_uploader* uploader)
 
         m_scene_parameter->set_uniform(0, &m_scene_data, sizeof(shader::scene_data));
     }
-
-    m_scene_states = 0;
 
     update_vsm();
 }

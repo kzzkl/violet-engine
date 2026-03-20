@@ -155,7 +155,7 @@ float2 get_sky_view_lut_uv(float3 direction)
 
     float theta = asin(direction.y);
     uv.y = 0.5 + 0.5 * sign(theta) * sqrt(abs(theta) / HALF_PI);
-    
+
     return uv;
 }
 
@@ -192,7 +192,11 @@ float4 integrate_atmosphere(
     float3 sun_direction,
     float distance,
     float sample_count,
-    Texture2D<float3> transmittance_lut)
+    Texture2D<float3> transmittance_lut
+#ifdef USE_MULTI_SCATTERING
+    , Texture2D<float3> multi_scattering_lut
+#endif
+    )
 {
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
@@ -221,15 +225,25 @@ float4 integrate_atmosphere(
         extinction += mie_scattering + atmosphere.get_mie_absorption(h);
         extinction += atmosphere.get_ozone_absorption(h);
         optical_depth += extinction * dt;
-        
-        float2 uv;
-        get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
 
-        float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
-        float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;
         float3 t1 = exp(-optical_depth);
-        in_scatter += t0 * s * t1 * dt;
+        if (ray_sphere_intersection(p, -sun_direction, 0.0, atmosphere.planet_radius) < 0.0)
+        {
+            float2 uv;
+            get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
+            float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
+            float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;
+            in_scatter += t0 * s * t1 * dt;
+        }
         throughput *= t1;
+
+#ifdef USE_MULTI_SCATTERING
+        float2 multi_scattering_uv;
+        multi_scattering_uv.x = mu * 0.5 + 0.5;
+        multi_scattering_uv.y = min(h / (atmosphere.atmosphere_radius - atmosphere.planet_radius), 1.0);
+        float3 multi_scattering = multi_scattering_lut.SampleLevel(linear_clamp_sampler, multi_scattering_uv, 0.0);
+        in_scatter += multi_scattering * (rayleigh_scattering + mie_scattering) * t1 * dt;
+#endif
 
         p += view * dt;
     }

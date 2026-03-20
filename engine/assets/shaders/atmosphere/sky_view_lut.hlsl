@@ -4,11 +4,12 @@ struct constant_data
 {
     atmosphere_data atmosphere;
 
-    uint sky_view_lut;
     float3 sun_direction;
-    uint transmittance_lut;
+    uint sky_view_lut;
     float3 sun_irradiance;
     uint sample_count;
+    uint transmittance_lut;
+    uint multi_scattering_lut;
 };
 PushConstant(constant_data, constant);
 
@@ -50,7 +51,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
 
+#ifdef USE_MULTI_SCATTERING
+    Texture2D<float3> multi_scattering_lut = ResourceDescriptorHeap[constant.multi_scattering_lut];
+    float4 result = integrate_atmosphere(atmosphere, eye, view, constant.sun_direction, distance, constant.sample_count, transmittance_lut, multi_scattering_lut);
+#else
     float4 result = integrate_atmosphere(atmosphere, eye, view, constant.sun_direction, distance, constant.sample_count, transmittance_lut);
+#endif
     result.xyz *= constant.sun_irradiance;
     sky_view_lut[dtid.xy] = result.xyz;
 }

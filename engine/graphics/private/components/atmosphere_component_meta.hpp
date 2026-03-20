@@ -12,6 +12,7 @@ struct atmosphere_component_meta
     atmosphere atmosphere;
 
     rhi_ptr<rhi_texture> transmittance_lut;
+    rhi_ptr<rhi_texture> multi_scattering_lut;
 
     bool update(const atmosphere_component& atmosphere_component)
     {

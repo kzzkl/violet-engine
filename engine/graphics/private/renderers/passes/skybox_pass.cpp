@@ -3,7 +3,7 @@
 
 namespace violet
 {
-struct sky_constant_data
+struct skybox_constant_data
 {
     vec3f sun_direction;
     float sun_angular_radius;
@@ -15,11 +15,11 @@ struct sky_constant_data
     std::uint32_t transmittance_lut;
 };
 
-struct sky_vs : public shader_vs
+struct skybox_vs : public shader_vs
 {
     static constexpr std::string_view path = "assets/shaders/atmosphere/sky.hlsl";
 
-    using constant_data = sky_constant_data;
+    using constant_data = skybox_constant_data;
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
@@ -27,11 +27,11 @@ struct sky_vs : public shader_vs
     };
 };
 
-struct sky_fs : public shader_fs
+struct skybox_fs : public shader_fs
 {
     static constexpr std::string_view path = "assets/shaders/atmosphere/sky.hlsl";
 
-    using constant_data = sky_constant_data;
+    using constant_data = skybox_constant_data;
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
@@ -71,8 +71,8 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             auto& device = render_device::instance();
 
             rdg_raster_pipeline pipeline = {
-                .vertex_shader = device.get_shader<sky_vs>(),
-                .fragment_shader = device.get_shader<sky_fs>(),
+                .vertex_shader = device.get_shader<skybox_vs>(),
+                .fragment_shader = device.get_shader<skybox_fs>(),
                 .depth_stencil_state =
                     device.get_depth_stencil_state<true, false, RHI_COMPARE_OP_EQUAL>(),
             };
@@ -80,7 +80,7 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             command.set_pipeline(pipeline);
 
             command.set_constant(
-                sky_constant_data{
+                skybox_constant_data{
                     .skybox_texture = data.environment_map->get_bindless(),
                 });
 

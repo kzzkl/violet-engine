@@ -91,5 +91,7 @@ private:
 
     debug_mode m_debug_mode{DEBUG_MODE_NONE};
     rdg_texture* m_debug_output{nullptr};
+
+    bool m_ibl_dirty{false};
 };
 } // namespace violet

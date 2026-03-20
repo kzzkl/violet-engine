@@ -34,7 +34,15 @@ static const uint LIGHTING_STAGE_INDIRECT_LIGHTING = 2;
 
 float3 get_sun_transmittance(constant_common constant, float3 position, float3 sun_direction)
 {
-    float r = max(position.y + constant.planet_radius, constant.planet_radius + 1.0);
+    position += float3(0.0, constant.planet_radius, 0.0);
+    position.y = max(position.y, constant.planet_radius + 1.0);
+
+    if (ray_sphere_intersection(position, -sun_direction, 0.0, constant.planet_radius) > 0.0)
+    {
+        return 0.0;
+    }
+
+    float r = length(position);
     float mu = -sun_direction.y;
 
     float2 uv;

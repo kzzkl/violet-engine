@@ -12,6 +12,7 @@ struct constant_data
     uint sky_view_lut;
     uint transmittance_lut;
     float2 transmittance_lut_uv;
+    uint sky_view_lut_sampler;
 };
 PushConstant(constant_data, constant);
 
@@ -78,9 +79,10 @@ float4 fs_main(vs_output input) : SV_TARGET
 
 #ifdef DYNAMIC_SKY
     Texture2D<float3> sky_view_lut = ResourceDescriptorHeap[constant.sky_view_lut];
+    SamplerState sky_view_lut_sampler = SamplerDescriptorHeap[constant.sky_view_lut_sampler];
 
     float2 uv = get_sky_view_lut_uv(view);
-    float3 sky = sky_view_lut.SampleLevel(get_linear_clamp_sampler(), uv, 0.0);
+    float3 sky = sky_view_lut.SampleLevel(sky_view_lut_sampler, uv, 0.0);
 
     float3 eye = camera.position;
     eye.y = max(camera.position.y + constant.planet_radius, constant.planet_radius + 1.0);

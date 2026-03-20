@@ -30,7 +30,8 @@ namespace
 void imgui_profiling_event(
     const std::vector<rdg_profiling::node>& nodes,
     std::uint32_t index,
-    float frame_time)
+    float frame_time,
+    std::string_view path)
 {
     const auto& node = nodes[index];
 
@@ -45,7 +46,7 @@ void imgui_profiling_event(
         flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    std::string name = std::format("{}##{}", node.name, index);
+    std::string name = std::format("{}##{}", node.name, path);
     bool open = ImGui::TreeNodeEx(name.c_str(), flags);
 
     ImGui::TableNextColumn();
@@ -60,7 +61,7 @@ void imgui_profiling_event(
     {
         for (std::uint32_t c : node.children)
         {
-            imgui_profiling_event(nodes, c, frame_time);
+            imgui_profiling_event(nodes, c, frame_time, std::format("{}:{}", path, node.name));
         }
 
         ImGui::TreePop();
@@ -398,7 +399,7 @@ void sample_system::imgui_profiling(rdg_profiling* profiling)
             ImGui::TableHeadersRow();
 
             const auto& nodes = profiling->get_nodes();
-            imgui_profiling_event(nodes, 0, nodes[0].time_ms);
+            imgui_profiling_event(nodes, 0, nodes[0].time_ms, "");
 
             ImGui::EndTable();
         }
