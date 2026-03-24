@@ -22,7 +22,6 @@ public:
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_texture* vsm_physical_shadow_map{nullptr};
-        rdg_buffer* vsm_directional_buffer{nullptr};
 
         std::uint32_t shadow_sample_mode; // 0: none, 1: PCF, 2: PCSS
         std::uint32_t shadow_sample_count;
@@ -35,7 +34,7 @@ public:
         rdg_buffer* irradiance_sh;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
-        std::uint32_t debug_light_id{0};
+        std::uint32_t debug_light_index{0};
         rdg_texture* debug_output{nullptr};
     };
 
@@ -57,12 +56,12 @@ private:
         render_graph& graph,
         const parameter& parameter,
         lighting_stage stage,
-        std::uint32_t light_id = 0) const;
+        std::uint32_t light_index = 0) const;
 
     void add_shadow_mask_pass(
         render_graph& graph,
         const parameter& parameter,
-        std::uint32_t light_id);
+        std::uint32_t light_index);
 
     void add_debug_pass(render_graph& graph, const parameter& parameter);
 
@@ -74,7 +73,7 @@ private:
 
     rdg_texture* m_shadow_mask{nullptr};
 
-    std::uint32_t m_sun_id;
+    std::uint32_t m_sun_index;
     bool m_sun_cast_shadow{false};
 };
 } // namespace violet

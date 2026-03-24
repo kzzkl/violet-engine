@@ -14,6 +14,10 @@ public:
         rdg_texture* prefilter_map;
         rdg_buffer* irradiance_sh;
 
+        rdg_buffer* vsm_buffer;
+        rdg_buffer* vsm_virtual_page_table;
+        rdg_texture* vsm_physical_shadow_map;
+
         bool use_multi_scattering;
     };
 

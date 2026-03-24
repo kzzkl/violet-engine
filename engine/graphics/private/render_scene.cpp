@@ -1036,6 +1036,17 @@ rhi_texture* render_context::get_vsm_hzb() const noexcept
     return m_scene->m_vsm_manager->get_vsm_hzb();
 }
 
+render_id render_context::get_vsm_id(render_id light_index) const
+{
+    const auto& light = m_scene->m_shadow_casting_lights[light_index];
+    if (light.type == LIGHT_DIRECTIONAL)
+    {
+        return m_scene->m_vsm_directional_buffer[light.vsm_address].vsms[m_camera_meta->id].vsm_id;
+    }
+
+    return light.vsm_address;
+}
+
 rhi_parameter* render_context::get_camera_parameter() const noexcept
 {
     return m_camera_meta->parameter.get();
@@ -1046,7 +1057,7 @@ rhi_parameter* render_context::get_scene_parameter() const noexcept
     return m_scene->m_scene_parameter.get();
 }
 
-std::uint32_t render_context::get_sun_id(bool& cast_shadow) const noexcept
+std::uint32_t render_context::get_sun_index(bool& cast_shadow) const noexcept
 {
     std::uint32_t sun_id = m_scene->m_sun_id;
 

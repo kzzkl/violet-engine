@@ -13,6 +13,7 @@ public:
         DEBUG_MODE_PAGE,
         DEBUG_MODE_PAGE_CACHE,
         DEBUG_MODE_PHYSICAL_PAGE_TABLE,
+        DEBUG_MODE_CULL,
     };
 
     struct parameter
@@ -48,10 +49,10 @@ private:
     void clear_page_table(render_graph& graph);
     void mark_visible_pages(render_graph& graph);
     void mark_resident_pages(render_graph& graph);
+    void build_dispatch_args(render_graph& graph);
     void update_lru(render_graph& graph);
     void allocate_pages(render_graph& graph);
     void clear_physical_page(render_graph& graph);
-    void calculate_page_bounds(render_graph& graph);
 
     void instance_cull(render_graph& graph);
     void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
@@ -66,11 +67,18 @@ private:
 
     rdg_texture* m_depth_buffer{nullptr};
 
-    rdg_buffer* m_virtual_page_dispatch_buffer{nullptr};
+    rdg_buffer* m_virtual_pages_indirect_args{nullptr};
+    rdg_buffer* m_visible_virtual_pages_indirect_args{nullptr};
+    rdg_buffer* m_visible_virtual_page_texels_indirect_args{nullptr};
+    rdg_buffer* m_clear_physical_page_texels_indirect_args{nullptr};
 
-    rdg_buffer* m_visible_light_count{nullptr};
-    rdg_buffer* m_visible_light_ids{nullptr};
-    rdg_buffer* m_visible_vsm_ids{nullptr};
+    rdg_buffer* m_clear_virtual_page_table_list{nullptr};
+    rdg_buffer* m_visible_virtual_page_list{nullptr};
+    rdg_buffer* m_clear_physical_page_list{nullptr};
+
+    rdg_buffer* m_vsm_info{nullptr};
+    rdg_buffer* m_visible_light_list{nullptr};
+    rdg_buffer* m_visible_vsm_list{nullptr};
 
     rdg_buffer* m_vsm_buffer{nullptr};
     rdg_buffer* m_vsm_virtual_page_table{nullptr};

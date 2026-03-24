@@ -3,6 +3,7 @@
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include <limits>
+#include <ranges>
 
 namespace violet
 {
@@ -61,6 +62,21 @@ using box3f_simd = box3<simd>;
 
 struct box
 {
+    template <std::ranges::contiguous_range R>
+    static auto create(R&& points) noexcept
+        requires is_vec3<std::ranges::range_value_t<R>>
+    {
+        using value_type = std::ranges::range_value_t<R>::value_type;
+        using box_type = box3<value_type>;
+
+        box_type result;
+        for (auto point : points)
+        {
+            expand(result, point);
+        }
+        return result;
+    }
+
     template <typename T>
     static void expand(box3<T>& box, const vec3<T>& point) noexcept
     {

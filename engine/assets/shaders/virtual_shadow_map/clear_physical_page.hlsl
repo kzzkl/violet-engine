@@ -3,34 +3,31 @@
 
 struct constant_data
 {
-    uint vsm_physical_page_table;
-    uint vsm_physical_shadow_map_static;
-    uint vsm_physical_shadow_map_final;
+    uint visible_virtual_page_list;
+    uint clear_physical_page_list;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_shadow_map;
 };
 PushConstant(constant_data, constant);
 
 [numthreads(16, 16, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    uint physical_page_index = dtid.z;
+#ifdef CLEAR_DYNAMIC
+    StructuredBuffer<uint> visible_virtual_page_list = ResourceDescriptorHeap[constant.visible_virtual_page_list];
+    uint virtual_page_index = visible_virtual_page_list[dtid.z];
 
-    StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
-    vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-    if ((physical_page.flags & PHYSICAL_PAGE_FLAG_REQUEST) == 0)
-    {
-        return;
-    }
-
-    RWTexture2D<uint> physical_shadow_map_static = ResourceDescriptorHeap[constant.vsm_physical_shadow_map_static];
-    RWTexture2D<uint> physical_shadow_map_final = ResourceDescriptorHeap[constant.vsm_physical_shadow_map_final];
+    uint physical_page_index = get_physical_page_index(virtual_page.physical_page_coord);
+#else
+    StructuredBuffer<uint> clear_physical_page_list = ResourceDescriptorHeap[constant.clear_physical_page_list];
+    uint physical_page_index = clear_physical_page_list[dtid.z];
+#endif
 
     uint2 physical_texel = get_physical_page_coord(physical_page_index) * PAGE_RESOLUTION + dtid.xy;
 
-    if (physical_page.flags & PHYSICAL_PAGE_FLAG_NEED_CLEAR)
-    {
-        physical_shadow_map_static[physical_texel] = 0;
-    }
-
-    physical_shadow_map_final[physical_texel] = 0;
+    RWTexture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];
+    physical_shadow_map[physical_texel] = 0;
 }

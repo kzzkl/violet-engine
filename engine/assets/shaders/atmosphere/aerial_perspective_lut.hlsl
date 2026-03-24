@@ -13,8 +13,12 @@ struct constant_data
     float3 frustum_top_right;
     uint aerial_perspective_lut;
     float3 frustum_bottom_left;
-    uint padding0;
+    uint multi_scattering_lut;
     float3 frustum_bottom_right;
+    uint vsm_id;
+    uint vsm_buffer;
+    uint vsm_virtual_page_table;
+    uint vsm_physical_shadow_map;
 };
 PushConstant(constant_data, constant);
 
@@ -64,6 +68,16 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         distance = ray_sphere_intersection(eye, view, 0.0, atmosphere.atmosphere_radius);
     }
 
+#ifdef USE_MULTI_SCATTERING
+    Texture2D<float3> multi_scattering_lut = ResourceDescriptorHeap[constant.multi_scattering_lut];
+#endif
+
+#ifdef USE_SHADOW
+    StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    Texture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];
+#endif
+
     for (uint slice_id = 0; slice_id < depth; ++slice_id)
     {
         float slice = (float(slice_id) + 0.5) / depth;
@@ -77,7 +91,27 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         }
         else
         {
-            float4 result = integrate_atmosphere(atmosphere, eye, view, constant.sun_direction, slice_end, constant.sample_count, transmittance_lut);
+            float4 result = integrate_atmosphere(
+                atmosphere,
+                eye,
+                view,
+                constant.sun_direction,
+                slice_end,
+                constant.sample_count,
+                transmittance_lut
+#ifdef USE_MULTI_SCATTERING
+                ,
+                multi_scattering_lut
+#endif
+#ifdef USE_SHADOW
+                ,
+                constant.vsm_id,
+                vsms,
+                virtual_page_table,
+                physical_shadow_map
+#endif
+            );
+
             result.xyz *= constant.sun_irradiance;
             aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = result;
         }

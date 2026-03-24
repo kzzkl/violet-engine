@@ -4,8 +4,8 @@
 
 struct constant_data
 {
-    uint visible_light_count;
-    uint visible_vsm_ids;
+    uint vsm_info;
+    uint visible_vsm_list;
     uint vsm_buffer;
     uint vsm_virtual_page_table;
     uint vsm_physical_page_table;
@@ -31,10 +31,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         return;
     }
 
-    StructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
-    uint vsm_count = visible_light_count[1];
+    StructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
+    uint vsm_count = vsm_info[0].visible_vsm_count;
     
-    StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
+    StructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
 
@@ -60,7 +60,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     for (uint i = 0; i < vsm_count && draw_queue_rear < 32; ++i)
     {
-        uint vsm_id = vsm_ids[i];
+        uint vsm_id = visible_vsm_list[i];
         vsm_data vsm = vsms[vsm_id];
 
         uint4 page_bounds = is_static ? vsm_bounds[vsm_id].invalidated_bounds : vsm_bounds[vsm_id].required_bounds;

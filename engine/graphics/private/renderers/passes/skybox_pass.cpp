@@ -13,6 +13,8 @@ struct skybox_constant_data
     std::uint32_t skybox_texture;
     std::uint32_t sky_view_lut;
     std::uint32_t transmittance_lut;
+    vec2f transmittance_lut_uv;
+    std::uint32_t sky_view_lut_sampler;
 };
 
 struct skybox_vs : public shader_vs

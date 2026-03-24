@@ -10,6 +10,8 @@ enum mesh_flag
 {
     MESH_NONE = 0,
     MESH_STATIC = 1 << 0,
+    MESH_SKIP_FRUSTUM_CULL = 1 << 1,
+    MESH_SKIP_OCCLUSION_CULL = 1 << 2,
 };
 using mesh_flags = std::uint32_t;
 

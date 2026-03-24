@@ -3,10 +3,10 @@
 
 struct constant_data
 {
-    uint visible_light_count;
-    uint visible_light_ids;
-    uint visible_vsm_ids;
-    uint virtual_page_dispatch_buffer;
+    uint vsm_info;
+    uint visible_light_list;
+    uint visible_vsm_list;
+    uint clear_virtual_page_table_indirect_args;
     uint camera_id;
     uint vsm_directional_buffer;
 };
@@ -33,11 +33,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    RWStructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
-    RWStructuredBuffer<uint> visible_light_ids = ResourceDescriptorHeap[constant.visible_light_ids];
-    RWStructuredBuffer<uint> visible_vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
+    RWStructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
+    RWStructuredBuffer<uint> visible_light_list = ResourceDescriptorHeap[constant.visible_light_list];
+    RWStructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
 
-    RWStructuredBuffer<dispatch_command> dispatch_commands = ResourceDescriptorHeap[constant.virtual_page_dispatch_buffer];
+    RWStructuredBuffer<dispatch_command> clear_virtual_page_table_indirect_args = ResourceDescriptorHeap[constant.clear_virtual_page_table_indirect_args];
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
@@ -46,17 +46,17 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, constant.camera_id);
 
         uint light_index = 0;
-        InterlockedAdd(visible_light_count[0], 1, light_index);
-        visible_light_ids[light_index] = dtid.x;
+        InterlockedAdd(vsm_info[0].visible_light_count, 1, light_index);
+        visible_light_list[light_index] = dtid.x;
 
         uint vsm_index = 0;
-        InterlockedAdd(visible_light_count[1], 16, vsm_index);
+        InterlockedAdd(vsm_info[0].visible_vsm_count, 16, vsm_index);
 
         for (uint i = 0; i < 16; ++i)
         {
-            visible_vsm_ids[vsm_index + i] = vsm_id + i;
+            visible_vsm_list[vsm_index + i] = vsm_id + i;
         }
 
-        InterlockedAdd(dispatch_commands[0].z, 16);
+        InterlockedAdd(clear_virtual_page_table_indirect_args[0].z, 16);
     }
 }

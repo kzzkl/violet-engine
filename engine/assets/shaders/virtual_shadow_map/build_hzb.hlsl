@@ -19,7 +19,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
     vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
-    if ((physical_page.flags & PHYSICAL_PAGE_FLAG_HZB_DIRTY) == 0 || dtid.x >= constant.next_size || dtid.y >= constant.next_size)
+    if (dtid.x >= constant.next_size || dtid.y >= constant.next_size)
     {
         return;
     }
@@ -47,7 +47,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         Texture2D<float> prev_buffer = ResourceDescriptorHeap[constant.prev_buffer];
         SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
-        depth = prev_buffer.SampleLevel(hzb_sampler, float2(next_texel) / float2(PHYSICAL_PAGE_TABLE_SIZE_X, PHYSICAL_PAGE_TABLE_SIZE_Y) * constant.next_size, 0, int2(1, 1));
+        float2 uv = float2(next_texel) / (float2(PHYSICAL_PAGE_TABLE_SIZE_X, PHYSICAL_PAGE_TABLE_SIZE_Y) * constant.next_size);
+        depth = prev_buffer.SampleLevel(hzb_sampler, uv, 0, int2(1, 1));
     }
 
     next_buffer[next_texel] = depth;

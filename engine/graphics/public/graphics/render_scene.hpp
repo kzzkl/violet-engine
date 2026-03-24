@@ -335,6 +335,8 @@ public:
     rhi_texture* get_vsm_physical_shadow_map_final() const noexcept;
     rhi_texture* get_vsm_hzb() const noexcept;
 
+    render_id get_vsm_id(render_id light_index) const;
+
     rhi_parameter* get_camera_parameter() const noexcept;
     rhi_parameter* get_scene_parameter() const noexcept;
 
@@ -368,7 +370,7 @@ public:
         return m_scene->m_multi_scattering_lut;
     }
 
-    std::uint32_t get_sun_id(bool& cast_shadow) const noexcept;
+    std::uint32_t get_sun_index(bool& cast_shadow) const noexcept;
 
     vec3f get_sun_direction() const noexcept
     {

@@ -79,7 +79,7 @@ bool vsm_cull(
             uint physical_page_index = get_physical_page_index(virtual_page.physical_page_coord);
             vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
-            if (physical_page.frame == 0)
+            if (physical_page.flags & PHYSICAL_PAGE_FLAG_HZB_DIRTY)
             {
                 return true;
             }

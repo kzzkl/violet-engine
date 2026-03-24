@@ -105,7 +105,6 @@ bool geometry_tool::cluster_output::load(std::ifstream& fin)
         {
             fin.read(reinterpret_cast<char*>(&cluster.index_offset), sizeof(std::uint32_t));
             fin.read(reinterpret_cast<char*>(&cluster.index_count), sizeof(std::uint32_t));
-            fin.read(reinterpret_cast<char*>(&cluster.bounding_box), sizeof(box3f));
             fin.read(reinterpret_cast<char*>(&cluster.bounding_sphere), sizeof(sphere3f));
             fin.read(reinterpret_cast<char*>(&cluster.lod_bounds), sizeof(sphere3f));
             fin.read(reinterpret_cast<char*>(&cluster.lod_error), sizeof(float));
@@ -186,7 +185,6 @@ bool geometry_tool::cluster_output::save(std::ofstream& fout) const
         {
             fout.write(reinterpret_cast<const char*>(&cluster.index_offset), sizeof(std::uint32_t));
             fout.write(reinterpret_cast<const char*>(&cluster.index_count), sizeof(std::uint32_t));
-            fout.write(reinterpret_cast<const char*>(&cluster.bounding_box), sizeof(box3f));
             fout.write(reinterpret_cast<const char*>(&cluster.bounding_sphere), sizeof(sphere3f));
             fout.write(reinterpret_cast<const char*>(&cluster.lod_bounds), sizeof(sphere3f));
             fout.write(reinterpret_cast<const char*>(&cluster.lod_error), sizeof(float));
@@ -613,7 +611,6 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
                 submesh_output.clusters.push_back({
                     .index_offset = cluster.index_offset + index_offset,
                     .index_count = cluster.index_count,
-                    .bounding_box = cluster.bounding_box,
                     .bounding_sphere = cluster.bounding_sphere,
                     .lod_bounds = cluster.lod_bounds,
                     .lod_error = cluster.lod_error,

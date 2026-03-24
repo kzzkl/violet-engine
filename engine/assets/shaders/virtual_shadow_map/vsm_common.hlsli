@@ -46,6 +46,13 @@ static const uint VIRTUAL_PAGE_FLAG_REQUEST = 1 << 0;
 static const uint VIRTUAL_PAGE_FLAG_CACHE_VALID = 1 << 1;
 static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 2;
 
+struct vsm_info
+{
+    uint visible_light_count;
+    uint visible_vsm_count;
+    uint visible_virtual_page_count;
+};
+
 struct vsm_bounds
 {
     uint4 required_bounds;
@@ -84,8 +91,7 @@ struct vsm_virtual_page
 static const uint PHYSICAL_PAGE_FLAG_REQUEST = 1 << 0;
 static const uint PHYSICAL_PAGE_FLAG_RESIDENT = 1 << 1;
 static const uint PHYSICAL_PAGE_FLAG_IN_LRU = 1 << 2;
-static const uint PHYSICAL_PAGE_FLAG_NEED_CLEAR = 1 << 3;
-static const uint PHYSICAL_PAGE_FLAG_HZB_DIRTY = 1 << 4;
+static const uint PHYSICAL_PAGE_FLAG_HZB_DIRTY = 1 << 3;
 
 struct vsm_physical_page
 {
@@ -133,6 +139,14 @@ uint get_directional_vsm_id(StructuredBuffer<uint> directional_vsms, uint vsm_ad
 uint get_virtual_page_index(uint vsm_id, uint2 page_coord)
 {
     return vsm_id * VIRTUAL_PAGE_TABLE_PAGE_COUNT + page_coord.y * VIRTUAL_PAGE_TABLE_SIZE + page_coord.x;
+}
+
+void get_virtual_page_coord(uint virtual_page_index, out uint vsm_id, out uint2 page_coord)
+{
+    vsm_id = virtual_page_index / VIRTUAL_PAGE_TABLE_PAGE_COUNT;
+
+    uint local_page_index = virtual_page_index - vsm_id * VIRTUAL_PAGE_TABLE_PAGE_COUNT;
+    page_coord = uint2(local_page_index % VIRTUAL_PAGE_TABLE_SIZE, local_page_index / VIRTUAL_PAGE_TABLE_SIZE);
 }
 
 uint get_physical_page_index(uint2 page_coord)

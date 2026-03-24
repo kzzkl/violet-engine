@@ -23,6 +23,7 @@ debug_drawer::debug_drawer(world& world)
 
     auto& mesh = m_world.get_component<mesh_component>(m_object);
     mesh.geometry = m_geometry.get();
+    mesh.flags = MESH_SKIP_FRUSTUM_CULL | MESH_SKIP_OCCLUSION_CULL;
     mesh.submeshes.push_back({
         .index = 0,
         .material = m_material.get(),
@@ -39,8 +40,6 @@ void debug_drawer::tick()
         m_geometry->set_custom(0, m_color);
         m_geometry->set_indexes(m_indexes);
     }
-
-    // m_geometry->set_submesh(0, 0, 0, static_cast<std::uint32_t>(m_indexes.size()));
 
     m_position.clear();
     m_color.clear();

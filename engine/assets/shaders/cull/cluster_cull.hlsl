@@ -127,7 +127,8 @@ void process_cluster_node(uint group_index)
 #if CULL_RECHECK
     visible = occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);
 #else
-    visible = cluster_node.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
+    visible = cluster_node.check_lod(camera, mesh, constant.threshold);
+    visible = visible && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {
@@ -209,7 +210,8 @@ void process_cluster(uint3 dtid)
     sphere_vs.w = cluster.bounding_sphere.w * mesh.scale.w;
 
 #if CULL_MAIN_PASS
-    visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
+    visible = cluster.check_lod(camera, mesh, constant.threshold);
+    visible = visible && frustum_cull(sphere_vs, camera);
 
     if (visible)
     {
@@ -234,7 +236,8 @@ void process_cluster(uint3 dtid)
     }
     else
     {
-        visible = cluster.check_lod(camera, mesh, constant.threshold) && frustum_cull(sphere_vs, camera);
+        visible = cluster.check_lod(camera, mesh, constant.threshold);
+        visible = visible && frustum_cull(sphere_vs, camera);
     }
 
     visible = visible && occlusion_cull(sphere_vs, hzb, hzb_sampler, camera.matrix_p, camera.near, camera.type);

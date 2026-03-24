@@ -308,12 +308,12 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
-        std::uint32_t light_id;
+        std::uint32_t light_index;
         std::uint32_t shadow_mask;
         std::uint32_t stage;
         std::uint32_t prefilter_map;
         std::uint32_t irradiance_sh;
-        std::uint32_t sun_id;
+        std::uint32_t sun_index;
         float planet_radius;
         float atmosphere_radius;
         std::uint32_t transmittance_lut;
