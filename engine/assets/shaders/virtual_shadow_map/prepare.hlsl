@@ -58,6 +58,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
     draw_counts[0] = 0;
     draw_counts[1] = 0;
+    draw_counts[2] = 0;
+    draw_counts[3] = 0;
 
     RWStructuredBuffer<cluster_queue_state_data> cluster_queue_states = ResourceDescriptorHeap[constant.cluster_queue_state];
     cluster_queue_states[0] = (cluster_queue_state_data)0;

@@ -19,6 +19,7 @@ struct constant_data
 
     uint draw_buffer;
     uint draw_count_buffer;
+    uint4 draw_offset;
     uint draw_info_buffer;
 
     uint max_cluster_count;
@@ -243,12 +244,17 @@ void process_cluster(uint3 dtid)
 
     if (visible)
     {
+        bool opacity_cutoff = load_material_info(scene.material_buffer, instance.material_address).opacity_cutoff != 0;
+        uint count_offset;
+        uint command_offset;
+        get_draw_offset(constant.draw_offset, is_static, opacity_cutoff, command_offset, count_offset);
+
         RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 
         uint command_index = 0;
-        InterlockedAdd(draw_counts[is_static ? 0 : 1], 1, command_index);
+        InterlockedAdd(draw_counts[count_offset], 1, command_index);
 
-        command_index += is_static ? STATIC_INSTANCE_DRAW_OFFSET : DYNAMIC_INSTANCE_DRAW_OFFSET;
+        command_index += command_offset;
 
         if (command_index < constant.max_draw_command_count)
         {

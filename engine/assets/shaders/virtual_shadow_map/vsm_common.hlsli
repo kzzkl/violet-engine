@@ -25,8 +25,6 @@ static const uint MAX_SHADOW_LIGHT_COUNT = 32;
 static const uint MAX_VSM_COUNT = 256;
 
 static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
-static const uint STATIC_INSTANCE_DRAW_OFFSET = 0;
-static const uint DYNAMIC_INSTANCE_DRAW_OFFSET = MAX_SHADOW_DRAWS_PER_FRAME;
 
 struct vsm_data
 {

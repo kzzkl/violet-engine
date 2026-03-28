@@ -110,7 +110,7 @@ void deferred_renderer::prepare(render_graph& graph)
 
     m_draw_buffer = graph.add_buffer(
         "Draw Buffer",
-        context.get_instance_capacity() * sizeof(shader::draw_command),
+        context.get_draw_call_capacity() * sizeof(shader::draw_command),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_count_buffer = graph.add_buffer(
         "Draw Count Buffer",
@@ -118,7 +118,7 @@ void deferred_renderer::prepare(render_graph& graph)
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
     m_draw_info_buffer = graph.add_buffer(
         "Draw Info Buffer",
-        context.get_instance_capacity() * sizeof(shader::draw_info),
+        context.get_draw_call_capacity() * sizeof(shader::draw_info),
         RHI_BUFFER_STORAGE);
 
     m_recheck_instances = graph.add_buffer(

@@ -173,7 +173,12 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
     // Load materials
     for (auto& material : model.materials)
     {
-        material_data data = {};
+        material_data data = {
+            .cull_mode = material.doubleSided ? RHI_CULL_MODE_NONE : RHI_CULL_MODE_BACK,
+            .opacity_cutoff =
+                material.alphaMode == "MASK" ? static_cast<float>(material.alphaCutoff) : 0.0f,
+        };
+
         data.albedo = {
             .x = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
             .y = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),

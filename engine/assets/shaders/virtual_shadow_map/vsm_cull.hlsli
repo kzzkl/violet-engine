@@ -20,17 +20,14 @@ bool vsm_cull(
     )
 {
     float4 projected_aabb;
-    if (!project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb))
-    {
-        return false;
-    }
+    project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb);
 
     projected_aabb = projected_aabb * 0.5 + 0.5;
 
     float4 projected_page_bounds = projected_aabb * VIRTUAL_PAGE_TABLE_SIZE;
     uint4 overlap_page_bounds;
     overlap_page_bounds.xy = max(0.0, floor(projected_page_bounds.xy));
-    overlap_page_bounds.zw = max(0.0, ceil(projected_page_bounds.zw));
+    overlap_page_bounds.zw = max(0.0, floor(projected_page_bounds.zw));
 
     projected_aabb *= VIRTUAL_RESOLUTION;
 
@@ -44,12 +41,13 @@ bool vsm_cull(
 
     float depth = (sphere_vs.z - sphere_vs.w) * vsm.matrix_p[2][2] + vsm.matrix_p[2][3];
 
-    for (uint x = overlap_page_bounds.x; x <= overlap_page_bounds.z; ++x)
+    uint vsm_base = vsm_id * VIRTUAL_PAGE_TABLE_PAGE_COUNT;
+    for (uint y = overlap_page_bounds.y; y <= overlap_page_bounds.w; ++y)
     {
-        for (uint y = overlap_page_bounds.y; y <= overlap_page_bounds.w; ++y)
+        uint row_base = vsm_base + y * VIRTUAL_PAGE_TABLE_SIZE;
+        for (uint x = overlap_page_bounds.x; x <= overlap_page_bounds.z; ++x)
         {
-            uint virtual_page_index = get_virtual_page_index(vsm_id, uint2(x, y));
-            vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
+            vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[row_base + x]);
 
             if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
             {
@@ -67,10 +65,10 @@ bool vsm_cull(
             page_aabb.xy = max(virtual_texel_offset, projected_aabb.xy);
             page_aabb.zw = min(virtual_texel_offset + PAGE_RESOLUTION, projected_aabb.zw);
 
-            float width = abs(page_aabb.z - page_aabb.x);
-            float height = abs(page_aabb.w - page_aabb.y);
+            float width = page_aabb.z - page_aabb.x;
+            float height = page_aabb.w - page_aabb.y;
 
-            if (width == 0 || height == 0)
+            if (width < 1.0 || height < 1.0)
             {
                 continue;
             }
@@ -89,7 +87,7 @@ bool vsm_cull(
             page_aabb.xy = page_aabb.xy - virtual_texel_offset + physical_texel_offset;
             page_aabb.zw = page_aabb.zw - virtual_texel_offset + physical_texel_offset;
 
-            float level = clamp(floor(log2(max(width, height))), 0.0, 5.0);
+            float level = clamp(ceil(log2(max(width, height))), 0.0, 5.0);
             bool visiable = hzb.SampleLevel(hzb_sampler, (page_aabb.xy + page_aabb.zw) * 0.5 / PHYSICAL_RESOLUTION, level) < depth;
 
             if (visiable)
@@ -103,6 +101,22 @@ bool vsm_cull(
     }
 
     return false;
+}
+
+void get_draw_offset(uint4 draw_offset, bool static_mesh, bool opacity_cutoff, out uint command_offset, out uint count_offset)
+{
+    static const uint command_offsets[2][2] = {
+        {draw_offset.z, draw_offset.w},
+        {draw_offset.x, draw_offset.y},
+    };
+
+    static const uint count_offsets[2][2] = {
+        {2, 3},
+        {0, 1},
+    };
+
+    command_offset = command_offsets[static_mesh][opacity_cutoff];
+    count_offset = count_offsets[static_mesh][opacity_cutoff];
 }
 
 #endif

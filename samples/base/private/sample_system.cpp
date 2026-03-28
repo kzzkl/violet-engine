@@ -286,6 +286,8 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
     for (const auto& material_data : result->materials)
     {
         auto model_material = std::make_unique<pbr_material>();
+        model_material->set_cull_mode(material_data.cull_mode);
+        model_material->set_opacity_cutoff(material_data.opacity_cutoff);
         model_material->set_albedo(material_data.albedo);
         model_material->set_roughness(material_data.roughness);
         model_material->set_metallic(material_data.metallic);

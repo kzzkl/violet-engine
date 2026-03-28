@@ -94,6 +94,12 @@ void render_scene::remove_instance(render_id instance_id)
     auto& instance = m_instances[instance_id];
     auto& mesh = m_meshes[instance.mesh_id];
 
+    if (instance.material != nullptr)
+    {
+        auto& material = m_materials[instance.material];
+        material.instances.erase(std::ranges::find(material.instances, instance_id));
+    }
+
     mesh.instances.erase(std::ranges::find(mesh.instances, instance_id));
 
     remove_instance_from_batch(instance_id);
@@ -131,10 +137,31 @@ void render_scene::set_instance_material(render_id instance_id, material* materi
 
     if (instance_info.material != material)
     {
+        if (!m_materials.contains(material))
+        {
+            m_materials[material] = {
+                .resolve_pipeline = material->get_resolve_pipeline(),
+                .shading_model = material->get_shading_model(),
+            };
+        }
+
         remove_instance_from_batch(instance_id);
         add_instance_to_batch(instance_id, material);
 
         m_instances.mark_dirty(instance_id);
+
+        if (instance_info.material != nullptr)
+        {
+            auto& old_material = m_materials[instance_info.material];
+            old_material.instances.erase(std::ranges::find(old_material.instances, instance_id));
+
+            if (old_material.instances.empty())
+            {
+                m_materials.erase(instance_info.material);
+            }
+        }
+
+        m_materials[material].instances.push_back(instance_id);
 
         instance_info.material = material;
     }
@@ -460,6 +487,7 @@ void render_scene::set_atmosphere(
 
 void render_scene::update(gpu_buffer_uploader* uploader)
 {
+    update_material();
     m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
     m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
     m_scene_states |= update_light(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
@@ -520,7 +548,7 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     render_id batch_id = 0;
 
     batch_key key = {
-        .pipeline = material->get_pipeline(),
+        .pipeline = material->get_raster_pipeline(),
         .surface_type = material->get_surface_type(),
         .material_path = material->get_material_path(),
     };
@@ -545,8 +573,10 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     instance.batch_id = batch_id;
 
     auto& batch = m_batches[batch_id];
+    batch.opacity_cutoff = material->get_opacity_cutoff();
+
     const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
-    batch.instance_count +=
+    batch.draw_call_count +=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
     std::uint32_t resolve_pipeline_id = material->get_resolve_pipeline();
@@ -601,10 +631,10 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
     auto& batch = m_batches[instance.batch_id];
     const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
-    batch.instance_count -=
+    batch.draw_call_count -=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
-    if (batch.instance_count == 0)
+    if (batch.draw_call_count == 0)
     {
         m_pipeline_to_batch.erase({
             .pipeline = batch.pipeline,
@@ -614,16 +644,16 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
         m_batches.remove(instance.batch_id);
     }
 
-    std::uint32_t resolve_pipeline = instance.material->get_resolve_pipeline();
-    if (resolve_pipeline != 0)
+    const auto& material = m_materials.at(instance.material);
+
+    if (material.resolve_pipeline != 0)
     {
-        --m_material_resolve_pipelines[resolve_pipeline].second;
+        --m_material_resolve_pipelines[material.resolve_pipeline].second;
     }
 
-    std::uint32_t shading_model = instance.material->get_shading_model();
-    if (shading_model != 0)
+    if (material.shading_model != 0)
     {
-        --m_shading_models[shading_model].second;
+        --m_shading_models[material.shading_model].second;
     }
 
     m_scene_states |= RENDER_SCENE_STATE_BATCH_DIRTY;
@@ -682,6 +712,30 @@ void render_scene::remove_vsm_by_camera(render_id camera_id)
     }
 
     camera.vsms.clear();
+}
+
+void render_scene::update_material()
+{
+    auto* material_manager = render_device::instance().get_material_manager();
+
+    material_manager->each_pipeline_changed_material(
+        [&](material* material)
+        {
+            auto iter = m_materials.find(material);
+            if (iter == m_materials.end())
+            {
+                return;
+            }
+
+            for (render_id instance_id : iter->second.instances)
+            {
+                remove_instance_from_batch(instance_id);
+                add_instance_to_batch(instance_id, material);
+            }
+
+            iter->second.resolve_pipeline = material->get_resolve_pipeline();
+            iter->second.shading_model = material->get_shading_model();
+        });
 }
 
 bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
@@ -810,27 +864,34 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
         return false;
     }
 
-    std::uint32_t instance_offset = 0;
+    m_draw_call_count = 0;
+    m_draw_call_count_opacity_cutoff = 0;
+
     m_batches.each(
         [&](render_id batch_id, gpu_batch& batch)
         {
-            batch.instance_offset = instance_offset;
-            instance_offset += batch.instance_count;
+            batch.draw_call_offset = m_draw_call_count;
+            m_draw_call_count += batch.draw_call_count;
             m_batches.mark_dirty(batch_id);
+
+            if (batch.opacity_cutoff)
+            {
+                m_draw_call_count_opacity_cutoff += batch.draw_call_count;
+            }
         });
 
     // Align to 1024 to prevent frequent allocation of draw command buffers during cull pass.
-    if (m_instance_capacity < instance_offset)
+    if (m_draw_call_capacity < m_draw_call_count)
     {
-        m_instance_capacity = (instance_offset + 1023) & ~1023;
+        m_draw_call_capacity = (m_draw_call_count + 1023) & ~1023;
     }
-    m_instance_capacity =
-        std::min(m_instance_capacity, graphics_config::get_max_draw_command_count());
+    m_draw_call_capacity =
+        std::min(m_draw_call_capacity, graphics_config::get_max_draw_command_count());
 
     return m_batches.update(
         [](const gpu_batch& batch) -> std::uint32_t
         {
-            return batch.instance_offset;
+            return batch.draw_call_offset;
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {

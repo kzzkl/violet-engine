@@ -112,7 +112,7 @@ float fs_main(vs_output input) : SV_TARGET
 
     float sample_radius = constant.sample_radius * vsm.texel_size_inv;
     float normal_bias = constant.normal_bias * (1.0 + ceil(sample_radius)) * vsm.texel_size * 0.5;
-    position_ws += normal_bias * saturate(1.0 - dot(normal_ws, -light.direction)) * normal_ws;
+    position_ws += normal_bias * normal_ws;
 
     float4 position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));
     position_ls /= position_ls.w;

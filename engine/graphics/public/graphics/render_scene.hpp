@@ -84,8 +84,10 @@ private:
 
         rdg_raster_pipeline pipeline;
 
-        std::uint32_t instance_offset;
-        std::uint32_t instance_count;
+        std::uint32_t draw_call_offset;
+        std::uint32_t draw_call_count;
+
+        bool opacity_cutoff;
     };
 
     struct gpu_mesh
@@ -153,6 +155,14 @@ private:
         }
     };
 
+    struct material_data
+    {
+        std::uint32_t resolve_pipeline;
+        std::uint32_t shading_model;
+
+        std::vector<render_id> instances;
+    };
+
     struct gpu_directional_vsm
     {
         using gpu_type = std::array<std::uint32_t, 16>;
@@ -199,6 +209,7 @@ private:
     void add_vsm_by_camera(render_id camera_id);
     void remove_vsm_by_camera(render_id camera_id);
 
+    void update_material();
     bool update_mesh(gpu_buffer_uploader* uploader);
     bool update_instance(gpu_buffer_uploader* uploader);
     bool update_light(gpu_buffer_uploader* uploader);
@@ -209,6 +220,7 @@ private:
     std::vector<render_id> m_matrix_dirty_meshes;
 
     gpu_dense_array<gpu_instance> m_instances;
+    std::unordered_map<material*, material_data> m_materials;
 
     struct light_mapping
     {
@@ -233,7 +245,9 @@ private:
     gpu_sparse_array<gpu_directional_vsm> m_vsm_directional_buffer;
     std::unordered_map<render_id, vsm_data> m_vsms;
 
-    std::uint32_t m_instance_capacity{1};
+    std::uint32_t m_draw_call_capacity{1};
+    std::uint32_t m_draw_call_count{0};
+    std::uint32_t m_draw_call_count_opacity_cutoff{0};
 
     render_scene_states m_scene_states{0};
     shader::scene_data m_scene_data{};
@@ -313,9 +327,16 @@ public:
         return 4 * 1024;
     }
 
-    std::uint32_t get_instance_capacity() const noexcept
+    std::uint32_t get_draw_call_capacity() const noexcept
     {
-        return m_scene->m_instance_capacity;
+        return m_scene->m_draw_call_capacity;
+    }
+
+    std::uint32_t get_draw_call_count(bool opacity_cutoff = false) const noexcept
+    {
+        return opacity_cutoff ?
+                   m_scene->m_draw_call_count_opacity_cutoff :
+                   m_scene->m_draw_call_count - m_scene->m_draw_call_count_opacity_cutoff;
     }
 
     std::uint32_t get_batch_capacity() const noexcept
@@ -394,12 +415,12 @@ public:
             [&](render_id id, const render_scene::gpu_batch& batch)
             {
                 if (batch.surface_type != surface_type || batch.material_path != material_path ||
-                    batch.instance_count == 0)
+                    batch.draw_call_count == 0)
                 {
                     return;
                 }
 
-                functor(id, batch.pipeline, batch.instance_offset, batch.instance_count);
+                functor(id, batch.pipeline, batch.draw_call_offset, batch.draw_call_count);
             });
     }
 

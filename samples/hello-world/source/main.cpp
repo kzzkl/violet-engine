@@ -55,19 +55,19 @@ public:
         m_unlit_material->set_color({1.0f, 1.0f, 1.0f});
 
         // Plane.
-        m_plane = world.create();
-        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+        // entity plane = world.create();
+        // world.add_component<transform_component, mesh_component, scene_component>(plane);
 
-        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
-        plane_mesh.geometry = m_box_geometry.get();
-        plane_mesh.flags |= MESH_STATIC;
-        plane_mesh.submeshes.push_back({
-            .index = 0,
-            .material = m_pbr_material.get(),
-        });
-        auto& plane_transform = world.get_component<transform_component>(m_plane);
-        plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
+        // auto& plane_mesh = world.get_component<mesh_component>(plane);
+        // plane_mesh.geometry = m_box_geometry.get();
+        // plane_mesh.flags |= MESH_STATIC;
+        // plane_mesh.submeshes.push_back({
+        //     .index = 0,
+        //     .material = m_pbr_material.get(),
+        // });
+        // auto& plane_transform = world.get_component<transform_component>(plane);
+        // plane_transform.set_position({0.0f, -1.0f, 0.0f});
+        // plane_transform.set_scale({10.0f, 0.05f, 10.0f});
 
         // for (std::uint32_t i = 0; i < 50; ++i)
         // {
@@ -437,8 +437,12 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text("Static Drawcall: %d", debug_info.static_drawcall);
-                ImGui::Text("Dynamic Drawcall: %d", debug_info.dynamic_drawcall);
+                ImGui::Text(
+                    "Static Drawcall: %d",
+                    debug_info.static_drawcall + debug_info.static_opacity_cutoff_drawcall);
+                ImGui::Text(
+                    "Dynamic Drawcall: %d",
+                    debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
             }
         }
     }
@@ -449,8 +453,6 @@ private:
 
     std::unique_ptr<pbr_material> m_pbr_material;
     std::unique_ptr<unlit_material> m_unlit_material;
-
-    entity m_plane;
 };
 } // namespace violet
 

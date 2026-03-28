@@ -71,7 +71,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
             command.set_viewport();
             command.set_scissor();
 
-            auto max_instances = static_cast<std::uint32_t>(
+            auto max_draw_call_count = static_cast<std::uint32_t>(
                 data.draw_buffer.get_size() / sizeof(shader::draw_command));
 
             if (data.override_pipeline.vertex_shader == nullptr)
@@ -83,8 +83,8 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
                     data.material_path,
                     [&](render_id id,
                         const rdg_raster_pipeline& pipeline,
-                        std::uint32_t instance_offset,
-                        std::uint32_t instance_count)
+                        std::uint32_t draw_call_offset,
+                        std::uint32_t draw_call_count)
                     {
                         command.set_pipeline(pipeline);
 
@@ -104,10 +104,10 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
 
                         command.draw_indexed_indirect(
                             data.draw_buffer.get_rhi(),
-                            instance_offset * sizeof(shader::draw_command),
+                            draw_call_offset * sizeof(shader::draw_command),
                             data.draw_count_buffer.get_rhi(),
                             id * sizeof(std::uint32_t),
-                            std::min(instance_count, max_instances - instance_offset));
+                            std::min(draw_call_count, max_draw_call_count - draw_call_offset));
                     });
             }
             else
@@ -127,15 +127,15 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
                     data.material_path,
                     [&](render_id id,
                         const rdg_raster_pipeline& pipeline,
-                        std::uint32_t instance_offset,
-                        std::uint32_t instance_count)
+                        std::uint32_t draw_call_offset,
+                        std::uint32_t draw_call_count)
                     {
                         command.draw_indexed_indirect(
                             data.draw_buffer.get_rhi(),
-                            instance_offset * sizeof(shader::draw_command),
+                            draw_call_offset * sizeof(shader::draw_command),
                             data.draw_count_buffer.get_rhi(),
                             id * sizeof(std::uint32_t),
-                            std::min(instance_count, max_instances - instance_offset));
+                            std::min(draw_call_count, max_draw_call_count - draw_call_offset));
                     });
             }
         });

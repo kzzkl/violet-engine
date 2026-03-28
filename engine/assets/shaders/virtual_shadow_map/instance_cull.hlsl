@@ -12,6 +12,7 @@ struct constant_data
     uint vsm_bounds_buffer;
     uint hzb;
     uint hzb_sampler;
+    uint4 draw_offset;
     uint draw_buffer;
     uint draw_count_buffer;
     uint draw_info_buffer;
@@ -47,7 +48,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
     mesh_data mesh = meshes[instance.mesh_index];
 
-    bool is_static = (mesh.flags & MESH_STATIC) != 0;
+    bool static_mesh = (mesh.flags & MESH_STATIC) != 0;
 
     float sphere_vs_radius = geometry.bounding_sphere.w * mesh.scale.w;
     if (sphere_vs_radius <= 0.0)
@@ -63,7 +64,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         uint vsm_id = visible_vsm_list[i];
         vsm_data vsm = vsms[vsm_id];
 
-        uint4 page_bounds = is_static ? vsm_bounds[vsm_id].invalidated_bounds : vsm_bounds[vsm_id].required_bounds;
+        uint4 page_bounds = static_mesh ? vsm_bounds[vsm_id].invalidated_bounds : vsm_bounds[vsm_id].required_bounds;
         if (page_bounds.x > page_bounds.z || page_bounds.y > page_bounds.w)
         {
             continue;
@@ -77,9 +78,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
-        if (vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
+        if (vsm_cull(vsm_id, page_bounds, sphere_vs, static_mesh, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
 #else
-        if (vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table))
+        if (vsm_cull(vsm_id, page_bounds, sphere_vs, static_mesh, vsm, virtual_page_table))
 #endif
         {
             vsm_draw_info draw_info;
@@ -113,15 +114,21 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
         RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
 
+        bool opacity_cutoff = load_material_info(scene.material_buffer, instance.material_address).opacity_cutoff != 0;
+
+        uint draw_offset;
+        uint count_offset;
+        get_draw_offset(constant.draw_offset, static_mesh, opacity_cutoff, draw_offset, count_offset);
+
         uint draw_command_offset = 0;
-        InterlockedAdd(draw_counts[is_static ? 0 : 1], draw_queue_rear, draw_command_offset);
+        InterlockedAdd(draw_counts[count_offset], draw_queue_rear, draw_command_offset);
 
         if (draw_command_offset + draw_queue_rear > MAX_SHADOW_DRAWS_PER_FRAME)
         {
             return;
         }
 
-        draw_command_offset += is_static ? STATIC_INSTANCE_DRAW_OFFSET : DYNAMIC_INSTANCE_DRAW_OFFSET;
+        draw_command_offset += draw_offset;
 
         for (uint i = 0; i < draw_queue_rear; ++i)
         {

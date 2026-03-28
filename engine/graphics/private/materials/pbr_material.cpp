@@ -10,19 +10,11 @@ struct pbr_material_cs : public material_resolve_cs
 
 pbr_material::pbr_material()
 {
-    auto& device = render_device::instance();
+    set_cull_mode(RHI_CULL_MODE_BACK);
+    set_polygon_mode(RHI_POLYGON_MODE_FILL);
+    set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    set_pipeline<pbr_shading_model>(
-        {
-            .vertex_shader = device.get_shader<visibility_vs>(),
-            .fragment_shader = device.get_shader<visibility_fs>(),
-            .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_NONE>(),
-            .depth_stencil_state =
-                device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
-        },
-        {
-            .compute_shader = device.get_shader<pbr_material_cs>(),
-        });
+    set_shading_model<pbr_shading_model>();
     set_surface_type(SURFACE_TYPE_OPAQUE);
 
     set_albedo({1.0f, 1.0f, 1.0f});
@@ -88,5 +80,10 @@ vec3f pbr_material::get_emissive() const
 void pbr_material::set_normal(texture_2d* normal)
 {
     get_constant().normal_texture = normal->get_srv()->get_bindless();
+}
+
+rhi_shader* pbr_material::get_resolve_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<pbr_material_cs>(defines);
 }
 } // namespace violet

@@ -8,25 +8,13 @@ struct unlit_material_cs : public material_resolve_cs
     static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
 };
 
-unlit_material::unlit_material(
-    rhi_primitive_topology primitive_topology,
-    rhi_cull_mode cull_mode,
-    rhi_polygon_mode polygon_mode)
+unlit_material::unlit_material()
 {
-    auto& device = render_device::instance();
+    set_cull_mode(RHI_CULL_MODE_BACK);
+    set_polygon_mode(RHI_POLYGON_MODE_FILL);
+    set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    set_pipeline<unlit_shading_model>(
-        {
-            .vertex_shader = device.get_shader<visibility_vs>(),
-            .fragment_shader = device.get_shader<visibility_fs>(),
-            .rasterizer_state = device.get_rasterizer_state(cull_mode, polygon_mode),
-            .depth_stencil_state =
-                device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
-            .primitive_topology = primitive_topology,
-        },
-        {
-            .compute_shader = device.get_shader<unlit_material_cs>(),
-        });
+    set_shading_model<unlit_shading_model>();
     set_surface_type(SURFACE_TYPE_OPAQUE);
 
     set_color({1.0f, 1.0f, 1.0f});
@@ -35,5 +23,10 @@ unlit_material::unlit_material(
 void unlit_material::set_color(const vec3f& color)
 {
     get_constant().color = color;
+}
+
+rhi_shader* unlit_material::get_resolve_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<unlit_material_cs>(defines);
 }
 } // namespace violet

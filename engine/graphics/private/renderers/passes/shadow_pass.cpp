@@ -8,9 +8,6 @@
 namespace violet
 {
 static constexpr std::uint32_t MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
-static constexpr std::uint32_t STATIC_INSTANCE_DRAW_OFFSET = 0;
-static constexpr std::uint32_t DYNAMIC_INSTANCE_DRAW_OFFSET =
-    MAX_SHADOW_DRAWS_PER_FRAME * sizeof(shader::draw_command);
 
 struct vsm_prepare_cs : public shader_cs
 {
@@ -268,6 +265,7 @@ struct vsm_instance_cull_cs : public shader_cs
         std::uint32_t vsm_bounds_buffer;
         std::uint32_t hzb;
         std::uint32_t hzb_sampler;
+        vec4u draw_offset;
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
         std::uint32_t draw_info_buffer;
@@ -319,6 +317,7 @@ struct vsm_cluster_cull_cs : public shader_cs
 
         std::uint32_t draw_buffer;
         std::uint32_t draw_count_buffer;
+        vec4u draw_offset;
         std::uint32_t draw_info_buffer;
 
         std::uint32_t max_cluster_count;
@@ -571,12 +570,29 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_count_buffer = graph.add_buffer(
         "VSM Draw Count Buffer",
-        sizeof(std::uint32_t) * 2,
+        sizeof(std::uint32_t) * 4,
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_info_buffer = graph.add_buffer(
         "VSM Draw Info Buffer",
         MAX_SHADOW_DRAWS_PER_FRAME * sizeof(vec2u) * 2, // x: vsm id, y: instance id.
         RHI_BUFFER_STORAGE);
+
+    std::uint32_t draw_call = graph.get_context().get_draw_call_count();
+    std::uint32_t draw_call_opacity_cutoff = graph.get_context().get_draw_call_count(true);
+    if (draw_call + draw_call_opacity_cutoff == 0)
+    {
+        return;
+    }
+
+    std::uint32_t draw_call_offset =
+        MAX_SHADOW_DRAWS_PER_FRAME * draw_call / (draw_call + draw_call_opacity_cutoff);
+
+    m_draw_offset = {
+        .x = 0,                                             // static draws without opacity_cutoff
+        .y = draw_call_offset,                              // static draws with opacity_cutoff
+        .z = MAX_SHADOW_DRAWS_PER_FRAME,                    // dynamic draws without opacity_cutoff
+        .w = MAX_SHADOW_DRAWS_PER_FRAME + draw_call_offset, // dynamic draws with opacity_cutoff
+    };
 
     m_cluster_queue = graph.add_buffer(
         "VSM Cluster Queue",
@@ -596,8 +612,8 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     clear_physical_page(graph);
     instance_cull(graph);
     cluster_cull(graph);
-    render_shadow(graph, true);
     render_shadow(graph, false);
+    render_shadow(graph, true);
     merge_physical_page(graph);
 
     build_hzb(graph);
@@ -1176,6 +1192,40 @@ void shadow_pass::clear_physical_page(render_graph& graph)
     };
 
     graph.add_pass<pass_data>(
+        "VSM Clear Physical Page: Static",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.clear_physical_page_list =
+                pass.add_buffer_srv(m_clear_physical_page_list, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_physical_shadow_map =
+                pass.add_texture_uav(m_vsm_physical_shadow_map_static, RHI_PIPELINE_STAGE_COMPUTE);
+
+            data.dispatch_buffer = pass.add_buffer(
+                m_clear_physical_page_texels_indirect_args,
+                RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+                RHI_ACCESS_INDIRECT_COMMAND_READ);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<vsm_clear_physical_page_cs>(),
+            });
+
+            command.set_constant(
+                vsm_clear_physical_page_cs::constant_data{
+                    .clear_physical_page_list = data.clear_physical_page_list.get_bindless(),
+                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
+                });
+
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            command.dispatch_indirect(data.dispatch_buffer.get_rhi());
+        });
+
+    graph.add_pass<pass_data>(
         "VSM Clear Physical Page: Dynamic",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
@@ -1213,40 +1263,6 @@ void shadow_pass::clear_physical_page(render_graph& graph)
 
             command.dispatch_indirect(data.dispatch_buffer.get_rhi());
         });
-
-    graph.add_pass<pass_data>(
-        "VSM Clear Physical Page: Static",
-        RDG_PASS_COMPUTE,
-        [&](pass_data& data, rdg_pass& pass)
-        {
-            data.clear_physical_page_list =
-                pass.add_buffer_srv(m_clear_physical_page_list, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_physical_shadow_map =
-                pass.add_texture_uav(m_vsm_physical_shadow_map_static, RHI_PIPELINE_STAGE_COMPUTE);
-
-            data.dispatch_buffer = pass.add_buffer(
-                m_clear_physical_page_texels_indirect_args,
-                RHI_PIPELINE_STAGE_DRAW_INDIRECT,
-                RHI_ACCESS_INDIRECT_COMMAND_READ);
-        },
-        [](const pass_data& data, rdg_command& command)
-        {
-            auto& device = render_device::instance();
-
-            command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_clear_physical_page_cs>(),
-            });
-
-            command.set_constant(
-                vsm_clear_physical_page_cs::constant_data{
-                    .clear_physical_page_list = data.clear_physical_page_list.get_bindless(),
-                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
-                });
-
-            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
-
-            command.dispatch_indirect(data.dispatch_buffer.get_rhi());
-        });
 }
 
 void shadow_pass::instance_cull(render_graph& graph)
@@ -1265,7 +1281,7 @@ void shadow_pass::instance_cull(render_graph& graph)
         rdg_buffer_uav draw_info_buffer;
         rdg_buffer_uav cluster_queue;
         rdg_buffer_uav cluster_queue_state;
-
+        vec4u draw_offset;
         std::uint32_t instance_count;
     };
 
@@ -1298,6 +1314,7 @@ void shadow_pass::instance_cull(render_graph& graph)
                 data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             }
 
+            data.draw_offset = m_draw_offset;
             data.instance_count = graph.get_context().get_instance_count();
         },
         [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
@@ -1322,6 +1339,7 @@ void shadow_pass::instance_cull(render_graph& graph)
                 .vsm_buffer = data.vsm_buffer.get_bindless(),
                 .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                 .vsm_bounds_buffer = data.vsm_bounds_buffer.get_bindless(),
+                .draw_offset = data.draw_offset,
                 .draw_buffer = data.draw_buffer.get_bindless(),
                 .draw_count_buffer = data.draw_count_buffer.get_bindless(),
                 .draw_info_buffer = data.draw_info_buffer.get_bindless(),
@@ -1414,6 +1432,8 @@ void shadow_pass::cluster_cull(render_graph& graph)
         rdg_buffer_uav draw_info_buffer;
 
         rdg_buffer_ref dispatch_buffer;
+
+        vec4u draw_offset;
     };
 
     std::uint32_t cluster_node_depth =
@@ -1452,6 +1472,7 @@ void shadow_pass::cluster_cull(render_graph& graph)
                         pass.add_buffer_uav(m_draw_count_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                     data.draw_info_buffer =
                         pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                    data.draw_offset = m_draw_offset;
                 }
 
                 if (m_vsm_hzb != nullptr)
@@ -1496,6 +1517,7 @@ void shadow_pass::cluster_cull(render_graph& graph)
                     constant.draw_buffer = data.draw_buffer.get_bindless();
                     constant.draw_count_buffer = data.draw_count_buffer.get_bindless();
                     constant.draw_info_buffer = data.draw_info_buffer.get_bindless();
+                    constant.draw_offset = data.draw_offset;
                 }
                 else
                 {
@@ -1520,22 +1542,29 @@ void shadow_pass::cluster_cull(render_graph& graph)
     }
 }
 
-void shadow_pass::render_shadow(render_graph& graph, bool is_static)
+void shadow_pass::render_shadow(render_graph& graph, bool opacity_cutoff)
 {
+    if (graph.get_context().get_draw_call_count(opacity_cutoff) == 0)
+    {
+        return;
+    }
+
     struct pass_data
     {
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
-        rdg_texture_uav vsm_physical_shadow_map;
+        rdg_texture_uav vsm_physical_shadow_map_static;
+        rdg_texture_uav vsm_physical_shadow_map_final;
         rdg_buffer_ref draw_buffer;
         rdg_buffer_ref draw_count_buffer;
         rdg_buffer_srv draw_info_buffer;
         float slope_scale_depth_bias;
-        bool is_static;
+        vec4u draw_offset;
+        bool opacity_cutoff;
     };
 
     graph.add_pass<pass_data>(
-        is_static ? "VSM Render Shadow: Static" : "VSM Render Shadow: Dynamic",
+        opacity_cutoff ? "VSM Render Shadow: Opacity Cutoff" : "VSM Render Shadow",
         RDG_PASS_RASTER,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -1547,9 +1576,10 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_VERTEX);
             data.vsm_virtual_page_table =
                 pass.add_buffer_srv(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_FRAGMENT);
-            data.vsm_physical_shadow_map = pass.add_texture_uav(
-                is_static ? m_vsm_physical_shadow_map_static : m_vsm_physical_shadow_map_final,
-                RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_physical_shadow_map_static =
+                pass.add_texture_uav(m_vsm_physical_shadow_map_static, RHI_PIPELINE_STAGE_FRAGMENT);
+            data.vsm_physical_shadow_map_final =
+                pass.add_texture_uav(m_vsm_physical_shadow_map_final, RHI_PIPELINE_STAGE_FRAGMENT);
             data.draw_buffer = pass.add_buffer(
                 m_draw_buffer,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
@@ -1562,28 +1592,27 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
                 pass.add_buffer_srv(m_draw_info_buffer, RHI_PIPELINE_STAGE_VERTEX);
 
             data.slope_scale_depth_bias = m_slope_scale_depth_bias;
-            data.is_static = is_static;
+            data.draw_offset = m_draw_offset;
+            data.opacity_cutoff = opacity_cutoff;
         },
         [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
-            command.set_pipeline({
-                .vertex_shader = device.get_shader<vsm_shadow_vs>(),
-                .fragment_shader = device.get_shader<vsm_shadow_fs>(),
+            std::vector<std::wstring> defines;
+            if (data.opacity_cutoff)
+            {
+                defines.emplace_back(L"-DVIOLET_OPACITY_CUTOFF");
+            }
+
+            rdg_raster_pipeline pipeline = {
+                .vertex_shader = device.get_shader<vsm_shadow_vs>(defines),
+                .fragment_shader = device.get_shader<vsm_shadow_fs>(defines),
                 .rasterizer_state = device.get_rasterizer_state<RHI_CULL_MODE_NONE>(),
                 .depth_stencil_state =
                     device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
-            });
-
-            command.set_constant(
-                vsm_shadow_vs::constant_data{
-                    .vsm_buffer = data.vsm_buffer.get_bindless(),
-                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
-                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
-                    .draw_info_buffer = data.draw_info_buffer.get_bindless(),
-                    .slope_scale_depth_bias = data.slope_scale_depth_bias,
-                });
+            };
+            command.set_pipeline(pipeline);
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
@@ -1602,12 +1631,41 @@ void shadow_pass::render_shadow(render_graph& graph, bool is_static)
             };
             command.set_scissor({&scissor, 1});
 
+            std::uint32_t max_draw_count = data.opacity_cutoff ?
+                                               MAX_SHADOW_DRAWS_PER_FRAME - data.draw_offset.y :
+                                               data.draw_offset.y;
+
+            command.set_constant(
+                vsm_shadow_vs::constant_data{
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map_static.get_bindless(),
+                    .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                    .slope_scale_depth_bias = data.slope_scale_depth_bias,
+                });
             command.draw_indexed_indirect(
                 data.draw_buffer.get_rhi(),
-                data.is_static ? STATIC_INSTANCE_DRAW_OFFSET : DYNAMIC_INSTANCE_DRAW_OFFSET,
+                data.opacity_cutoff ? data.draw_offset.y * sizeof(shader::draw_command) :
+                                      data.draw_offset.x * sizeof(shader::draw_command),
                 data.draw_count_buffer.get_rhi(),
-                data.is_static ? 0 : sizeof(std::uint32_t),
-                MAX_SHADOW_DRAWS_PER_FRAME);
+                data.opacity_cutoff ? 1 * sizeof(std::uint32_t) : 0 * sizeof(std::uint32_t),
+                max_draw_count);
+
+            command.set_constant(
+                vsm_shadow_vs::constant_data{
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                    .vsm_physical_shadow_map = data.vsm_physical_shadow_map_final.get_bindless(),
+                    .draw_info_buffer = data.draw_info_buffer.get_bindless(),
+                    .slope_scale_depth_bias = data.slope_scale_depth_bias,
+                });
+            command.draw_indexed_indirect(
+                data.draw_buffer.get_rhi(),
+                data.opacity_cutoff ? data.draw_offset.w * sizeof(shader::draw_command) :
+                                      data.draw_offset.z * sizeof(shader::draw_command),
+                data.draw_count_buffer.get_rhi(),
+                data.opacity_cutoff ? 3 * sizeof(std::uint32_t) : 2 * sizeof(std::uint32_t),
+                max_draw_count);
         });
 }
 
@@ -1903,6 +1961,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
             rdg_buffer_ref draw_buffer;
             rdg_buffer_ref draw_count_buffer;
             rdg_buffer_srv draw_info_buffer;
+            vec4u draw_offset;
         };
 
         rdg_texture* debug_depth_buffer = graph.add_texture(
@@ -1929,6 +1988,7 @@ void shadow_pass::add_debug_pass(render_graph& graph)
                     RHI_ACCESS_INDIRECT_COMMAND_READ);
                 data.draw_info_buffer =
                     pass.add_buffer_srv(m_draw_info_buffer, RHI_PIPELINE_STAGE_VERTEX);
+                data.draw_offset = m_draw_offset;
             },
             [](const pass_data& data, rdg_command& command)
             {
@@ -1957,17 +2017,31 @@ void shadow_pass::add_debug_pass(render_graph& graph)
 
                 command.draw_indexed_indirect(
                     data.draw_buffer.get_rhi(),
-                    STATIC_INSTANCE_DRAW_OFFSET,
+                    data.draw_offset.x * sizeof(shader::draw_command),
                     data.draw_count_buffer.get_rhi(),
-                    0,
-                    MAX_SHADOW_DRAWS_PER_FRAME);
+                    0 * sizeof(std::uint32_t),
+                    data.draw_offset.y);
 
                 command.draw_indexed_indirect(
                     data.draw_buffer.get_rhi(),
-                    DYNAMIC_INSTANCE_DRAW_OFFSET,
+                    data.draw_offset.y * sizeof(shader::draw_command),
                     data.draw_count_buffer.get_rhi(),
-                    sizeof(std::uint32_t),
-                    MAX_SHADOW_DRAWS_PER_FRAME);
+                    1 * sizeof(std::uint32_t),
+                    MAX_SHADOW_DRAWS_PER_FRAME - data.draw_offset.y);
+
+                command.draw_indexed_indirect(
+                    data.draw_buffer.get_rhi(),
+                    data.draw_offset.z * sizeof(shader::draw_command),
+                    data.draw_count_buffer.get_rhi(),
+                    2 * sizeof(std::uint32_t),
+                    data.draw_offset.y);
+
+                command.draw_indexed_indirect(
+                    data.draw_buffer.get_rhi(),
+                    data.draw_offset.w * sizeof(shader::draw_command),
+                    data.draw_count_buffer.get_rhi(),
+                    3 * sizeof(std::uint32_t),
+                    MAX_SHADOW_DRAWS_PER_FRAME - data.draw_offset.y);
             });
     }
 }

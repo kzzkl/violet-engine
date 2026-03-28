@@ -10,9 +10,9 @@ struct rdg_raster_pipeline
     rhi_shader* geometry_shader;
     rhi_shader* fragment_shader;
 
-    rhi_rasterizer_state* rasterizer_state;
-    rhi_depth_stencil_state* depth_stencil_state;
-    rhi_blend_state* blend_state;
+    const rhi_rasterizer_state* rasterizer_state;
+    const rhi_depth_stencil_state* depth_stencil_state;
+    const rhi_blend_state* blend_state;
 
     rhi_primitive_topology primitive_topology;
     rhi_sample_count samples;
