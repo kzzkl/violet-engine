@@ -19,6 +19,7 @@ public:
         DEBUG_MODE_SHADING_SHADOW_MASK,
         DEBUG_MODE_BLOOM,
         DEBUG_MODE_BLOOM_PREFILTER,
+        DEBUG_MODE_EYE_ADAPTATION,
     };
 
     deferred_renderer();
@@ -53,6 +54,7 @@ private:
     void add_sky_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
+    void add_eye_adaptation_pass(render_graph& graph);
     void add_bloom_pass(render_graph& graph);
     void add_tone_mapping_pass(render_graph& graph);
     void add_present_pass(render_graph& graph);

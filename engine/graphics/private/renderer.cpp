@@ -7,8 +7,10 @@ renderer::renderer() = default;
 
 renderer::~renderer() {}
 
-void renderer::render(render_graph& graph)
+void renderer::render(render_graph& graph, float delta_time)
 {
+    m_delta_time = delta_time;
+
     rhi_extent extent = graph.get_context().get_render_target()->get_extent();
     for (const auto& feature : m_features)
     {

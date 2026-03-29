@@ -231,19 +231,19 @@ float4 reconstruct_position(uint depth_buffer, float2 texcoord, float4x4 matrix_
     return reconstruct_position(depth, texcoord, matrix_inv);
 }
 
-float luminance(float3 color)
+float get_luminance(float3 color)
 {
     return dot(color, float3(0.2126729, 0.7151522, 0.0721750));
 }
 
 float3 tonemap(float3 color)
 {
-    return color / (1 + luminance(color));
+    return color / (1 + get_luminance(color));
 }
 
 float3 tonemap_invert(float3 color)
 {
-    return color / (1 - luminance(color));
+    return color / (1 - get_luminance(color));
 }
 
 float2 get_compute_texcoord(uint2 texel_coord, uint width, uint height)

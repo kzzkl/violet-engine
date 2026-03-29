@@ -10,6 +10,7 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
@@ -257,7 +258,7 @@ private:
             auto& main_camera = world.get_component<camera_component>(get_camera());
             auto* shadow = main_camera.renderer->get_feature<shadow_feature>();
 
-            static auto sample_mode = static_cast<std::int32_t>(shadow->get_sample_mode());
+            static auto sample_mode = static_cast<std::int32_t>(shadow->sample_mode);
             static const char* sample_mode_items[] = {
                 "None",
                 "PCF",
@@ -270,32 +271,17 @@ private:
                     sample_mode_items,
                     IM_ARRAYSIZE(sample_mode_items)))
             {
-                shadow->set_sample_mode(static_cast<shadow_sample_mode>(sample_mode));
+                shadow->sample_mode = static_cast<shadow_sample_mode>(sample_mode);
             }
 
-            static float sample_radius = shadow->get_sample_radius() * 100.0f;
-            if (ImGui::SliderFloat("Sample Radius", &sample_radius, 0.0f, 10.0f))
-            {
-                shadow->set_sample_radius(sample_radius * 0.01f);
-            }
-
-            static float slope_scale_depth_bias = shadow->get_slope_scale_depth_bias();
-            if (ImGui::SliderFloat("Slope Scale Depth Bias", &slope_scale_depth_bias, 0.0f, 2.0f))
-            {
-                shadow->set_slope_scale_depth_bias(slope_scale_depth_bias);
-            }
-
-            static float normal_bias = shadow->get_normal_bias();
-            if (ImGui::SliderFloat("Normal Bias", &normal_bias, 0.0f, 2.0f))
-            {
-                shadow->set_normal_bias(normal_bias);
-            }
-
-            static float constant_bias = shadow->get_constant_bias();
-            if (ImGui::SliderFloat("Constant Bias", &constant_bias, 0.0f, 2.0f))
-            {
-                shadow->set_constant_bias(constant_bias);
-            }
+            ImGui::SliderFloat("Sample Radius", &shadow->sample_radius, 0.0f, 10.0f);
+            ImGui::SliderFloat(
+                "Slope Scale Depth Bias",
+                &shadow->slope_scale_depth_bias,
+                0.0f,
+                2.0f);
+            ImGui::SliderFloat("Normal Bias", &shadow->normal_bias, 0.0f, 2.0f);
+            ImGui::SliderFloat("Constant Bias", &shadow->constant_bias, 0.0f, 2.0f);
         }
 
         if (ImGui::CollapsingHeader("TAA"))
@@ -305,15 +291,16 @@ private:
 
             static bool enable_taa = taa->is_enable();
 
-            ImGui::Checkbox("Enable##TAA", &enable_taa);
-
-            if (enable_taa)
+            if (ImGui::Checkbox("Enable##TAA", &enable_taa))
             {
-                taa->enable();
-            }
-            else
-            {
-                taa->disable();
+                if (enable_taa)
+                {
+                    taa->enable();
+                }
+                else
+                {
+                    taa->disable();
+                }
             }
         }
 
@@ -323,29 +310,56 @@ private:
             auto* gtao = main_camera.renderer->get_feature<gtao_feature>();
 
             static bool enable_gtao = gtao->is_enable();
-            static int slice_count = static_cast<int>(gtao->get_slice_count());
-            static int step_count = static_cast<int>(gtao->get_step_count());
-            static float radius = gtao->get_radius();
-            static float falloff = gtao->get_falloff();
-
-            ImGui::Checkbox("Enable##GTAO", &enable_gtao);
-            ImGui::SliderInt("Slice Count", &slice_count, 1, 5);
-            ImGui::SliderInt("Step Count", &step_count, 1, 5);
-            ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
-            ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
+            if (ImGui::Checkbox("Enable##GTAO", &enable_gtao))
+            {
+                if (enable_gtao)
+                {
+                    gtao->enable();
+                }
+                else
+                {
+                    gtao->disable();
+                }
+            }
 
             if (enable_gtao)
             {
-                gtao->enable();
+                ImGui::SliderInt("Slice Count", reinterpret_cast<int*>(&gtao->slice_count), 1, 5);
+                ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&gtao->step_count), 1, 5);
+                ImGui::SliderFloat("Radius", &gtao->radius, 0.0f, 10.0f);
+                ImGui::SliderFloat("Falloff", &gtao->falloff, 0.1f, 1.0f);
             }
-            else
+        }
+
+        if (ImGui::CollapsingHeader("Eye Adaptation"))
+        {
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* eye_adaptation = main_camera.renderer->get_feature<eye_adaptation_feature>();
+
+            static bool enable_eye_adaptation = eye_adaptation->is_enable();
+            if (ImGui::Checkbox("Enable##EyeAdaptation", &enable_eye_adaptation))
             {
-                gtao->disable();
+                if (enable_eye_adaptation)
+                {
+                    eye_adaptation->enable();
+                }
+                else
+                {
+                    eye_adaptation->disable();
+                }
             }
-            gtao->set_slice_count(slice_count);
-            gtao->set_step_count(step_count);
-            gtao->set_radius(radius);
-            gtao->set_falloff(falloff);
+
+            if (enable_eye_adaptation)
+            {
+                ImGui::SliderFloat("Min EV", &eye_adaptation->min_ev, -10.0f, 0.0f);
+                ImGui::SliderFloat("Max EV", &eye_adaptation->max_ev, 0.0f, 10.0f);
+                ImGui::SliderFloat("Low Percent", &eye_adaptation->low_percent, 0.0f, 1.0f);
+                ImGui::SliderFloat("High Percent", &eye_adaptation->high_percent, 0.0f, 1.0f);
+                ImGui::SliderFloat("Min Brightness", &eye_adaptation->min_brightness, 0.001f, 0.1f);
+                ImGui::SliderFloat("Max Brightness", &eye_adaptation->max_brightness, 1.0f, 100.0f);
+                ImGui::SliderFloat("Speed Down", &eye_adaptation->speed_down, 0.1f, 10.0f);
+                ImGui::SliderFloat("Speed Up", &eye_adaptation->speed_up, 0.1f, 10.0f);
+            }
         }
 
         if (ImGui::CollapsingHeader("Bloom"))
@@ -354,29 +368,26 @@ private:
             auto* bloom = main_camera.renderer->get_feature<bloom_feature>();
 
             static bool enable_bloom = bloom->is_enable();
-            static float threshold = bloom->get_threshold();
-            static float intensity = bloom->get_intensity();
-            static float knee = bloom->get_knee();
-            static float radius = bloom->get_radius();
 
-            ImGui::Checkbox("Enable##Bloom", &enable_bloom);
-            ImGui::SliderFloat("Threshold##Bloom", &threshold, 0.0f, 2.0f);
-            ImGui::SliderFloat("Intensity##Bloom", &intensity, 0.0f, 2.0f);
-            ImGui::SliderFloat("Knee##Bloom", &knee, 0.0f, 1.0f);
-            ImGui::SliderFloat("Radius##Bloom", &radius, 0.2f, 1.0f);
+            if (ImGui::Checkbox("Enable##Bloom", &enable_bloom))
+            {
+                if (enable_bloom)
+                {
+                    bloom->enable();
+                }
+                else
+                {
+                    bloom->disable();
+                }
+            }
 
             if (enable_bloom)
             {
-                bloom->enable();
+                ImGui::SliderFloat("Threshold##Bloom", &bloom->threshold, 0.0f, 2.0f);
+                ImGui::SliderFloat("Intensity##Bloom", &bloom->intensity, 0.0f, 2.0f);
+                ImGui::SliderFloat("Knee##Bloom", &bloom->knee, 0.0f, 1.0f);
+                ImGui::SliderFloat("Radius##Bloom", &bloom->radius, 0.2f, 1.0f);
             }
-            else
-            {
-                bloom->disable();
-            }
-            bloom->set_threshold(threshold);
-            bloom->set_intensity(intensity);
-            bloom->set_knee(knee);
-            bloom->set_radius(radius);
         }
 
         if (ImGui::CollapsingHeader("Profiling"))
@@ -402,6 +413,7 @@ private:
                 "Shadow Mask",
                 "Bloom",
                 "Bloom Prefilter",
+                "Eye Adaptation",
             };
 
             if (ImGui::Combo(
