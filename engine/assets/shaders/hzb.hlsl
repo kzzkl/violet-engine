@@ -2,31 +2,103 @@
 
 struct constant_data
 {
-    uint prev_buffer;
-    uint next_buffer;
-    uint level;
+    uint src;
+    uint dst_mip0;
+    uint dst_mip1;
+    uint dst_mip2;
+    uint dst_mip3;
     uint hzb_sampler;
 };
 PushConstant(constant_data, constant);
 
+groupshared float gs_depth[8][8];
+
 [numthreads(8, 8, 1)]
-void cs_main(uint3 dtid : SV_DispatchThreadID)
+void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID)
 {
-    RWTexture2D<float> next_buffer = ResourceDescriptorHeap[constant.next_buffer];
+    RWTexture2D<float> dst_mip0 = ResourceDescriptorHeap[constant.dst_mip0];
 
-    uint next_width;
-    uint next_height;
-    next_buffer.GetDimensions(next_width, next_height);
+    uint width;
+    uint height;
+    dst_mip0.GetDimensions(width, height);
 
-    if (dtid.x >= next_width || dtid.y >= next_height)
+    // Mip 0.
+    if (dtid.x < width && dtid.y < height)
+    {
+        Texture2D<float> src = ResourceDescriptorHeap[constant.src];
+        SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
+
+        float2 uv = get_compute_texcoord(dtid.xy, width, height);
+
+        float depth_mip0 = src.SampleLevel(hzb_sampler, uv, 0.0);
+        dst_mip0[dtid.xy] = depth_mip0;
+        gs_depth[gtid.y][gtid.x] = depth_mip0;
+    }
+    else
+    {
+        gs_depth[gtid.y][gtid.x] = 1.0;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Mip 1.
+    if (constant.dst_mip1 == 0)
     {
         return;
     }
 
-    float2 texcoord = (float2(dtid.xy) + 0.5) / float2(next_width, next_height);
+    if (gtid.x < 4 && gtid.y < 4)
+    {
+        uint2 base = gtid.xy * 2;
 
-    SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
+        float depth_mip1 = min(
+            min(gs_depth[base.y][base.x], gs_depth[base.y][base.x + 1]),
+            min(gs_depth[base.y + 1][base.x], gs_depth[base.y + 1][base.x + 1]));
 
-    Texture2D<float> prev_buffer = ResourceDescriptorHeap[constant.prev_buffer];
-    next_buffer[dtid.xy] = prev_buffer.SampleLevel(hzb_sampler, texcoord, 0);
+        RWTexture2D<float> dst_mip1 = ResourceDescriptorHeap[constant.dst_mip1];
+
+        dst_mip1[gid.xy * 4 + gtid.xy] = depth_mip1;
+        gs_depth[base.y][base.x] = depth_mip1;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Mip 2.
+    if (constant.dst_mip2 == 0)
+    {
+        return;
+    }
+
+    if (gtid.x < 2 && gtid.y < 2)
+    {
+        uint2 base = gtid.xy * 4;
+
+        float depth_mip2 = min(
+            min(gs_depth[base.y][base.x], gs_depth[base.y][base.x + 2]),
+            min(gs_depth[base.y + 2][base.x], gs_depth[base.y + 2][base.x + 2]));
+
+        RWTexture2D<float> dst_mip2 = ResourceDescriptorHeap[constant.dst_mip2];
+
+        dst_mip2[gid.xy * 2 + gtid.xy] = depth_mip2;
+        gs_depth[base.y][base.x] = depth_mip2;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Mip 3.
+    if (constant.dst_mip3 == 0)
+    {
+        return;
+    }
+
+    if (gtid.x == 0 && gtid.y == 0)
+    {
+        float depth_mip3 = min(
+            min(gs_depth[0][0], gs_depth[0][4]),
+            min(gs_depth[4][0], gs_depth[4][4]));
+
+        RWTexture2D<float> dst_mip3 = ResourceDescriptorHeap[constant.dst_mip3];
+
+        dst_mip3[gid.xy] = depth_mip3;
+    }
 }
