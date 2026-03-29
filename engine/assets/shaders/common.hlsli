@@ -52,6 +52,8 @@ struct geometry_data
 };
 
 static const uint MESH_STATIC = 1 << 0;
+static const uint MESH_SKIP_FRUSTUM_CULL = 1 << 1;
+static const uint MESH_SKIP_OCCLUSION_CULL = 1 << 2;
 
 struct mesh_data
 {

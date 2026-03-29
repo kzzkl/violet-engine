@@ -31,7 +31,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     if (vsm.cache_epoch == constant.frame)
     {
         physical_page.flags &= ~(PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_RESIDENT);
-        physical_page.flags |= PHYSICAL_PAGE_FLAG_NEED_CLEAR;
         physical_page_table[physical_page_index] = physical_page.pack();
         return;
     }
@@ -58,7 +57,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         else
         {
             physical_page.flags |= PHYSICAL_PAGE_FLAG_REQUEST;
-            physical_page.flags &= ~PHYSICAL_PAGE_FLAG_NEED_CLEAR;
             virtual_page.flags |= VIRTUAL_PAGE_FLAG_CACHE_VALID;
         }
 

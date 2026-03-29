@@ -38,10 +38,11 @@ private:
         auto& world = get_world();
 
         // Model.
-        m_line_material = std::make_unique<unlit_material>(
-            RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            RHI_CULL_MODE_NONE,
-            RHI_POLYGON_MODE_LINE);
+        m_line_material = std::make_unique<unlit_material>();
+        m_line_material->set_cull_mode(RHI_CULL_MODE_NONE);
+        m_line_material->set_polygon_mode(RHI_POLYGON_MODE_LINE);
+        m_line_material->set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
         m_material = std::make_unique<pbr_material>();
 
         if (!model_path.empty())
@@ -130,10 +131,10 @@ private:
         m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
         m_simplified_geometry->add_submesh(0, 0, m_original_geometry->get_indexes().size());
 
-        m_edge_material = std::make_unique<unlit_material>(
-            RHI_PRIMITIVE_TOPOLOGY_LINE_LIST,
-            RHI_CULL_MODE_NONE,
-            RHI_POLYGON_MODE_LINE);
+        m_edge_material = std::make_unique<unlit_material>();
+        m_edge_material->set_cull_mode(RHI_CULL_MODE_NONE);
+        m_edge_material->set_polygon_mode(RHI_POLYGON_MODE_LINE);
+        m_edge_material->set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_LINE_LIST);
         m_edge_material->set_color({1.0f, 0.0f, 0.0f});
 
         m_edge_geometry = std::make_unique<geometry>();

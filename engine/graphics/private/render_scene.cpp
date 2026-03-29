@@ -1,10 +1,12 @@
 #include "graphics/render_scene.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/light_component.hpp"
+#include "components/mesh_component.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+#include "virtual_shadow_map/vsm_common.hpp"
 #include "virtual_shadow_map/vsm_manager.hpp"
 #include <algorithm>
 
@@ -65,8 +67,12 @@ void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, con
 {
     auto& mesh = m_meshes[mesh_id];
     mesh.matrix_m = matrix_m;
-    mesh.scale = scale;
-
+    mesh.scale = {
+        .x = scale.x,
+        .y = scale.y,
+        .z = scale.z,
+        .w = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}),
+    };
     m_meshes.mark_dirty(mesh_id);
 
     m_matrix_dirty_meshes.push_back(mesh_id);
@@ -94,6 +100,23 @@ void render_scene::remove_instance(render_id instance_id)
     auto& instance = m_instances[instance_id];
     auto& mesh = m_meshes[instance.mesh_id];
 
+    if (mesh.flags & MESH_STATIC && instance.geometry != nullptr)
+    {
+        render_id invalidation_id = m_vsm_invalidations.add();
+        m_vsm_invalidations[invalidation_id] = {
+            .bounding_sphere = sphere::transform(
+                instance.geometry->get_bounding_sphere(instance.submesh_index),
+                mesh.matrix_m,
+                mesh.scale.w),
+        };
+    }
+
+    if (instance.material != nullptr)
+    {
+        auto& material = m_materials[instance.material];
+        material.instances.erase(std::ranges::find(material.instances, instance_id));
+    }
+
     mesh.instances.erase(std::ranges::find(mesh.instances, instance_id));
 
     remove_instance_from_batch(instance_id);
@@ -111,10 +134,30 @@ void render_scene::set_instance_geometry(
     assert(geometry != nullptr && submesh_index < geometry->get_submeshes().size());
 
     auto& instance = m_instances[instance_id];
+    auto& mesh = m_meshes[instance.mesh_id];
 
     if (instance.geometry == geometry && instance.submesh_index == submesh_index)
     {
         return;
+    }
+
+    if (mesh.flags & MESH_STATIC)
+    {
+        if (instance.geometry != nullptr)
+        {
+            render_id invalidation_id = m_vsm_invalidations.add();
+            m_vsm_invalidations[invalidation_id] = {
+                .bounding_sphere = sphere::transform(
+                    instance.geometry->get_bounding_sphere(instance.submesh_index),
+                    mesh.matrix_m),
+            };
+        }
+
+        render_id invalidation_id = m_vsm_invalidations.add();
+        m_vsm_invalidations[invalidation_id] = {
+            .bounding_sphere =
+                sphere::transform(geometry->get_bounding_sphere(submesh_index), mesh.matrix_m),
+        };
     }
 
     instance.geometry = geometry;
@@ -131,10 +174,31 @@ void render_scene::set_instance_material(render_id instance_id, material* materi
 
     if (instance_info.material != material)
     {
+        if (!m_materials.contains(material))
+        {
+            m_materials[material] = {
+                .resolve_pipeline = material->get_resolve_pipeline(),
+                .shading_model = material->get_shading_model(),
+            };
+        }
+
         remove_instance_from_batch(instance_id);
         add_instance_to_batch(instance_id, material);
 
         m_instances.mark_dirty(instance_id);
+
+        if (instance_info.material != nullptr)
+        {
+            auto& old_material = m_materials[instance_info.material];
+            old_material.instances.erase(std::ranges::find(old_material.instances, instance_id));
+
+            if (old_material.instances.empty())
+            {
+                m_materials.erase(instance_info.material);
+            }
+        }
+
+        m_materials[material].instances.push_back(instance_id);
 
         instance_info.material = material;
     }
@@ -460,10 +524,12 @@ void render_scene::set_atmosphere(
 
 void render_scene::update(gpu_buffer_uploader* uploader)
 {
-    m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_light(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_batch(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
+    update_material();
+    update_invalidation(uploader);
+    update_mesh(uploader);
+    update_instance(uploader);
+    update_light(uploader);
+    update_batch(uploader);
 
     auto* material_manager = render_device::instance().get_material_manager();
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -520,7 +586,7 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     render_id batch_id = 0;
 
     batch_key key = {
-        .pipeline = material->get_pipeline(),
+        .pipeline = material->get_raster_pipeline(),
         .surface_type = material->get_surface_type(),
         .material_path = material->get_material_path(),
     };
@@ -545,8 +611,10 @@ void render_scene::add_instance_to_batch(render_id instance_id, const material* 
     instance.batch_id = batch_id;
 
     auto& batch = m_batches[batch_id];
+    batch.opacity_cutoff = material->get_opacity_cutoff();
+
     const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
-    batch.instance_count +=
+    batch.draw_call_count +=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
     std::uint32_t resolve_pipeline_id = material->get_resolve_pipeline();
@@ -601,10 +669,10 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
 
     auto& batch = m_batches[instance.batch_id];
     const auto& submesh = instance.geometry->get_submesh(instance.submesh_index);
-    batch.instance_count -=
+    batch.draw_call_count -=
         submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
 
-    if (batch.instance_count == 0)
+    if (batch.draw_call_count == 0)
     {
         m_pipeline_to_batch.erase({
             .pipeline = batch.pipeline,
@@ -614,16 +682,16 @@ void render_scene::remove_instance_from_batch(render_id instance_id)
         m_batches.remove(instance.batch_id);
     }
 
-    std::uint32_t resolve_pipeline = instance.material->get_resolve_pipeline();
-    if (resolve_pipeline != 0)
+    const auto& material = m_materials.at(instance.material);
+
+    if (material.resolve_pipeline != 0)
     {
-        --m_material_resolve_pipelines[resolve_pipeline].second;
+        --m_material_resolve_pipelines[material.resolve_pipeline].second;
     }
 
-    std::uint32_t shading_model = instance.material->get_shading_model();
-    if (shading_model != 0)
+    if (material.shading_model != 0)
     {
-        --m_shading_models[shading_model].second;
+        --m_shading_models[material.shading_model].second;
     }
 
     m_scene_states |= RENDER_SCENE_STATE_BATCH_DIRTY;
@@ -684,14 +752,68 @@ void render_scene::remove_vsm_by_camera(render_id camera_id)
     camera.vsms.clear();
 }
 
-bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
+void render_scene::update_material()
 {
-    bool need_upload = m_meshes.update(
+    auto* material_manager = render_device::instance().get_material_manager();
+
+    material_manager->each_pipeline_changed_material(
+        [&](material* material)
+        {
+            auto iter = m_materials.find(material);
+            if (iter == m_materials.end())
+            {
+                return;
+            }
+
+            for (render_id instance_id : iter->second.instances)
+            {
+                remove_instance_from_batch(instance_id);
+                add_instance_to_batch(instance_id, material);
+            }
+
+            iter->second.resolve_pipeline = material->get_resolve_pipeline();
+            iter->second.shading_model = material->get_shading_model();
+        });
+}
+
+void render_scene::update_invalidation(gpu_buffer_uploader* uploader)
+{
+    if (m_vsm_invalidations.get_size() > VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT)
+    {
+        for (auto& [vsm_id, vsm_data] : m_vsms)
+        {
+            m_vsm_manager->invalidate_cache(vsm_id);
+        }
+        return;
+    }
+
+    m_vsm_invalidations.update(
+        [](const gpu_vsm_invalidation& invalidation) -> gpu_vsm_invalidation::gpu_type
+        {
+            return {
+                .bounding_sphere = invalidation.bounding_sphere,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
+}
+
+void render_scene::update_mesh(gpu_buffer_uploader* uploader)
+{
+    bool need_resize = m_meshes.update(
         [](const gpu_mesh& mesh) -> shader::mesh_data
         {
             return {
                 .matrix_m = mesh.matrix_m,
-                .scale = {mesh.scale.x, mesh.scale.y, mesh.scale.z, vector::max(mesh.scale)},
+                .scale = mesh.scale,
                 .prev_matrix_m = mesh.prev_matrix_m,
                 .flags = mesh.flags,
             };
@@ -715,14 +837,14 @@ bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
     }
     m_matrix_dirty_meshes.clear();
 
-    return need_upload;
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_instance(gpu_buffer_uploader* uploader)
+void render_scene::update_instance(gpu_buffer_uploader* uploader)
 {
     material_manager* material_manager = render_device::instance().get_material_manager();
 
-    return m_instances.update(
+    bool need_resize = m_instances.update(
         [&](const gpu_instance& instance) -> shader::instance_data
         {
             return {
@@ -744,9 +866,11 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
+
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_light(gpu_buffer_uploader* uploader)
+void render_scene::update_light(gpu_buffer_uploader* uploader)
 {
     m_vsm_directional_buffer.update(
         [](const gpu_directional_vsm& directional_vsm)
@@ -796,41 +920,48 @@ bool render_scene::update_light(gpu_buffer_uploader* uploader)
             });
     };
 
-    bool dirty = false;
-    dirty = update_light_buffer(m_shadow_casting_lights) || dirty;
-    dirty = update_light_buffer(m_non_shadow_casting_lights) || dirty;
+    bool need_resize = false;
+    need_resize = update_light_buffer(m_shadow_casting_lights) || need_resize;
+    need_resize = update_light_buffer(m_non_shadow_casting_lights) || need_resize;
 
-    return dirty;
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_batch(gpu_buffer_uploader* uploader)
+void render_scene::update_batch(gpu_buffer_uploader* uploader)
 {
     if ((m_scene_states & RENDER_SCENE_STATE_BATCH_DIRTY) == 0)
     {
-        return false;
+        return;
     }
 
-    std::uint32_t instance_offset = 0;
+    m_draw_call_count = 0;
+    m_draw_call_count_opacity_cutoff = 0;
+
     m_batches.each(
         [&](render_id batch_id, gpu_batch& batch)
         {
-            batch.instance_offset = instance_offset;
-            instance_offset += batch.instance_count;
+            batch.draw_call_offset = m_draw_call_count;
+            m_draw_call_count += batch.draw_call_count;
             m_batches.mark_dirty(batch_id);
+
+            if (batch.opacity_cutoff)
+            {
+                m_draw_call_count_opacity_cutoff += batch.draw_call_count;
+            }
         });
 
     // Align to 1024 to prevent frequent allocation of draw command buffers during cull pass.
-    if (m_instance_capacity < instance_offset)
+    if (m_draw_call_capacity < m_draw_call_count)
     {
-        m_instance_capacity = (instance_offset + 1023) & ~1023;
+        m_draw_call_capacity = (m_draw_call_count + 1023) & ~1023;
     }
-    m_instance_capacity =
-        std::min(m_instance_capacity, graphics_config::get_max_draw_command_count());
+    m_draw_call_capacity =
+        std::min(m_draw_call_capacity, graphics_config::get_max_draw_command_count());
 
-    return m_batches.update(
+    bool need_resize = m_batches.update(
         [](const gpu_batch& batch) -> std::uint32_t
         {
-            return batch.instance_offset;
+            return batch.draw_call_offset;
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
@@ -843,6 +974,8 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
                 RHI_ACCESS_SHADER_READ);
         },
         true);
+
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
 void render_scene::update_vsm()
@@ -1036,6 +1169,17 @@ rhi_texture* render_context::get_vsm_hzb() const noexcept
     return m_scene->m_vsm_manager->get_vsm_hzb();
 }
 
+render_id render_context::get_vsm_id(render_id light_index) const
+{
+    const auto& light = m_scene->m_shadow_casting_lights[light_index];
+    if (light.type == LIGHT_DIRECTIONAL)
+    {
+        return m_scene->m_vsm_directional_buffer[light.vsm_address].vsms[m_camera_meta->id].vsm_id;
+    }
+
+    return light.vsm_address;
+}
+
 rhi_parameter* render_context::get_camera_parameter() const noexcept
 {
     return m_camera_meta->parameter.get();
@@ -1046,7 +1190,7 @@ rhi_parameter* render_context::get_scene_parameter() const noexcept
     return m_scene->m_scene_parameter.get();
 }
 
-std::uint32_t render_context::get_sun_id(bool& cast_shadow) const noexcept
+std::uint32_t render_context::get_sun_index(bool& cast_shadow) const noexcept
 {
     std::uint32_t sun_id = m_scene->m_sun_id;
 

@@ -59,11 +59,10 @@ void deferred_renderer::on_render(render_graph& graph)
         m_ao_buffer = nullptr;
     }
 
-    add_sky_lut_pass(graph);
-
     add_shadow_pass(graph);
-    add_shading_pass(graph);
 
+    add_sky_lut_pass(graph);
+    add_shading_pass(graph);
     add_sky_pass(graph);
 
     {
@@ -111,7 +110,7 @@ void deferred_renderer::prepare(render_graph& graph)
 
     m_draw_buffer = graph.add_buffer(
         "Draw Buffer",
-        context.get_instance_capacity() * sizeof(shader::draw_command),
+        context.get_draw_call_capacity() * sizeof(shader::draw_command),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_count_buffer = graph.add_buffer(
         "Draw Count Buffer",
@@ -119,7 +118,7 @@ void deferred_renderer::prepare(render_graph& graph)
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
     m_draw_info_buffer = graph.add_buffer(
         "Draw Info Buffer",
-        context.get_instance_capacity() * sizeof(shader::draw_info),
+        context.get_draw_call_capacity() * sizeof(shader::draw_info),
         RHI_BUFFER_STORAGE);
 
     m_recheck_instances = graph.add_buffer(
@@ -327,6 +326,9 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
     case DEBUG_MODE_VSM_PAGE_CACHE:
         debug_mode = shadow_pass::DEBUG_MODE_PAGE_CACHE;
         break;
+    case DEBUG_MODE_VSM_CULL:
+        debug_mode = shadow_pass::DEBUG_MODE_CULL;
+        break;
     default:
         break;
     }
@@ -383,7 +385,6 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
         .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
-        .vsm_directional_buffer = m_vsm_directional_buffer,
         .shadow_sample_mode = static_cast<std::uint32_t>(shadow->get_sample_mode()),
         .shadow_sample_count = shadow->get_sample_count(),
         .shadow_sample_radius = shadow->get_sample_radius(),
@@ -430,6 +431,15 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
             m_ibl_dirty = true;
         }
 
+        atmosphere_lut_pass::parameter parameter = {
+            .sky_view_lut = m_sky_view_lut,
+            .aerial_perspective_lut = m_aerial_perspective_lut,
+            // .vsm_buffer = m_vsm_buffer,
+            // .vsm_virtual_page_table = m_vsm_virtual_page_table,
+            // .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
+            .use_multi_scattering = atmosphere->get_use_multi_scattering(),
+        };
+
         if (m_ibl_dirty && get_frame() % atmosphere->get_ibl_update_interval() == 0)
         {
             m_prefilter_map = graph.add_texture(
@@ -440,13 +450,8 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
 
             m_irradiance_sh = graph.add_buffer("Irradiance SH", context.get_irradiance_sh());
 
-            graph.add_pass<atmosphere_lut_pass>({
-                .sky_view_lut = m_sky_view_lut,
-                .aerial_perspective_lut = m_aerial_perspective_lut,
-                .prefilter_map = m_prefilter_map,
-                .irradiance_sh = m_irradiance_sh,
-                .use_multi_scattering = atmosphere->get_use_multi_scattering(),
-            });
+            parameter.prefilter_map = m_prefilter_map;
+            parameter.irradiance_sh = m_irradiance_sh;
 
             m_ibl_dirty = false;
         }
@@ -459,13 +464,9 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
             m_irradiance_sh = graph.add_buffer("Irradiance SH", context.get_irradiance_sh());
-
-            graph.add_pass<atmosphere_lut_pass>({
-                .sky_view_lut = m_sky_view_lut,
-                .aerial_perspective_lut = m_aerial_perspective_lut,
-                .use_multi_scattering = atmosphere->get_use_multi_scattering(),
-            });
         }
+
+        graph.add_pass<atmosphere_lut_pass>(parameter);
     }
 }
 

@@ -94,8 +94,12 @@ struct aerial_perspective_lut_cs : public shader_cs
         vec3f frustum_top_right;
         std::uint32_t aerial_perspective_lut;
         vec3f frustum_bottom_left;
-        std::uint32_t padding0;
+        std::uint32_t multi_scattering_lut;
         vec3f frustum_bottom_right;
+        std::uint32_t vsm_id;
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_virtual_page_table;
+        std::uint32_t vsm_physical_shadow_map;
     };
 
     static constexpr parameter_layout parameters = {
@@ -268,7 +272,14 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
         atmosphere_data atmosphere;
         vec3f sun_direction;
         vec3f sun_irradiance;
+
         rhi_texture_srv* transmittance_lut;
+        rhi_texture_srv* multi_scattering_lut;
+
+        std::uint32_t vsm_id;
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_srv vsm_virtual_page_table;
+        rdg_texture_srv vsm_physical_shadow_map;
     };
 
     const auto& context = graph.get_context();
@@ -302,33 +313,80 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
             data.sun_direction = context.get_sun_direction();
             data.sun_irradiance = context.get_sun_irradiance();
             data.transmittance_lut = context.get_transmittance_lut()->get_srv();
+
+            if (parameter.use_multi_scattering)
+            {
+                data.multi_scattering_lut = context.get_multi_scattering_lut()->get_srv();
+            }
+            else
+            {
+                data.multi_scattering_lut = nullptr;
+            }
+
+            bool cast_shadow = false;
+            std::uint32_t sun_index = context.get_sun_index(cast_shadow);
+
+            if (cast_shadow && parameter.vsm_buffer != nullptr)
+            {
+                data.vsm_id = context.get_vsm_id(sun_index);
+                data.vsm_buffer =
+                    pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_virtual_page_table = pass.add_buffer_srv(
+                    parameter.vsm_virtual_page_table,
+                    RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_physical_shadow_map = pass.add_texture_srv(
+                    parameter.vsm_physical_shadow_map,
+                    RHI_PIPELINE_STAGE_COMPUTE);
+            }
+            else
+            {
+                data.vsm_id = 0xFFFFFFFF;
+            }
         },
         [=](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
+            std::vector<std::wstring> defines;
+
+            aerial_perspective_lut_cs::constant_data constant = {
+                .atmosphere = data.atmosphere,
+                .sun_direction = data.sun_direction,
+                .distance_per_slice = AERIAL_PERSPECTIVE_SLICE_DISTANCE,
+                .sun_irradiance = data.sun_irradiance,
+                .sample_count = 40,
+                .frustum_top_left = frustum_top_left,
+                .transmittance_lut = data.transmittance_lut->get_bindless(),
+                .frustum_top_right = frustum_top_right,
+                .aerial_perspective_lut = data.aerial_perspective_lut.get_bindless(),
+                .frustum_bottom_left = frustum_bottom_left,
+                .frustum_bottom_right = frustum_bottom_right,
+            };
+
+            if (data.multi_scattering_lut != nullptr)
+            {
+                defines.emplace_back(L"-DUSE_MULTI_SCATTERING");
+                constant.multi_scattering_lut = data.multi_scattering_lut->get_bindless();
+            }
+
+            if (data.vsm_id != 0xFFFFFFFF)
+            {
+                defines.emplace_back(L"-DUSE_SHADOW");
+                constant.vsm_id = data.vsm_id;
+                constant.vsm_buffer = data.vsm_buffer.get_bindless();
+                constant.vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless();
+                constant.vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless();
+            }
+
             command.set_pipeline({
-                .compute_shader = device.get_shader<aerial_perspective_lut_cs>(),
+                .compute_shader = device.get_shader<aerial_perspective_lut_cs>(defines),
             });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
-            command.set_constant(
-                aerial_perspective_lut_cs::constant_data{
-                    .atmosphere = data.atmosphere,
-                    .sun_direction = data.sun_direction,
-                    .distance_per_slice = AERIAL_PERSPECTIVE_SLICE_DISTANCE,
-                    .sun_irradiance = data.sun_irradiance,
-                    .sample_count = 40,
-                    .frustum_top_left = frustum_top_left,
-                    .transmittance_lut = data.transmittance_lut->get_bindless(),
-                    .frustum_top_right = frustum_top_right,
-                    .aerial_perspective_lut = data.aerial_perspective_lut.get_bindless(),
-                    .frustum_bottom_left = frustum_bottom_left,
-                    .frustum_bottom_right = frustum_bottom_right,
-                });
+            command.set_constant(constant);
 
             auto extent = data.aerial_perspective_lut.get_extent();
             command.dispatch_2d(extent.width, extent.height);

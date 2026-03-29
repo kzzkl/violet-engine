@@ -16,13 +16,16 @@ debug_drawer::debug_drawer(world& world)
     m_geometry->set_custom(0, std::vector<vec3f>(DEBUG_DRAW_MAX_LINES * 2)); // color
     m_geometry->set_indexes(std::vector<std::uint32_t>(DEBUG_DRAW_MAX_LINES * 2));
     m_geometry->add_submesh(0, 0, DEBUG_DRAW_MAX_LINES * 2);
-    m_material = std::make_unique<unlit_material>(RHI_PRIMITIVE_TOPOLOGY_LINE_LIST);
+
+    m_material = std::make_unique<unlit_material>();
+    m_material->set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
     m_object = world.create();
     world.add_component<transform_component, mesh_component, scene_component>(m_object);
 
     auto& mesh = m_world.get_component<mesh_component>(m_object);
     mesh.geometry = m_geometry.get();
+    mesh.flags = MESH_SKIP_FRUSTUM_CULL | MESH_SKIP_OCCLUSION_CULL;
     mesh.submeshes.push_back({
         .index = 0,
         .material = m_material.get(),
@@ -39,8 +42,6 @@ void debug_drawer::tick()
         m_geometry->set_custom(0, m_color);
         m_geometry->set_indexes(m_indexes);
     }
-
-    // m_geometry->set_submesh(0, 0, 0, static_cast<std::uint32_t>(m_indexes.size()));
 
     m_position.clear();
     m_color.clear();

@@ -20,8 +20,11 @@ struct vs_output
     uint vsm_id : VSM_ID;
 
     float2 texcoord : TEXCOORD;
+
+#ifdef VIOLET_OPACITY_CUTOFF
     uint opacity_mask : OPACITY_MASK;
     uint opacity_cutoff : OPACITY_CUTOFF;
+#endif
 };
 
 vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
@@ -43,20 +46,24 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
 
     output.texcoord = vertex.texcoord;
 
+#ifdef VIOLET_OPACITY_CUTOFF
     material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
     output.opacity_mask = material_info.opacity_mask;
     output.opacity_cutoff = material_info.opacity_cutoff;
+#endif
 
     return output;
 }
 
 void fs_main(vs_output input)
 {
+#ifdef VIOLET_OPACITY_CUTOFF
     Texture2D<float4> opacity_mask = ResourceDescriptorHeap[input.opacity_mask];
     SamplerState point_repeat_sampler = get_point_repeat_sampler();
 
     float mask = opacity_mask.Sample(point_repeat_sampler, input.texcoord).a;
     clip(mask * 255.0 - input.opacity_cutoff);
+#endif
 
     float3 position_ndc = input.position_ndc;
 

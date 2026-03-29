@@ -39,6 +39,9 @@ public:
         texture_2d* roughness_metallic_texture;
         texture_2d* emissive_texture;
         texture_2d* normal_texture;
+
+        rhi_cull_mode cull_mode{RHI_CULL_MODE_BACK};
+        float opacity_cutoff{0.0f};
     };
 
     struct submesh_data

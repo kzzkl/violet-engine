@@ -60,9 +60,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
 
-    visible = sphere_vs.w > 0.0 && frustum_cull(sphere_vs, camera);
+    if ((mesh.flags & MESH_SKIP_FRUSTUM_CULL) == 0)
+    {
+        visible = sphere_vs.w > 0.0;
+        visible = visible && frustum_cull(sphere_vs, camera);
+    }
 
-    if (visible)
+    if (visible && (mesh.flags & MESH_SKIP_OCCLUSION_CULL) == 0)
     {
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         prev_sphere_vs.w = sphere_vs.w;

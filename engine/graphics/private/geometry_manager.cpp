@@ -64,38 +64,19 @@ void geometry_manager::remove_geometry(render_id geometry_id)
     m_allocator.free(geometry_id);
 }
 
-render_id geometry_manager::add_submesh(render_id geometry_id)
-{
-    std::scoped_lock lock(m_mutex);
-
-    render_id submesh_id = m_submeshes.add();
-    m_submeshes[submesh_id].submesh_id = submesh_id;
-    m_submeshes[submesh_id].geometry_id = geometry_id;
-
-    return submesh_id;
-}
-
-void geometry_manager::remove_submesh(render_id submesh_id)
-{
-    std::scoped_lock lock(m_mutex);
-
-    m_submeshes.remove(submesh_id);
-}
-
-void geometry_manager::set_submesh(
-    render_id submesh_id,
+render_id geometry_manager::add_submesh(
+    render_id geometry_id,
     std::uint32_t vertex_offset,
     std::uint32_t index_offset,
     std::uint32_t index_count)
 {
+    std::scoped_lock lock(m_mutex);
+
+    render_id submesh_id = m_submeshes.add();
+
     auto& submesh = m_submeshes[submesh_id];
-
-    if (submesh.vertex_offset == vertex_offset && submesh.index_offset == index_offset &&
-        submesh.index_count == index_count)
-    {
-        return;
-    }
-
+    submesh.submesh_id = submesh_id;
+    submesh.geometry_id = geometry_id;
     submesh.vertex_offset = vertex_offset;
     submesh.index_offset = index_offset;
     submesh.index_count = index_count;
@@ -114,18 +95,25 @@ void geometry_manager::set_submesh(
     submesh.bounding_sphere = sphere::create(points);
 
     m_submeshes.mark_dirty(submesh_id);
+
+    return submesh_id;
 }
 
-void geometry_manager::set_submesh(
-    render_id submesh_id,
+render_id geometry_manager::add_submesh(
+    render_id geometry_id,
     std::span<const cluster> clusters,
     std::span<const cluster_node> cluster_nodes)
 {
+    std::scoped_lock lock(m_mutex);
+
+    render_id submesh_id = m_submeshes.add();
     render_id root_id = m_cluster_nodes.add();
 
-    m_submeshes[submesh_id].cluster_root_id = root_id;
-    m_submeshes[submesh_id].bounding_sphere = cluster_nodes[0].bounding_sphere;
-    m_submeshes.mark_dirty(submesh_id);
+    auto& submesh = m_submeshes[submesh_id];
+    submesh.submesh_id = submesh_id;
+    submesh.geometry_id = geometry_id;
+    submesh.cluster_root_id = root_id;
+    submesh.bounding_sphere = cluster_nodes[0].bounding_sphere;
 
     std::queue<std::pair<std::uint32_t, render_id>> queue;
     queue.emplace(0, root_id);
@@ -177,6 +165,21 @@ void geometry_manager::set_submesh(
             m_cluster_nodes[id].child_offset = first_child_id;
         }
     }
+
+    m_submeshes.mark_dirty(submesh_id);
+
+    return submesh_id;
+}
+
+void geometry_manager::remove_submesh(render_id submesh_id)
+{
+    std::scoped_lock lock(m_mutex);
+    m_submeshes.remove(submesh_id);
+}
+
+sphere3f geometry_manager::get_bounding_sphere(render_id submesh_id) const
+{
+    return m_submeshes[submesh_id].bounding_sphere;
 }
 
 void geometry_manager::update(gpu_buffer_uploader* uploader)

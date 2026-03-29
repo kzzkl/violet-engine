@@ -13,7 +13,10 @@ public:
         std::uint32_t rendered;
         std::uint32_t unmapped;
         std::uint32_t static_drawcall;
+        std::uint32_t static_opacity_cutoff_drawcall;
         std::uint32_t dynamic_drawcall;
+        std::uint32_t dynamic_opacity_cutoff_drawcall;
+        std::uint32_t padding;
     };
 
     vsm_feature();

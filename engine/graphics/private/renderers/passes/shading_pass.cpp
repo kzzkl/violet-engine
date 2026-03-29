@@ -48,8 +48,8 @@ struct shadow_mask_fs : public shader_fs
         std::uint32_t vsm_buffer;
         std::uint32_t vsm_virtual_page_table;
         std::uint32_t vsm_physical_shadow_map;
-        std::uint32_t vsm_directional_buffer;
-        std::uint32_t light_id;
+        std::uint32_t vsm_id;
+        std::uint32_t light_index;
         float normal_bias;
         float constant_bias;
         std::uint32_t sample_mode;
@@ -97,7 +97,7 @@ void shading_pass::add(render_graph& graph, const parameter& parameter)
 
     if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
     {
-        m_sun_id = context.get_sun_id(m_sun_cast_shadow);
+        m_sun_index = context.get_sun_index(m_sun_cast_shadow);
     }
 
     // Shadow casting lights.
@@ -249,7 +249,7 @@ void shading_pass::add_tile_shading_pass(
     render_graph& graph,
     const parameter& parameter,
     lighting_stage stage,
-    std::uint32_t light_id) const
+    std::uint32_t light_index) const
 {
     static constexpr std::string_view stage_names[] = {
         "Direct Lighting Shadowed",
@@ -267,8 +267,8 @@ void shading_pass::add_tile_shading_pass(
         rdg_buffer_srv worklist_buffer;
         rdg_buffer_ref shading_dispatch_buffer;
         rdg_texture_srv shadow_mask;
-        std::uint32_t light_id;
-        std::uint32_t sun_id;
+        std::uint32_t light_index;
+        std::uint32_t sun_index;
         bool sun_cast_shadow;
         float planet_radius;
         float atmosphere_radius;
@@ -326,7 +326,7 @@ void shading_pass::add_tile_shading_pass(
                     {
                         data.shadow_mask =
                             pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
-                        data.light_id = light_id;
+                        data.light_index = light_index;
                     }
                     else if (stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
                     {
@@ -343,7 +343,7 @@ void shading_pass::add_tile_shading_pass(
                     {
                         const auto& atmosphere = context.get_atmosphere();
 
-                        data.sun_id = m_sun_id;
+                        data.sun_index = m_sun_index;
                         data.sun_cast_shadow = m_sun_cast_shadow;
                         data.planet_radius = atmosphere.planet_radius;
                         data.atmosphere_radius =
@@ -352,7 +352,7 @@ void shading_pass::add_tile_shading_pass(
                     }
                     else
                     {
-                        data.sun_id = 0xFFFFFFFF;
+                        data.sun_index = 0xFFFFFFFF;
                         data.sun_cast_shadow = true;
                         data.transmittance_lut = nullptr;
                     }
@@ -378,13 +378,13 @@ void shading_pass::add_tile_shading_pass(
 
                     if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
                     {
-                        constant.light_id = data.light_id;
+                        constant.light_index = data.light_index;
                         constant.shadow_mask = data.shadow_mask.get_bindless();
-                        constant.sun_id = data.sun_cast_shadow ? data.sun_id : 0xFFFFFFFF;
+                        constant.sun_index = data.sun_cast_shadow ? data.sun_index : 0xFFFFFFFF;
                     }
                     else if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED)
                     {
-                        constant.sun_id = data.sun_cast_shadow ? 0xFFFFFFFF : data.sun_id;
+                        constant.sun_index = data.sun_cast_shadow ? 0xFFFFFFFF : data.sun_index;
                     }
                     else if (data.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
                     {
@@ -420,7 +420,7 @@ void shading_pass::add_tile_shading_pass(
 void shading_pass::add_shadow_mask_pass(
     render_graph& graph,
     const parameter& parameter,
-    std::uint32_t light_id)
+    std::uint32_t light_index)
 {
     struct pass_data
     {
@@ -429,8 +429,8 @@ void shading_pass::add_shadow_mask_pass(
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_srv vsm_virtual_page_table;
         rdg_texture_srv vsm_physical_shadow_map;
-        rdg_buffer_srv vsm_directional_buffer;
-        std::uint32_t light_id;
+        std::uint32_t vsm_id;
+        std::uint32_t light_index;
 
         float normal_bias;
         float constant_bias;
@@ -457,12 +457,11 @@ void shading_pass::add_shadow_mask_pass(
             data.vsm_physical_shadow_map = pass.add_texture_srv(
                 parameter.vsm_physical_shadow_map,
                 RHI_PIPELINE_STAGE_FRAGMENT);
-            data.vsm_directional_buffer =
-                pass.add_buffer_srv(parameter.vsm_directional_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
 
             pass.add_render_target(m_shadow_mask, RHI_ATTACHMENT_LOAD_OP_CLEAR);
 
-            data.light_id = light_id;
+            data.vsm_id = graph.get_context().get_vsm_id(light_index);
+            data.light_index = light_index;
             data.normal_bias = parameter.shadow_normal_bias;
             data.constant_bias = parameter.shadow_constant_bias;
             data.sample_mode = parameter.shadow_sample_mode;
@@ -488,8 +487,8 @@ void shading_pass::add_shadow_mask_pass(
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
-                    .vsm_directional_buffer = data.vsm_directional_buffer.get_bindless(),
-                    .light_id = data.light_id,
+                    .vsm_id = data.vsm_id,
+                    .light_index = data.light_index,
                     .normal_bias = data.normal_bias,
                     .constant_bias = data.constant_bias,
                     .sample_mode = data.sample_mode,
@@ -504,7 +503,8 @@ void shading_pass::add_shadow_mask_pass(
             command.draw_fullscreen();
         });
 
-    if (parameter.debug_mode == DEBUG_MODE_SHADOW_MASK && parameter.debug_light_id == light_id)
+    if (parameter.debug_mode == DEBUG_MODE_SHADOW_MASK &&
+        parameter.debug_light_index == light_index)
     {
         add_debug_pass(graph, parameter);
     }

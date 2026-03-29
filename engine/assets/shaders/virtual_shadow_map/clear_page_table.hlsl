@@ -3,7 +3,7 @@
 
 struct constant_data
 {
-    uint visible_vsm_ids;
+    uint visible_vsm_list;
     uint vsm_virtual_page_table;
     uint vsm_buffer;
     uint vsm_bounds_buffer;
@@ -13,10 +13,10 @@ PushConstant(constant_data, constant);
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    StructuredBuffer<uint> vsm_ids = ResourceDescriptorHeap[constant.visible_vsm_ids];
+    StructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
     RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
-    uint vsm_id = vsm_ids[dtid.z];
+    uint vsm_id = visible_vsm_list[dtid.z];
 
     uint virtual_page_index = get_virtual_page_index(vsm_id, dtid.xy);
     virtual_page_table[virtual_page_index] = 0;

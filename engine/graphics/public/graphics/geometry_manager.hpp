@@ -21,17 +21,17 @@ public:
     render_id add_geometry(geometry* geometry);
     void remove_geometry(render_id geometry_id);
 
-    render_id add_submesh(render_id geometry_id);
-    void remove_submesh(render_id submesh_id);
-    void set_submesh(
-        render_id submesh_id,
+    render_id add_submesh(
+        render_id geometry_id,
         std::uint32_t vertex_offset,
         std::uint32_t index_offset,
         std::uint32_t index_count);
-    void set_submesh(
-        render_id submesh_id,
+    render_id add_submesh(
+        render_id geometry_id,
         std::span<const cluster> clusters,
         std::span<const cluster_node> cluster_nodes);
+    void remove_submesh(render_id submesh_id);
+    sphere3f get_bounding_sphere(render_id submesh_id) const;
 
     void update(gpu_buffer_uploader* uploader);
 

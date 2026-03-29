@@ -42,7 +42,7 @@ public:
 
         auto& world = get_world();
 
-        auto& main_camera = get_world().get_component<camera_component>(get_camera());
+        auto& main_camera = world.get_component<camera_component>(get_camera());
         main_camera.renderer->set_profiling(true);
 
         m_box_geometry = std::make_unique<box_geometry>();
@@ -55,53 +55,43 @@ public:
         m_unlit_material->set_color({1.0f, 1.0f, 1.0f});
 
         // Plane.
-        m_plane = world.create();
-        world.add_component<transform_component, mesh_component, scene_component>(m_plane);
+        // entity plane = world.create();
+        // world.add_component<transform_component, mesh_component, scene_component>(plane);
 
-        auto& plane_mesh = world.get_component<mesh_component>(m_plane);
-        plane_mesh.geometry = m_box_geometry.get();
-        plane_mesh.flags |= MESH_STATIC;
-        plane_mesh.submeshes.push_back({
-            .index = 0,
-            .material = m_pbr_material.get(),
-        });
-        auto& plane_transform = world.get_component<transform_component>(m_plane);
-        plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        plane_transform.set_scale({10.0f, 0.05f, 10.0f});
+        // auto& plane_mesh = world.get_component<mesh_component>(plane);
+        // plane_mesh.geometry = m_box_geometry.get();
+        // plane_mesh.flags |= MESH_STATIC;
+        // plane_mesh.submeshes.push_back({
+        //     .index = 0,
+        //     .material = m_pbr_material.get(),
+        // });
+        // auto& plane_transform = world.get_component<transform_component>(plane);
+        // plane_transform.set_position({0.0f, -1.0f, 0.0f});
+        // plane_transform.set_scale({10.0f, 0.05f, 10.0f});
 
-        // for (std::uint32_t i = 0; i < m_boxes.size(); ++i)
+        // for (std::uint32_t i = 0; i < 50; ++i)
         // {
-        //     m_boxes[i] = world.create();
-        //     world.add_component<transform_component, mesh_component,
-        //     scene_component>(m_boxes[i]);
-
-        //     auto& box_mesh = world.get_component<mesh_component>(m_boxes[i]);
-        //     box_mesh.geometry = m_box_geometry.get();
-        //     box_mesh.flags |= MESH_STATIC;
-
-        //     if (i % 2 == 0)
+        //     for (std::uint32_t j = 0; j < 50; ++j)
         //     {
-        //         box_mesh.submeshes.push_back({
-        //             .material = m_unlit_material.get(),
-        //         });
-        //     }
-        //     else
-        //     {
+        //         entity box = world.create();
+        //         world.add_component<transform_component, mesh_component, scene_component>(box);
+
+        //         auto& box_mesh = world.get_component<mesh_component>(box);
+        //         box_mesh.geometry = m_box_geometry.get();
+        //         box_mesh.flags |= MESH_STATIC;
         //         box_mesh.submeshes.push_back({
         //             .material = m_pbr_material.get(),
         //         });
+
+        //         vec3f position = {
+        //             static_cast<float>(i) * 2.0f,
+        //             2.0f,
+        //             static_cast<float>(j) * 2.0f,
+        //         };
+
+        //         auto& box_transform = world.get_component<transform_component>(box);
+        //         box_transform.set_position(position);
         //     }
-
-        //     float scale = static_cast<float>(std::rand() % 100) + 1.0f;
-        //     vec3f position = {
-        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
-        //         static_cast<float>(std::rand() % 10) + 1.0f,
-        //         static_cast<float>(std::rand() % 10000) - 5000.0f,
-        //     };
-
-        //     auto& box_transform = world.get_component<transform_component>(m_boxes[i]);
-        //     box_transform.set_position(position);
-        //     box_transform.set_scale({scale, scale, scale});
         // }
 
         return true;
@@ -408,6 +398,7 @@ private:
                 "Triangle",
                 "VSM Page",
                 "VSM Page Cache",
+                "VSM Cull",
                 "Shadow Mask",
                 "Bloom",
                 "Bloom Prefilter",
@@ -446,8 +437,12 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text("Static Drawcall: %d", debug_info.static_drawcall);
-                ImGui::Text("Dynamic Drawcall: %d", debug_info.dynamic_drawcall);
+                ImGui::Text(
+                    "Static Drawcall: %d",
+                    debug_info.static_drawcall + debug_info.static_opacity_cutoff_drawcall);
+                ImGui::Text(
+                    "Dynamic Drawcall: %d",
+                    debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
             }
         }
     }
@@ -458,9 +453,6 @@ private:
 
     std::unique_ptr<pbr_material> m_pbr_material;
     std::unique_ptr<unlit_material> m_unlit_material;
-
-    entity m_plane;
-    std::array<entity, 500> m_boxes;
 };
 } // namespace violet
 

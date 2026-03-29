@@ -1,4 +1,5 @@
 #include "common.hlsli"
+#include "virtual_shadow_map/vsm_common.hlsli"
 
 struct atmosphere_data
 {
@@ -185,6 +186,20 @@ float3 sun_disk(float3 view_dir, float3 sun_dir, float3 transmittance, float sun
     return smoothstep(cos_radius, cos_radius + 0.01, cos_theta) * 1e9 * transmittance;
 }
 
+float get_shadow(float3 camera, float3 position, uint vsm_id, StructuredBuffer<vsm_data> vsms, StructuredBuffer<uint> virtual_page_table, Texture2D<uint> physical_shadow_map)
+{
+    uint cascade = get_directional_cascade(length(position - camera));
+    vsm_data vsm = vsms[vsm_id + cascade];
+
+    float4 position_ls = mul(vsm.matrix_vp, float4(position, 1.0));
+    position_ls /= position_ls.w;
+    position_ls.xy = position_ls.xy * 0.5 + 0.5;
+
+    float shadow_depth;
+    bool valid = sample_shadow_depth(vsm_id + cascade, position_ls.xy, physical_shadow_map, virtual_page_table, shadow_depth);
+    return valid ? (shadow_depth > position_ls.z ? 0.0 : 1.0) : 1.0;
+}
+
 float4 integrate_atmosphere(
     atmosphere_data atmosphere,
     float3 eye,
@@ -194,7 +209,15 @@ float4 integrate_atmosphere(
     float sample_count,
     Texture2D<float3> transmittance_lut
 #ifdef USE_MULTI_SCATTERING
-    , Texture2D<float3> multi_scattering_lut
+    ,
+    Texture2D<float3> multi_scattering_lut
+#endif
+#ifdef USE_SHADOW
+    ,
+    uint vsm_id,
+    StructuredBuffer<vsm_data> vsms,
+    StructuredBuffer<uint> virtual_page_table,
+    Texture2D<uint> physical_shadow_map
 #endif
     )
 {
@@ -229,11 +252,23 @@ float4 integrate_atmosphere(
         float3 t1 = exp(-optical_depth);
         if (ray_sphere_intersection(p, -sun_direction, 0.0, atmosphere.planet_radius) < 0.0)
         {
+            float shadow = 1.0;
+
+#ifdef USE_SHADOW
+            shadow = get_shadow(
+                eye - float3(0.0, atmosphere.planet_radius, 0.0),
+                p - float3(0.0, atmosphere.planet_radius, 0.0),
+                vsm_id,
+                vsms,
+                virtual_page_table,
+                physical_shadow_map);
+#endif
+
             float2 uv;
             get_transmittance_lut_uv(atmosphere.planet_radius, atmosphere.atmosphere_radius, r, mu, uv);
             float3 t0 = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
             float3 s = rayleigh_scattering * rayleigh_phase + mie_scattering * mie_phase;
-            in_scatter += t0 * s * t1 * dt;
+            in_scatter += t0 * s * t1 * dt * shadow;
         }
         throughput *= t1;
 

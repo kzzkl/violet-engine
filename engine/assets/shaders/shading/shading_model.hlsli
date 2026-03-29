@@ -14,12 +14,12 @@ struct constant_common
     uint shading_model;
     uint worklist_buffer;
     uint worklist_offset;
-    uint light_id;
+    uint light_index;
     uint shadow_mask;
     uint stage;
     uint prefilter_map;
     uint irradiance_sh;
-    uint sun_id;
+    uint sun_index;
     float planet_radius;
     float atmosphere_radius;
     uint transmittance_lut;
@@ -88,8 +88,8 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
         Texture2D<float> shadow_mask = ResourceDescriptorHeap[constant.shadow_mask];
 
-        light_data light = lights[constant.light_id];
-        if (constant.light_id == constant.sun_id)
+        light_data light = lights[constant.light_index];
+        if (constant.light_index == constant.sun_index)
         {
             light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
         }
@@ -102,7 +102,7 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
         for (int i = 0; i < scene.non_shadow_casting_light_count; ++i)
         {
             light_data light = lights[i];
-            if (i == constant.sun_id)
+            if (i == constant.sun_index)
             {
                 light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
             }

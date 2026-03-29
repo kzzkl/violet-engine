@@ -45,7 +45,10 @@ struct debug_data
     uint rendered;
     uint unmapped;
     uint static_drawcall;
+    uint static_opacity_cutoff_drawcall;
     uint dynamic_drawcall;
+    uint dynamic_opacity_cutoff_drawcall;
+    uint padding;
 };
 
 [numthreads(8, 8, 1)]
@@ -111,7 +114,9 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     {
         StructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
         debug_infos[constant.debug_info_index].static_drawcall = draw_counts[0];
-        debug_infos[constant.debug_info_index].dynamic_drawcall = draw_counts[1];
+        debug_infos[constant.debug_info_index].static_opacity_cutoff_drawcall = draw_counts[1];
+        debug_infos[constant.debug_info_index].dynamic_drawcall = draw_counts[2];
+        debug_infos[constant.debug_info_index].dynamic_opacity_cutoff_drawcall = draw_counts[3];
     }
 }
 

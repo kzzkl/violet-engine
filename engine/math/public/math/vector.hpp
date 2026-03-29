@@ -434,13 +434,13 @@ struct vector
     template <typename T>
     [[nodiscard]] static T max(const vec3<T>& v) noexcept
     {
-        return std::max(v.x, std::max(v.y, v.z));
+        return std::max({v.x, v.y, v.z});
     }
 
     template <typename T>
     [[nodiscard]] static T max(const vec4<T>& v) noexcept
     {
-        return std::max(v.x, std::max(v.y, std::max(v.z, v.w)));
+        return std::max({v.x, v.y, v.z, v.w});
     }
 
     [[nodiscard]] static float max(vec4f_simd v) noexcept

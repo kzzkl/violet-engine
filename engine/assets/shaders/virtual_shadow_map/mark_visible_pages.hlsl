@@ -5,9 +5,9 @@
 struct constant_data
 {
     uint depth_buffer;
-    uint visible_light_count;
-    uint visible_light_ids;
-    uint visible_vsm_ids;
+    uint vsm_info;
+    uint visible_light_list;
+    uint visible_vsm_list;
     uint vsm_virtual_page_table;
     uint vsm_buffer;
     uint vsm_directional_buffer;
@@ -54,8 +54,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    StructuredBuffer<uint> visible_light_count = ResourceDescriptorHeap[constant.visible_light_count];
-    StructuredBuffer<uint> visible_light_ids = ResourceDescriptorHeap[constant.visible_light_ids];
+    StructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
+    StructuredBuffer<uint> visible_light_list = ResourceDescriptorHeap[constant.visible_light_list];
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
@@ -63,11 +63,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
 
-    uint light_count = visible_light_count[0];
+    uint light_count = vsm_info[0].visible_light_count;
 
     for (uint i = 0; i < light_count; ++i)
     {
-        uint light_id = visible_light_ids[i];
+        uint light_id = visible_light_list[i];
 
         light_data light = lights[light_id];
 
