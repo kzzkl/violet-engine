@@ -67,7 +67,7 @@ public:
     renderer();
     virtual ~renderer();
 
-    void render(render_graph& graph);
+    void render(render_graph& graph, float delta_time);
 
     template <typename T>
     T* get_feature(bool check_enable = false) const noexcept
@@ -116,10 +116,16 @@ protected:
 
     virtual void on_render(render_graph& graph) = 0;
 
+    float get_delta_time() const noexcept
+    {
+        return m_delta_time;
+    }
+
 private:
     std::vector<std::unique_ptr<render_feature_base>> m_features;
     std::unique_ptr<rdg_profiling> m_profiling;
 
     std::uint32_t m_frame{0};
+    float m_delta_time{0.0f};
 };
 } // namespace violet

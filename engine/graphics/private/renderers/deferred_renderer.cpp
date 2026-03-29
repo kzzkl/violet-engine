@@ -2,6 +2,7 @@
 #include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
@@ -10,6 +11,7 @@
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/bloom_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
+#include "graphics/renderers/passes/eye_adaptation_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
 #include "graphics/renderers/passes/gtao_pass.hpp"
 #include "graphics/renderers/passes/hzb_pass.hpp"
@@ -28,6 +30,7 @@ deferred_renderer::deferred_renderer()
     add_feature<vsm_feature>();
     add_feature<taa_feature>();
     add_feature<gtao_feature>();
+    add_feature<eye_adaptation_feature>();
     add_feature<bloom_feature>();
     add_feature<atmosphere_feature>();
 }
@@ -73,6 +76,7 @@ void deferred_renderer::on_render(render_graph& graph)
             add_taa_pass(graph);
         }
 
+        add_eye_adaptation_pass(graph);
         add_bloom_pass(graph);
         add_tone_mapping_pass(graph);
     }
@@ -301,10 +305,10 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
         RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
 
     graph.add_pass<gtao_pass>({
-        .slice_count = gtao->get_slice_count(),
-        .step_count = gtao->get_step_count(),
-        .radius = gtao->get_radius(),
-        .falloff = gtao->get_falloff(),
+        .slice_count = gtao->slice_count,
+        .step_count = gtao->step_count,
+        .radius = gtao->radius,
+        .falloff = gtao->falloff,
         .hzb = m_hzb,
         .depth_buffer = m_depth_buffer,
         .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
@@ -352,7 +356,7 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
         .lru_prev_index = vsm->get_prev_lru_index(),
-        .slope_scale_depth_bias = shadow->get_slope_scale_depth_bias(),
+        .slope_scale_depth_bias = shadow->slope_scale_depth_bias,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
         .debug_info = debug_info,
@@ -385,11 +389,11 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .vsm_buffer = m_vsm_buffer,
         .vsm_virtual_page_table = m_vsm_virtual_page_table,
         .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
-        .shadow_sample_mode = static_cast<std::uint32_t>(shadow->get_sample_mode()),
-        .shadow_sample_count = shadow->get_sample_count(),
-        .shadow_sample_radius = shadow->get_sample_radius(),
-        .shadow_normal_bias = shadow->get_normal_bias(),
-        .shadow_constant_bias = shadow->get_constant_bias(),
+        .shadow_sample_mode = static_cast<std::uint32_t>(shadow->sample_mode),
+        .shadow_sample_count = shadow->sample_count,
+        .shadow_sample_radius = shadow->sample_radius,
+        .shadow_normal_bias = shadow->normal_bias,
+        .shadow_constant_bias = shadow->constant_bias,
         .prefilter_map = m_prefilter_map,
         .irradiance_sh = m_irradiance_sh,
         .debug_mode = debug_mode,
@@ -532,6 +536,36 @@ void deferred_renderer::add_taa_pass(render_graph& graph)
     });
 }
 
+void deferred_renderer::add_eye_adaptation_pass(render_graph& graph)
+{
+    auto* eye_adaptation = get_feature<eye_adaptation_feature>(true);
+    if (eye_adaptation == nullptr)
+    {
+        return;
+    }
+
+    rdg_texture* exposure = graph.add_texture(
+        "Exposure",
+        eye_adaptation->get_exposure(),
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+    graph.add_pass<eye_adaptation_pass>({
+        .render_target = m_render_target,
+        .exposure = exposure,
+        .min_ev = eye_adaptation->min_ev,
+        .max_ev = eye_adaptation->max_ev,
+        .low_percent = eye_adaptation->low_percent,
+        .high_percent = eye_adaptation->high_percent,
+        .min_brightness = eye_adaptation->min_brightness,
+        .max_brightness = eye_adaptation->max_brightness,
+        .speed_down = eye_adaptation->speed_down,
+        .speed_up = eye_adaptation->speed_up,
+        .delta_time = get_delta_time(),
+        .debug_output = m_debug_mode == DEBUG_MODE_EYE_ADAPTATION ? m_debug_output : nullptr,
+    });
+}
+
 void deferred_renderer::add_bloom_pass(render_graph& graph)
 {
     auto* bloom = get_feature<bloom_feature>(true);
@@ -555,10 +589,10 @@ void deferred_renderer::add_bloom_pass(render_graph& graph)
 
     graph.add_pass<bloom_pass>({
         .render_target = m_render_target,
-        .threshold = bloom->get_threshold(),
-        .intensity = bloom->get_intensity(),
-        .knee = bloom->get_knee(),
-        .radius = bloom->get_radius(),
+        .threshold = bloom->threshold,
+        .intensity = bloom->intensity,
+        .knee = bloom->knee,
+        .radius = bloom->radius,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
     });

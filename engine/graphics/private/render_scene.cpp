@@ -283,13 +283,10 @@ void render_scene::set_light_data(
 
     if (light_id == m_sun_id)
     {
-        if (m_sun_direction != direction)
-        {
-            m_scene_states |= RENDER_SCENE_STATE_SKY_DIRTY;
-        }
-
         m_sun_direction = direction;
         m_sun_irradiance = color;
+
+        m_scene_states |= RENDER_SCENE_STATE_SKY_DIRTY;
     }
 }
 

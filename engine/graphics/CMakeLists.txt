@@ -16,6 +16,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/cull_pass.cpp
     private/renderers/passes/debug/bounds_projection_pass.cpp
     private/renderers/passes/depth_only_pass.cpp
+    private/renderers/passes/eye_adaptation_pass.cpp
     private/renderers/passes/gbuffer_pass.cpp
     private/renderers/passes/gtao_pass.cpp
     private/renderers/passes/hzb_pass.cpp

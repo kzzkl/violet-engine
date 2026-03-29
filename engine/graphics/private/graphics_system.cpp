@@ -366,7 +366,7 @@ void graphics_system::render(
 
     render_context context(camera, camera_meta);
     render_graph graph("Camera", &context, m_allocator.get());
-    camera->renderer->render(graph);
+    camera->renderer->render(graph, get_timer().get_frame_delta());
 
     rhi_command* command = device.allocate_command();
     graph.compile();
