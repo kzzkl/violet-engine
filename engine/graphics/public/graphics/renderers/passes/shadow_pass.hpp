@@ -49,17 +49,18 @@ private:
     void clear_page_table(render_graph& graph);
     void mark_visible_pages(render_graph& graph);
     void mark_resident_pages(render_graph& graph);
+    void mark_cache_dirty_pages(render_graph& graph);
     void build_dispatch_args(render_graph& graph);
     void update_lru(render_graph& graph);
     void allocate_pages(render_graph& graph);
-    void clear_physical_page(render_graph& graph);
+    void clear_physical_pages(render_graph& graph);
 
     void instance_cull(render_graph& graph);
     void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
     void cluster_cull(render_graph& graph);
 
     void render_shadow(render_graph& graph, bool opacity_cutoff);
-    void merge_physical_page(render_graph& graph);
+    void merge_physical_pages(render_graph& graph);
 
     void build_hzb(render_graph& graph);
 

@@ -72,6 +72,7 @@ public:
     void clear_states() noexcept
     {
         m_scene_states = 0;
+        m_vsm_invalidations.clear();
     }
 
 private:
@@ -96,7 +97,7 @@ private:
 
         mat4f matrix_m;
         mat4f prev_matrix_m;
-        vec3f scale;
+        vec4f scale;
         std::uint32_t flags;
         std::vector<render_id> instances;
     };
@@ -203,6 +204,23 @@ private:
         bool dirty;
     };
 
+    enum vsm_invalidation_flag : std::uint32_t
+    {
+        VSM_INVALIDATE_REMOVE_INSTANCE = 1 << 0,
+        VSM_INVALIDATE_GEOMETRY_CHANGE = 1 << 1,
+    };
+    using vsm_invalidation_flags = std::uint32_t;
+
+    struct gpu_vsm_invalidation
+    {
+        struct gpu_type
+        {
+            vec4f bounding_sphere;
+        };
+
+        sphere3f bounding_sphere;
+    };
+
     void add_instance_to_batch(render_id instance_id, const material* material);
     void remove_instance_from_batch(render_id instance_id);
 
@@ -210,16 +228,18 @@ private:
     void remove_vsm_by_camera(render_id camera_id);
 
     void update_material();
-    bool update_mesh(gpu_buffer_uploader* uploader);
-    bool update_instance(gpu_buffer_uploader* uploader);
-    bool update_light(gpu_buffer_uploader* uploader);
-    bool update_batch(gpu_buffer_uploader* uploader);
+    void update_invalidation(gpu_buffer_uploader* uploader);
+    void update_mesh(gpu_buffer_uploader* uploader);
+    void update_instance(gpu_buffer_uploader* uploader);
+    void update_light(gpu_buffer_uploader* uploader);
+    void update_batch(gpu_buffer_uploader* uploader);
     void update_vsm();
 
     gpu_dense_array<gpu_mesh> m_meshes;
     std::vector<render_id> m_matrix_dirty_meshes;
 
     gpu_dense_array<gpu_instance> m_instances;
+
     std::unordered_map<material*, material_data> m_materials;
 
     struct light_mapping
@@ -244,6 +264,7 @@ private:
 
     gpu_sparse_array<gpu_directional_vsm> m_vsm_directional_buffer;
     std::unordered_map<render_id, vsm_data> m_vsms;
+    gpu_dense_array<gpu_vsm_invalidation> m_vsm_invalidations;
 
     std::uint32_t m_draw_call_capacity{1};
     std::uint32_t m_draw_call_count{0};
@@ -355,6 +376,14 @@ public:
     rhi_texture* get_vsm_physical_shadow_map_static() const noexcept;
     rhi_texture* get_vsm_physical_shadow_map_final() const noexcept;
     rhi_texture* get_vsm_hzb() const noexcept;
+    rhi_buffer* get_vsm_invalidation_buffer() const noexcept
+    {
+        return m_scene->m_vsm_invalidations.get_buffer()->get_rhi();
+    }
+    std::uint32_t get_vsm_invalidation_count() const noexcept
+    {
+        return m_scene->m_vsm_invalidations.get_size();
+    }
 
     render_id get_vsm_id(render_id light_index) const;
 

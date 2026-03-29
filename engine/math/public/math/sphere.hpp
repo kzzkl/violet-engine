@@ -250,5 +250,17 @@ struct sphere
             .radius = sphere.radius,
         };
     }
+
+    template <typename T>
+    static sphere3<T> transform(const sphere3<T>& sphere, const mat4<T>& matrix, float scale) noexcept
+    {
+        vec4<T> center = {sphere.center.x, sphere.center.y, sphere.center.z, 1.0f};
+        center = matrix::mul(center, matrix);
+
+        return {
+            .center = center,
+            .radius = sphere.radius * scale,
+        };
+    }
 };
 } // namespace violet

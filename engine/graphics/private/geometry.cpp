@@ -132,11 +132,7 @@ std::uint32_t geometry::add_submesh(
     submesh.index_offset = index_offset;
     submesh.index_count = index_count;
 
-    if (m_submesh_infos.size() < m_submeshes.size())
-    {
-        m_submesh_infos.resize(m_submeshes.size());
-    }
-    m_submesh_infos[m_submeshes.size() - 1].dirty = true;
+    m_submesh_ids.push_back(INVALID_RENDER_ID);
 
     mark_dirty();
 
@@ -151,11 +147,7 @@ std::uint32_t geometry::add_submesh(
     submesh.clusters.assign(clusters.begin(), clusters.end());
     submesh.cluster_nodes.assign(cluster_nodes.begin(), cluster_nodes.end());
 
-    if (m_submesh_infos.size() < m_submeshes.size())
-    {
-        m_submesh_infos.resize(m_submeshes.size());
-    }
-    m_submesh_infos[m_submeshes.size() - 1].dirty = true;
+    m_submesh_ids.push_back(INVALID_RENDER_ID);
 
     mark_dirty();
 
@@ -164,8 +156,17 @@ std::uint32_t geometry::add_submesh(
 
 void geometry::clear_submeshes()
 {
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    for (render_id submesh_id : m_submesh_ids)
+    {
+        if (submesh_id != INVALID_RENDER_ID)
+        {
+            geometry_manager->remove_submesh(submesh_id);
+        }
+    }
+
     m_submeshes.clear();
-    mark_dirty();
+    m_submesh_ids.clear();
 }
 
 void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
@@ -197,6 +198,12 @@ raw_buffer* geometry::get_additional_buffer(std::string_view name) const
 {
     auto iter = m_additional_buffers.find(name);
     return iter == m_additional_buffers.end() ? nullptr : iter->second.get();
+}
+
+sphere3f geometry::get_bounding_sphere(std::uint32_t submesh_index) const
+{
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    return geometry_manager->get_bounding_sphere(get_submesh_id(submesh_index));
 }
 
 void geometry::update()
@@ -254,43 +261,24 @@ void geometry::update_submesh()
     for (std::size_t i = 0; i < m_submeshes.size(); ++i)
     {
         const auto& submesh = m_submeshes[i];
-        auto& submesh_info = m_submesh_infos[i];
+        auto& submesh_id = m_submesh_ids[i];
 
-        if (submesh_info.submesh_id == INVALID_RENDER_ID)
-        {
-            submesh_info.submesh_id = geometry_manager->add_submesh(m_id);
-        }
-
-        if (submesh_info.dirty)
+        if (submesh_id == INVALID_RENDER_ID)
         {
             if (submesh.has_cluster())
             {
-                geometry_manager->set_submesh(
-                    submesh_info.submesh_id,
-                    submesh.clusters,
-                    submesh.cluster_nodes);
+                submesh_id =
+                    geometry_manager->add_submesh(m_id, submesh.clusters, submesh.cluster_nodes);
             }
             else
             {
-                geometry_manager->set_submesh(
-                    submesh_info.submesh_id,
+                submesh_id = geometry_manager->add_submesh(
+                    m_id,
                     submesh.vertex_offset,
                     submesh.index_offset,
                     submesh.index_count);
             }
-
-            submesh_info.dirty = false;
         }
-    }
-
-    while (m_submesh_infos.size() > m_submeshes.size())
-    {
-        if (m_submesh_infos.back().submesh_id != INVALID_RENDER_ID)
-        {
-            geometry_manager->remove_submesh(m_submesh_infos.back().submesh_id);
-        }
-
-        m_submesh_infos.pop_back();
     }
 }
 

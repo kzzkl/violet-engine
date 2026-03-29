@@ -181,6 +181,24 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
     }
 }
 
+void vsm_manager::invalidate_cache(render_id vsm_id)
+{
+    auto& vsm = m_vsms[vsm_id];
+
+    std::uint32_t frame = render_device::instance().get_frame_count();
+
+    if (vsm.light_type == LIGHT_DIRECTIONAL)
+    {
+        std::uint32_t cascade_count = get_vsm_count(LIGHT_DIRECTIONAL);
+        for (std::uint32_t cascade = 0; cascade < cascade_count; ++cascade)
+        {
+            auto& cascade_vsm = m_vsms[vsm_id + cascade];
+            cascade_vsm.cache_epoch = frame;
+            m_vsms.mark_dirty(vsm_id + cascade);
+        }
+    }
+}
+
 void vsm_manager::update(gpu_buffer_uploader* uploader)
 {
     m_vsms.update(

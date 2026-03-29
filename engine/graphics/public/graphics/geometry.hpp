@@ -152,8 +152,10 @@ public:
 
     render_id get_submesh_id(std::uint32_t submesh_index) const
     {
-        return m_submesh_infos[submesh_index].submesh_id;
+        return m_submesh_ids[submesh_index];
     }
+
+    sphere3f get_bounding_sphere(std::uint32_t submesh_index) const;
 
     void update();
 
@@ -165,12 +167,6 @@ private:
 
         geometry* src_geometry{nullptr};
         bool dirty{false};
-    };
-
-    struct submesh_info
-    {
-        render_id submesh_id{INVALID_RENDER_ID};
-        bool dirty{true};
     };
 
     void set_buffer(
@@ -210,7 +206,7 @@ private:
     string_map<std::unique_ptr<raw_buffer>> m_additional_buffers;
 
     std::vector<submesh> m_submeshes;
-    std::vector<submesh_info> m_submesh_infos;
+    std::vector<render_id> m_submesh_ids;
 
     string_map<std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;

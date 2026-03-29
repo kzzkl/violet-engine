@@ -111,6 +111,24 @@ struct vsm_mark_resident_pages_cs : public shader_cs
     };
 };
 
+struct vsm_mark_cache_dirty_pages_cs : public shader_cs
+{
+    static constexpr std::string_view path =
+        "assets/shaders/virtual_shadow_map/mark_cache_dirty_pages.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_physical_page_table;
+        std::uint32_t vsm_invalidation_buffer;
+        std::uint32_t vsm_invalidation_count;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
 struct vsm_build_dispatch_args_cs : public shader_cs
 {
     static constexpr std::string_view path =
@@ -216,10 +234,10 @@ struct vsm_allocate_pages_cs : public shader_cs
     };
 };
 
-struct vsm_clear_physical_page_cs : public shader_cs
+struct vsm_clear_physical_pages_cs : public shader_cs
 {
     static constexpr std::string_view path =
-        "assets/shaders/virtual_shadow_map/clear_physical_page.hlsl";
+        "assets/shaders/virtual_shadow_map/clear_physical_pages.hlsl";
 
     struct constant_data
     {
@@ -377,10 +395,10 @@ struct vsm_shadow_fs : public shader_fs
     static constexpr parameter_layout parameters = vsm_shadow_vs::parameters;
 };
 
-struct vsm_merge_physical_page_cs : public shader_cs
+struct vsm_merge_physical_pages_cs : public shader_cs
 {
     static constexpr std::string_view path =
-        "assets/shaders/virtual_shadow_map/merge_physical_page.hlsl";
+        "assets/shaders/virtual_shadow_map/merge_physical_pages.hlsl";
 
     struct constant_data
     {
@@ -605,16 +623,17 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     light_cull(graph);
     clear_page_table(graph);
     mark_visible_pages(graph);
+    mark_cache_dirty_pages(graph);
     mark_resident_pages(graph);
     build_dispatch_args(graph);
     update_lru(graph);
     allocate_pages(graph);
-    clear_physical_page(graph);
+    clear_physical_pages(graph);
     instance_cull(graph);
     cluster_cull(graph);
     render_shadow(graph, false);
     render_shadow(graph, true);
-    merge_physical_page(graph);
+    merge_physical_pages(graph);
 
     build_hzb(graph);
 
@@ -891,6 +910,58 @@ void shadow_pass::mark_resident_pages(render_graph& graph)
                     .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
                     .frame = device.get_frame_count(),
+                });
+
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            command.dispatch_1d(VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT);
+        });
+}
+
+void shadow_pass::mark_cache_dirty_pages(render_graph& graph)
+{
+    const auto& context = graph.get_context();
+
+    if (context.get_vsm_invalidation_count() == 0)
+    {
+        return;
+    }
+
+    struct pass_data
+    {
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_uav vsm_physical_page_table;
+        rhi_buffer_srv* vsm_invalidation_buffer;
+
+        std::uint32_t vsm_invalidation_count;
+    };
+
+    graph.add_pass<pass_data>(
+        "VSM Mark Cache Dirty Pages",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_physical_page_table =
+                pass.add_buffer_uav(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_invalidation_buffer = context.get_vsm_invalidation_buffer()->get_srv();
+
+            data.vsm_invalidation_count = context.get_vsm_invalidation_count();
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<vsm_mark_cache_dirty_pages_cs>(),
+            });
+
+            command.set_constant(
+                vsm_mark_cache_dirty_pages_cs::constant_data{
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_physical_page_table = data.vsm_physical_page_table.get_bindless(),
+                    .vsm_invalidation_buffer = data.vsm_invalidation_buffer->get_bindless(),
+                    .vsm_invalidation_count = data.vsm_invalidation_count,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -1179,7 +1250,7 @@ void shadow_pass::allocate_pages(render_graph& graph)
         });
 }
 
-void shadow_pass::clear_physical_page(render_graph& graph)
+void shadow_pass::clear_physical_pages(render_graph& graph)
 {
     struct pass_data
     {
@@ -1192,7 +1263,7 @@ void shadow_pass::clear_physical_page(render_graph& graph)
     };
 
     graph.add_pass<pass_data>(
-        "VSM Clear Physical Page: Static",
+        "VSM Clear Physical Pages: Static",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -1211,11 +1282,11 @@ void shadow_pass::clear_physical_page(render_graph& graph)
             auto& device = render_device::instance();
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_clear_physical_page_cs>(),
+                .compute_shader = device.get_shader<vsm_clear_physical_pages_cs>(),
             });
 
             command.set_constant(
-                vsm_clear_physical_page_cs::constant_data{
+                vsm_clear_physical_pages_cs::constant_data{
                     .clear_physical_page_list = data.clear_physical_page_list.get_bindless(),
                     .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
                 });
@@ -1226,7 +1297,7 @@ void shadow_pass::clear_physical_page(render_graph& graph)
         });
 
     graph.add_pass<pass_data>(
-        "VSM Clear Physical Page: Dynamic",
+        "VSM Clear Physical Pages: Dynamic",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -1249,11 +1320,11 @@ void shadow_pass::clear_physical_page(render_graph& graph)
             std::vector<std::wstring> defines = {L"-DCLEAR_DYNAMIC"};
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_clear_physical_page_cs>(defines),
+                .compute_shader = device.get_shader<vsm_clear_physical_pages_cs>(defines),
             });
 
             command.set_constant(
-                vsm_clear_physical_page_cs::constant_data{
+                vsm_clear_physical_pages_cs::constant_data{
                     .visible_virtual_page_list = data.visible_virtual_page_list.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_physical_shadow_map = data.vsm_physical_shadow_map.get_bindless(),
@@ -1669,7 +1740,7 @@ void shadow_pass::render_shadow(render_graph& graph, bool opacity_cutoff)
         });
 }
 
-void shadow_pass::merge_physical_page(render_graph& graph)
+void shadow_pass::merge_physical_pages(render_graph& graph)
 {
     struct pass_data
     {
@@ -1682,7 +1753,7 @@ void shadow_pass::merge_physical_page(render_graph& graph)
     };
 
     graph.add_pass<pass_data>(
-        "VSM Merge Physical Page",
+        "VSM Merge Physical Pages",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -1705,11 +1776,11 @@ void shadow_pass::merge_physical_page(render_graph& graph)
             auto& device = render_device::instance();
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_merge_physical_page_cs>(),
+                .compute_shader = device.get_shader<vsm_merge_physical_pages_cs>(),
             });
 
             command.set_constant(
-                vsm_merge_physical_page_cs::constant_data{
+                vsm_merge_physical_pages_cs::constant_data{
                     .visible_virtual_page_list = data.visible_virtual_page_list.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
                     .vsm_physical_shadow_map_static =

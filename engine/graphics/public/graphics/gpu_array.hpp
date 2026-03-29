@@ -194,6 +194,15 @@ public:
         m_object_buffer->get_rhi()->set_name(m_name.c_str());
     }
 
+    void clear()
+    {
+        m_objects.clear();
+        m_dirty_objects.clear();
+        m_id_to_index.clear();
+        m_index_to_id.clear();
+        m_allocator.reset();
+    }
+
 private:
     struct wrapper
     {

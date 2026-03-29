@@ -1,10 +1,12 @@
 #include "graphics/render_scene.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/light_component.hpp"
+#include "components/mesh_component.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
+#include "virtual_shadow_map/vsm_common.hpp"
 #include "virtual_shadow_map/vsm_manager.hpp"
 #include <algorithm>
 
@@ -65,8 +67,12 @@ void render_scene::set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, con
 {
     auto& mesh = m_meshes[mesh_id];
     mesh.matrix_m = matrix_m;
-    mesh.scale = scale;
-
+    mesh.scale = {
+        .x = scale.x,
+        .y = scale.y,
+        .z = scale.z,
+        .w = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}),
+    };
     m_meshes.mark_dirty(mesh_id);
 
     m_matrix_dirty_meshes.push_back(mesh_id);
@@ -94,6 +100,17 @@ void render_scene::remove_instance(render_id instance_id)
     auto& instance = m_instances[instance_id];
     auto& mesh = m_meshes[instance.mesh_id];
 
+    if (mesh.flags & MESH_STATIC && instance.geometry != nullptr)
+    {
+        render_id invalidation_id = m_vsm_invalidations.add();
+        m_vsm_invalidations[invalidation_id] = {
+            .bounding_sphere = sphere::transform(
+                instance.geometry->get_bounding_sphere(instance.submesh_index),
+                mesh.matrix_m,
+                mesh.scale.w),
+        };
+    }
+
     if (instance.material != nullptr)
     {
         auto& material = m_materials[instance.material];
@@ -117,10 +134,30 @@ void render_scene::set_instance_geometry(
     assert(geometry != nullptr && submesh_index < geometry->get_submeshes().size());
 
     auto& instance = m_instances[instance_id];
+    auto& mesh = m_meshes[instance.mesh_id];
 
     if (instance.geometry == geometry && instance.submesh_index == submesh_index)
     {
         return;
+    }
+
+    if (mesh.flags & MESH_STATIC)
+    {
+        if (instance.geometry != nullptr)
+        {
+            render_id invalidation_id = m_vsm_invalidations.add();
+            m_vsm_invalidations[invalidation_id] = {
+                .bounding_sphere = sphere::transform(
+                    instance.geometry->get_bounding_sphere(instance.submesh_index),
+                    mesh.matrix_m),
+            };
+        }
+
+        render_id invalidation_id = m_vsm_invalidations.add();
+        m_vsm_invalidations[invalidation_id] = {
+            .bounding_sphere =
+                sphere::transform(geometry->get_bounding_sphere(submesh_index), mesh.matrix_m),
+        };
     }
 
     instance.geometry = geometry;
@@ -488,10 +525,11 @@ void render_scene::set_atmosphere(
 void render_scene::update(gpu_buffer_uploader* uploader)
 {
     update_material();
-    m_scene_states |= update_mesh(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_instance(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_light(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
-    m_scene_states |= update_batch(uploader) ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
+    update_invalidation(uploader);
+    update_mesh(uploader);
+    update_instance(uploader);
+    update_light(uploader);
+    update_batch(uploader);
 
     auto* material_manager = render_device::instance().get_material_manager();
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -738,14 +776,44 @@ void render_scene::update_material()
         });
 }
 
-bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
+void render_scene::update_invalidation(gpu_buffer_uploader* uploader)
 {
-    bool need_upload = m_meshes.update(
+    if (m_vsm_invalidations.get_size() > VSM_PHYSICAL_PAGE_TABLE_PAGE_COUNT)
+    {
+        for (auto& [vsm_id, vsm_data] : m_vsms)
+        {
+            m_vsm_manager->invalidate_cache(vsm_id);
+        }
+        return;
+    }
+
+    m_vsm_invalidations.update(
+        [](const gpu_vsm_invalidation& invalidation) -> gpu_vsm_invalidation::gpu_type
+        {
+            return {
+                .bounding_sphere = invalidation.bounding_sphere,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                offset,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
+}
+
+void render_scene::update_mesh(gpu_buffer_uploader* uploader)
+{
+    bool need_resize = m_meshes.update(
         [](const gpu_mesh& mesh) -> shader::mesh_data
         {
             return {
                 .matrix_m = mesh.matrix_m,
-                .scale = {mesh.scale.x, mesh.scale.y, mesh.scale.z, vector::max(mesh.scale)},
+                .scale = mesh.scale,
                 .prev_matrix_m = mesh.prev_matrix_m,
                 .flags = mesh.flags,
             };
@@ -769,14 +837,14 @@ bool render_scene::update_mesh(gpu_buffer_uploader* uploader)
     }
     m_matrix_dirty_meshes.clear();
 
-    return need_upload;
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_instance(gpu_buffer_uploader* uploader)
+void render_scene::update_instance(gpu_buffer_uploader* uploader)
 {
     material_manager* material_manager = render_device::instance().get_material_manager();
 
-    return m_instances.update(
+    bool need_resize = m_instances.update(
         [&](const gpu_instance& instance) -> shader::instance_data
         {
             return {
@@ -798,9 +866,11 @@ bool render_scene::update_instance(gpu_buffer_uploader* uploader)
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
+
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_light(gpu_buffer_uploader* uploader)
+void render_scene::update_light(gpu_buffer_uploader* uploader)
 {
     m_vsm_directional_buffer.update(
         [](const gpu_directional_vsm& directional_vsm)
@@ -850,18 +920,18 @@ bool render_scene::update_light(gpu_buffer_uploader* uploader)
             });
     };
 
-    bool dirty = false;
-    dirty = update_light_buffer(m_shadow_casting_lights) || dirty;
-    dirty = update_light_buffer(m_non_shadow_casting_lights) || dirty;
+    bool need_resize = false;
+    need_resize = update_light_buffer(m_shadow_casting_lights) || need_resize;
+    need_resize = update_light_buffer(m_non_shadow_casting_lights) || need_resize;
 
-    return dirty;
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
-bool render_scene::update_batch(gpu_buffer_uploader* uploader)
+void render_scene::update_batch(gpu_buffer_uploader* uploader)
 {
     if ((m_scene_states & RENDER_SCENE_STATE_BATCH_DIRTY) == 0)
     {
-        return false;
+        return;
     }
 
     m_draw_call_count = 0;
@@ -888,7 +958,7 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
     m_draw_call_capacity =
         std::min(m_draw_call_capacity, graphics_config::get_max_draw_command_count());
 
-    return m_batches.update(
+    bool need_resize = m_batches.update(
         [](const gpu_batch& batch) -> std::uint32_t
         {
             return batch.draw_call_offset;
@@ -904,6 +974,8 @@ bool render_scene::update_batch(gpu_buffer_uploader* uploader)
                 RHI_ACCESS_SHADER_READ);
         },
         true);
+
+    m_scene_states |= need_resize ? RENDER_SCENE_STATE_SHADER_PARAMETER_DIRTY : 0;
 }
 
 void render_scene::update_vsm()
