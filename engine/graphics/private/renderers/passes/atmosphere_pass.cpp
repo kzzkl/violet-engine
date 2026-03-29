@@ -440,6 +440,8 @@ void atmosphere_lut_pass::add_environment_map_pass(render_graph& graph, const pa
 
 void atmosphere_pass::add(render_graph& graph, const parameter& parameter)
 {
+    rdg_scope scope(graph, "Atmosphere");
+
     add_sky_pass(graph, parameter);
     add_aerial_perspective_pass(graph, parameter);
 }

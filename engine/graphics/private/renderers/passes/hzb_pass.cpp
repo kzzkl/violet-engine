@@ -1,4 +1,5 @@
 #include "graphics/renderers/passes/hzb_pass.hpp"
+#include <format>
 
 namespace violet
 {
@@ -8,9 +9,11 @@ struct hzb_cs : public shader_cs
 
     struct constant_data
     {
-        std::uint32_t prev_buffer;
-        std::uint32_t next_buffer;
-        std::uint32_t level;
+        std::uint32_t src;
+        std::uint32_t dst_mip0;
+        std::uint32_t dst_mip1;
+        std::uint32_t dst_mip2;
+        std::uint32_t dst_mip3;
         std::uint32_t hzb_sampler;
     };
 
@@ -25,9 +28,8 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
 
     struct pass_data
     {
-        rdg_texture_srv prev_buffer;
-        rdg_texture_uav next_buffer;
-        std::uint32_t level;
+        rdg_texture_srv src;
+        rdg_texture_uav dst_mips[4];
         rhi_sampler* hzb_sampler;
     };
 
@@ -42,22 +44,23 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
         .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
     });
 
-    std::uint32_t level = parameter.depth_buffer == parameter.hzb ? 1 : 0;
-    for (; level < parameter.hzb->get_level_count(); ++level)
+    std::uint32_t level_count = parameter.hzb->get_level_count();
+
+    for (std::uint32_t level = 0; level < level_count; level += 4)
     {
         graph.add_pass<pass_data>(
-            "Level " + std::to_string(level),
+            std::format("Level {} ~ {}", level, std::min(level + 3, level_count - 1)),
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
                 if (level == 0)
                 {
-                    data.prev_buffer =
+                    data.src =
                         pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 }
                 else
                 {
-                    data.prev_buffer = pass.add_texture_srv(
+                    data.src = pass.add_texture_srv(
                         parameter.hzb,
                         RHI_PIPELINE_STAGE_COMPUTE,
                         RHI_TEXTURE_DIMENSION_2D,
@@ -65,13 +68,23 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                         1);
                 }
 
-                data.next_buffer = pass.add_texture_uav(
-                    parameter.hzb,
-                    RHI_PIPELINE_STAGE_COMPUTE,
-                    RHI_TEXTURE_DIMENSION_2D,
-                    level,
-                    1);
-                data.level = level;
+                for (std::uint32_t i = 0; i < 4; ++i)
+                {
+                    if (level + i < level_count)
+                    {
+                        data.dst_mips[i] = pass.add_texture_uav(
+                            parameter.hzb,
+                            RHI_PIPELINE_STAGE_COMPUTE,
+                            RHI_TEXTURE_DIMENSION_2D,
+                            level + i,
+                            1);
+                    }
+                    else
+                    {
+                        data.dst_mips[i].reset();
+                    }
+                }
+
                 data.hzb_sampler = hzb_sampler;
             },
             [](const pass_data& data, rdg_command& command)
@@ -81,15 +94,17 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                 });
                 command.set_constant(
                     hzb_cs::constant_data{
-                        .prev_buffer = data.prev_buffer.get_bindless(),
-                        .next_buffer = data.next_buffer.get_bindless(),
-                        .level = data.level,
+                        .src = data.src.get_bindless(),
+                        .dst_mip0 = data.dst_mips[0].get_bindless(),
+                        .dst_mip1 = data.dst_mips[1] ? data.dst_mips[1].get_bindless() : 0,
+                        .dst_mip2 = data.dst_mips[2] ? data.dst_mips[2].get_bindless() : 0,
+                        .dst_mip3 = data.dst_mips[3] ? data.dst_mips[3].get_bindless() : 0,
                         .hzb_sampler = data.hzb_sampler->get_bindless(),
                     });
                 command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
-                rhi_extent next_extent = data.next_buffer.get_extent();
-                command.dispatch_2d(next_extent.width, next_extent.height);
+                rhi_extent extent = data.dst_mips[0].get_extent();
+                command.dispatch_2d(extent.width, extent.height);
             });
     }
 }
