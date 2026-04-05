@@ -110,8 +110,7 @@ vk_raster_pipeline::vk_raster_pipeline(const rhi_raster_pipeline_desc& desc, vk_
     {
         binding_descriptions.push_back({
             .binding = i,
-            .stride =
-                static_cast<std::uint32_t>(rhi_get_format_stride(vertex_attributes[i].format)),
+            .stride = rhi_get_format_size(vertex_attributes[i].format).block_size,
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         });
 

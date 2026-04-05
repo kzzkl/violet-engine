@@ -47,24 +47,15 @@ private:
     rhi_ptr<rhi_texture> m_texture;
 };
 
-enum texture_option
-{
-    TEXTURE_OPTION_NONE = 0,
-    TEXTURE_OPTION_GENERATE_MIPMAPS = 1 << 0,
-    TEXTURE_OPTION_SRGB = 1 << 1,
-};
-using texture_options = std::uint32_t;
-
 struct texture_data
 {
-    struct mipmap
-    {
-        rhi_extent extent;
-        std::vector<char> pixels;
-    };
-
-    std::vector<mipmap> mipmaps;
     rhi_format format;
+    rhi_extent extent;
+
+    std::uint32_t layer_count;
+    std::uint32_t level_count;
+
+    std::vector<char> pixels;
 };
 
 class texture_2d : public raw_texture
@@ -79,8 +70,7 @@ public:
         rhi_sample_count samples = RHI_SAMPLE_COUNT_1,
         rhi_texture_layout layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
-    texture_2d(std::string_view path, texture_options options = TEXTURE_OPTION_NONE);
-    texture_2d(const texture_data& data, texture_options options = TEXTURE_OPTION_NONE);
+    texture_2d(const texture_data& data);
 };
 
 class texture_cube : public raw_texture
@@ -94,13 +84,6 @@ public:
         rhi_sample_count samples = RHI_SAMPLE_COUNT_1,
         rhi_texture_layout layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 
-    texture_cube(
-        std::string_view right,
-        std::string_view left,
-        std::string_view top,
-        std::string_view bottom,
-        std::string_view front,
-        std::string_view back,
-        texture_options options = TEXTURE_OPTION_NONE);
+    texture_cube(const texture_data& data);
 };
 } // namespace violet

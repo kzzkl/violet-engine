@@ -16,6 +16,8 @@ public:
         LOAD_OPTION_NONE = 0,
         LOAD_OPTION_DYNAMIC_MESH = 1 << 0,
         LOAD_OPTION_GENERATE_CLUSTERS = 1 << 1,
+        LOAD_OPTION_GENERATE_MIPMAPS = 1 << 2,
+        LOAD_OPTION_COMPRESS_TEXTURES = 1 << 3,
     };
     using load_options = std::uint32_t;
 

@@ -1,5 +1,4 @@
 #include "graphics/geometries/sphere_geometry.hpp"
-#include "graphics/tools/geometry_tool.hpp"
 #include "math/vector.hpp"
 
 namespace violet
@@ -17,6 +16,7 @@ sphere_geometry::sphere_geometry(
 
     std::vector<vec3f> positions;
     std::vector<vec3f> normals;
+    std::vector<vec4f> tangents;
     std::vector<vec2f> texcoords;
     std::vector<std::uint32_t> indexes;
 
@@ -53,11 +53,11 @@ sphere_geometry::sphere_geometry(
 
             // vertex
             vec3f vertex;
-            vertex.x = -radius * std::cos(phi_start + u * phi_length) *
-                       std::sin(theta_start + v * theta_length);
-            vertex.y = radius * std::cos(theta_start + v * theta_length);
-            vertex.z = radius * std::sin(phi_start + u * phi_length) *
-                       std::sin(theta_start + v * theta_length);
+            vertex.x = -radius * std::cos(phi_start + (u * phi_length)) *
+                       std::sin(theta_start + (v * theta_length));
+            vertex.y = radius * std::cos(theta_start + (v * theta_length));
+            vertex.z = radius * std::sin(phi_start + (u * phi_length)) *
+                       std::sin(theta_start + (v * theta_length));
 
             positions.push_back(vertex);
 
@@ -65,8 +65,12 @@ sphere_geometry::sphere_geometry(
             vec3f normal = vector::normalize(vertex);
             normals.push_back(normal);
 
+            // tangent
+            float phi = phi_start + (u * phi_length);
+            tangents.push_back({.x = std::sin(phi), .y = 0.0f, .z = std::cos(phi), .w = 1.0f});
+
             // uv
-            texcoords.push_back({u + u_offset, 1 - v});
+            texcoords.push_back({.x = u + u_offset, .y = 1 - v});
 
             vertices_row.push_back(index++);
         }
@@ -99,9 +103,6 @@ sphere_geometry::sphere_geometry(
             }
         }
     }
-
-    std::vector<vec4f> tangents =
-        geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
 
     set_positions(positions);
     set_normals(normals);

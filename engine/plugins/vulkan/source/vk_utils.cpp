@@ -96,6 +96,24 @@ VkFormat vk_utils::map_format(rhi_format format)
         return VK_FORMAT_D32_SFLOAT;
     case RHI_FORMAT_D32_FLOAT_S8_UINT:
         return VK_FORMAT_D32_SFLOAT_S8_UINT;
+    case RHI_FORMAT_BC1_RGB_UNORM:
+        return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+    case RHI_FORMAT_BC1_RGB_SRGB:
+        return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+    case RHI_FORMAT_BC1_RGBA_UNORM:
+        return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+    case RHI_FORMAT_BC1_RGBA_SRGB:
+        return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+    case RHI_FORMAT_BC3_UNORM:
+        return VK_FORMAT_BC3_UNORM_BLOCK;
+    case RHI_FORMAT_BC3_SRGB:
+        return VK_FORMAT_BC3_SRGB_BLOCK;
+    case RHI_FORMAT_BC5_UNORM:
+        return VK_FORMAT_BC5_UNORM_BLOCK;
+    case RHI_FORMAT_BC7_UNORM:
+        return VK_FORMAT_BC7_UNORM_BLOCK;
+    case RHI_FORMAT_BC7_SRGB:
+        return VK_FORMAT_BC7_SRGB_BLOCK;
     default:
         throw std::runtime_error("Invalid format.");
     }

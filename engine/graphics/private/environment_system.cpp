@@ -5,7 +5,6 @@
 #include "components/skybox_component_meta.hpp"
 #include "graphics/render_graph/render_graph.hpp"
 #include "graphics/renderers/passes/ibl_pass.hpp"
-#include "graphics/resources/texture.hpp"
 
 namespace violet
 {
@@ -89,7 +88,10 @@ public:
 
         m_irradiance_sh = graph.add_buffer("Irradiance SH", parameter.irradiance_sh);
 
-        add_hdri_convert_pass(graph, parameter.hdri);
+        if (parameter.hdri != nullptr)
+        {
+            add_hdri_convert_pass(graph, parameter.hdri);
+        }
 
         graph.add_pass<prefilter_pass>({
             .environment_map = m_environment_map,
@@ -286,76 +288,7 @@ bool environment_system::initialize(const dictionary& config)
 void environment_system::update(render_scene_manager& scene_manager)
 {
     auto& world = get_world();
-
-    auto create_skybox_resources = [&](rhi_ptr<rhi_texture>& environment_map,
-                                       rhi_ptr<rhi_buffer>& irradiance_sh,
-                                       rhi_ptr<rhi_texture>& prefilter_map)
-    {
-        auto& device = render_device::instance();
-
-        if (environment_map == nullptr)
-        {
-            environment_map = device.create_texture({
-                .extent = {.width = 1024, .height = 1024},
-                .format = RHI_FORMAT_R11G11B10_FLOAT,
-                .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
-                .level_count = 1,
-                .layer_count = 6,
-            });
-            environment_map->set_name("Environment Map");
-        }
-
-        if (irradiance_sh == nullptr)
-        {
-            irradiance_sh = device.create_buffer({
-                .size = 9 * sizeof(vec4f),
-                .flags = RHI_BUFFER_STORAGE,
-            });
-            irradiance_sh->set_name("Irradiance SH");
-        }
-
-        if (prefilter_map == nullptr)
-        {
-            prefilter_map = device.create_texture({
-                .extent = {.width = 256, .height = 256},
-                .format = RHI_FORMAT_R11G11B10_FLOAT,
-                .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
-                .level_count = rhi_get_level_count({.width = 256, .height = 256}),
-                .layer_count = 6,
-            });
-            prefilter_map->set_name("Prefilter Map");
-        }
-    };
-
-    auto create_atmosphere_resources =
-        [&](rhi_ptr<rhi_texture>& transmittance_lut, rhi_ptr<rhi_texture>& multi_scattering_lut)
-    {
-        auto& device = render_device::instance();
-
-        if (transmittance_lut == nullptr)
-        {
-            transmittance_lut = device.create_texture({
-                .extent = {.width = 256, .height = 64},
-                .format = RHI_FORMAT_R11G11B10_FLOAT,
-                .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
-                .level_count = 1,
-                .layer_count = 1,
-            });
-            transmittance_lut->set_name("Transmittance LUT");
-        }
-
-        if (multi_scattering_lut == nullptr)
-        {
-            multi_scattering_lut = device.create_texture({
-                .extent = {.width = 32, .height = 32},
-                .format = RHI_FORMAT_R11G11B10_FLOAT,
-                .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
-                .level_count = 1,
-                .layer_count = 1,
-            });
-            multi_scattering_lut->set_name("Multi Scattering LUT");
-        }
-    };
+    auto& device = render_device::instance();
 
     world.get_view()
         .read<entity>()
@@ -368,15 +301,49 @@ void environment_system::update(render_scene_manager& scene_manager)
                 const scene_component& scene,
                 skybox_component_meta& meta)
             {
-                create_skybox_resources(
-                    meta.environment_map,
-                    meta.irradiance_sh,
-                    meta.prefilter_map);
-
-                if (skybox.environment_map_path != meta.environment_map_path)
+                if (skybox.texture.get() != meta.texture)
                 {
-                    meta.environment_map_path = skybox.environment_map_path;
+                    meta.texture = skybox.texture.get();
                     m_skybox_update_queue.push_back(entity);
+                }
+
+                if (meta.texture->get_flags() & RHI_TEXTURE_CUBE)
+                {
+                    meta.environment_map = nullptr;
+                }
+                else if (meta.environment_map == nullptr)
+                {
+                    meta.environment_map = device.create_texture({
+                        .extent = {.width = 1024, .height = 1024},
+                        .format = RHI_FORMAT_R11G11B10_FLOAT,
+                        .flags =
+                            RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+                        .level_count = 1,
+                        .layer_count = 6,
+                    });
+                    meta.environment_map->set_name("Environment Map");
+                }
+
+                if (meta.irradiance_sh == nullptr)
+                {
+                    meta.irradiance_sh = device.create_buffer({
+                        .size = 9 * sizeof(vec4f),
+                        .flags = RHI_BUFFER_STORAGE,
+                    });
+                    meta.irradiance_sh->set_name("Irradiance SH");
+                }
+
+                if (meta.prefilter_map == nullptr)
+                {
+                    meta.prefilter_map = device.create_texture({
+                        .extent = {.width = 256, .height = 256},
+                        .format = RHI_FORMAT_R11G11B10_FLOAT,
+                        .flags =
+                            RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_CUBE,
+                        .level_count = rhi_get_level_count({.width = 256, .height = 256}),
+                        .layer_count = 6,
+                    });
+                    meta.prefilter_map->set_name("Prefilter Map");
                 }
 
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
@@ -403,11 +370,33 @@ void environment_system::update(render_scene_manager& scene_manager)
                 const scene_component& scene,
                 atmosphere_component_meta& meta)
             {
-                create_atmosphere_resources(meta.transmittance_lut, meta.multi_scattering_lut);
-
                 if (meta.update(atmosphere))
                 {
                     m_atmosphere_update_queue.push_back(entity);
+                }
+
+                if (meta.transmittance_lut == nullptr)
+                {
+                    meta.transmittance_lut = device.create_texture({
+                        .extent = {.width = 256, .height = 64},
+                        .format = RHI_FORMAT_R11G11B10_FLOAT,
+                        .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+                        .level_count = 1,
+                        .layer_count = 1,
+                    });
+                    meta.transmittance_lut->set_name("Transmittance LUT");
+                }
+
+                if (meta.multi_scattering_lut == nullptr)
+                {
+                    meta.multi_scattering_lut = device.create_texture({
+                        .extent = {.width = 32, .height = 32},
+                        .format = RHI_FORMAT_R11G11B10_FLOAT,
+                        .flags = RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+                        .level_count = 1,
+                        .layer_count = 1,
+                    });
+                    meta.multi_scattering_lut->set_name("Multi Scattering LUT");
                 }
 
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
@@ -447,17 +436,24 @@ void environment_system::update_skybox(rhi_command* command, entity entity)
     auto& world = get_world();
     const auto& meta = world.get_component<const skybox_component_meta>(entity);
 
-    texture_2d hdri_texture(meta.environment_map_path);
-
     environment_renderer renderer;
-    renderer.render_skybox(
-        command,
-        environment_renderer::skybox_parameter{
-            .hdri = hdri_texture.get_rhi(),
-            .environment_map = meta.environment_map.get(),
-            .prefilter_map = meta.prefilter_map.get(),
-            .irradiance_sh = meta.irradiance_sh.get(),
-        });
+
+    environment_renderer::skybox_parameter parameter = {
+        .prefilter_map = meta.prefilter_map.get(),
+        .irradiance_sh = meta.irradiance_sh.get(),
+    };
+
+    if (meta.texture->get_flags() & RHI_TEXTURE_CUBE)
+    {
+        parameter.environment_map = meta.texture;
+    }
+    else
+    {
+        parameter.hdri = meta.texture;
+        parameter.environment_map = meta.environment_map.get();
+    }
+
+    renderer.render_skybox(command, parameter);
 }
 
 void environment_system::update_atmosphere(rhi_command* command, entity entity)

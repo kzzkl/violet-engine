@@ -1,9 +1,9 @@
-#include "tools/cluster/cluster_builder.hpp"
+#include "cluster/cluster_builder.hpp"
 #include "algorithm/disjoint_set.hpp"
 #include "algorithm/hash.hpp"
-#include "tools/cluster/graph_linker.hpp"
-#include "tools/cluster/graph_partitioner.hpp"
-#include "tools/mesh_simplifier/mesh_simplifier.hpp"
+#include "cluster/graph_linker.hpp"
+#include "cluster/graph_partitioner.hpp"
+#include "mesh_simplifier/mesh_simplifier.hpp"
 #include <algorithm>
 #include <iterator>
 #include <map>

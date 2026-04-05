@@ -96,9 +96,9 @@ public:
 
     void copy_buffer_to_texture(
         rhi_buffer* buffer,
-        const rhi_buffer_region& buffer_region,
         rhi_texture* texture,
-        const rhi_texture_region& texture_region) override;
+        const rhi_buffer_texture_copy* regions,
+        std::uint32_t region_count) override;
 
     void begin_label(const char* label) const override
     {

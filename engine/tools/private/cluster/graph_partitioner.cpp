@@ -1,4 +1,4 @@
-#include "tools/cluster/graph_partitioner.hpp"
+#include "cluster/graph_partitioner.hpp"
 #include "metis.h"
 #include <algorithm>
 #include <cassert>

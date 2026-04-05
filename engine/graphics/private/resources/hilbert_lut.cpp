@@ -1,5 +1,5 @@
 #include "graphics/resources/hilbert_lut.hpp"
-#include "tools/texture_loader.hpp"
+#include "graphics/texture_loader.hpp"
 
 namespace violet
 {
@@ -18,14 +18,14 @@ hilbert_lut::hilbert_lut(std::uint32_t level)
 
     texture_data data = {
         .format = RHI_FORMAT_R32_UINT,
+        .extent = {.width = width, .height = width, .depth = 1},
+        .layer_count = 1,
+        .level_count = 1,
     };
-    data.mipmaps.resize(1);
-    data.mipmaps[0].extent.height = width;
-    data.mipmaps[0].extent.width = width;
-    data.mipmaps[0].pixels.resize(4ull * width * width);
+    data.pixels.resize(4ull * width * width);
 
     std::memcpy(
-        data.mipmaps[0].pixels.data(),
+        data.pixels.data(),
         hilbert_indexes.data(),
         hilbert_indexes.size() * sizeof(std::uint32_t));
 

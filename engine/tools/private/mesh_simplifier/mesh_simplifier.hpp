@@ -2,8 +2,8 @@
 
 #include "algorithm/hash.hpp"
 #include "math/types.hpp"
-#include "tools/mesh_simplifier/collapse_heap.hpp"
-#include "tools/mesh_simplifier/quadric.hpp"
+#include "mesh_simplifier/collapse_heap.hpp"
+#include "mesh_simplifier/quadric.hpp"
 #include <functional>
 #include <limits>
 #include <unordered_map>

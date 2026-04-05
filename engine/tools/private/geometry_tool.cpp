@@ -1,9 +1,9 @@
-#include "graphics/tools/geometry_tool.hpp"
+#include "tools/geometry_tool.hpp"
 #include "algorithm/hash.hpp"
+#include "cluster/cluster_builder.hpp"
 #include "math/vector.hpp"
+#include "mesh_simplifier/mesh_simplifier.hpp"
 #include "mikktspace.h"
-#include "tools/cluster/cluster_builder.hpp"
-#include "tools/mesh_simplifier/mesh_simplifier.hpp"
 #include <queue>
 #include <unordered_map>
 

@@ -1,4 +1,4 @@
-#include "sample/assimp_loader.hpp"
+#include "assimp_loader.hpp"
 #include "math/vector.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -117,7 +117,7 @@ void process_node(aiNode* node, std::int32_t parnet, mesh_loader::scene_data& sc
 }
 } // namespace
 
-std::optional<mesh_loader::scene_data> assimp_loader::load(std::string_view path)
+bool assimp_loader::load(std::string_view path, mesh_loader::scene_data& scene_data)
 {
     std::filesystem::path model_path(path);
 
@@ -135,10 +135,8 @@ std::optional<mesh_loader::scene_data> assimp_loader::load(std::string_view path
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
-        return std::nullopt;
+        return false;
     }
-
-    scene_data scene_data;
 
     for (std::uint32_t i = 0; i < scene->mNumMeshes; ++i)
     {
@@ -147,6 +145,6 @@ std::optional<mesh_loader::scene_data> assimp_loader::load(std::string_view path
 
     process_node(scene->mRootNode, -1, scene_data);
 
-    return scene_data;
+    return true;
 }
 } // namespace violet

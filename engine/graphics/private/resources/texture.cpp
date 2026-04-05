@@ -1,5 +1,5 @@
 #include "graphics/resources/texture.hpp"
-#include "tools/texture_loader.hpp"
+#include "graphics/texture_loader.hpp"
 
 namespace violet
 {
@@ -32,14 +32,9 @@ texture_2d::texture_2d(
     });
 }
 
-texture_2d::texture_2d(std::string_view path, texture_options options)
+texture_2d::texture_2d(const texture_data& data)
 {
-    set_texture(texture_loader::load(path, options));
-}
-
-texture_2d::texture_2d(const texture_data& data, texture_options options)
-{
-    set_texture(texture_loader::load(data, options));
+    set_texture(texture_loader::load(data));
 }
 
 texture_cube::texture_cube(
@@ -61,15 +56,8 @@ texture_cube::texture_cube(
     });
 }
 
-texture_cube::texture_cube(
-    std::string_view right,
-    std::string_view left,
-    std::string_view top,
-    std::string_view bottom,
-    std::string_view front,
-    std::string_view back,
-    texture_options options)
+texture_cube::texture_cube(const texture_data& data)
 {
-    set_texture(texture_loader::load(right, left, top, bottom, front, back, options));
+    set_texture(texture_loader::load(data, texture_loader::LOAD_OPTION_CUBE_MAP));
 }
 } // namespace violet

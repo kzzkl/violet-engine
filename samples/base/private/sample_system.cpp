@@ -1,5 +1,4 @@
 #include "sample/sample_system.hpp"
-#include "common/log.hpp"
 #include "components/atmosphere_component.hpp"
 #include "components/camera_component.hpp"
 #include "components/first_person_control_component.hpp"
@@ -13,14 +12,13 @@
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/render_graph/rdg_profiling.hpp"
-#include "graphics/tools/geometry_tool.hpp"
+#include "graphics/texture_loader.hpp"
 #include "math/quaternion.hpp"
-#include "sample/assimp_loader.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
-#include "sample/gltf_loader.hpp"
 #include "sample/imgui_system.hpp"
+#include "sample/mesh_loader.hpp"
+#include "tools/texture_tool.hpp"
 #include "window/window_system.hpp"
-#include <filesystem>
 #include <imgui.h>
 
 namespace violet
@@ -121,169 +119,59 @@ bool sample_system::initialize(const dictionary& config)
 
 entity sample_system::load_model(std::string_view model_path, load_options options)
 {
-    namespace fs = std::filesystem;
-
     auto& world = get_world();
 
-    std::optional<mesh_loader::scene_data> result;
-    if (model_path.ends_with(".gltf") || model_path.ends_with(".glb"))
-    {
-        gltf_loader loader;
-        result = loader.load(model_path);
-    }
-    else
-    {
-        assimp_loader loader;
-        result = loader.load(model_path);
-    }
+    mesh_loader::scene_data scene_data;
+
+    bool result = mesh_loader::load(
+        model_path,
+        scene_data,
+        options & LOAD_OPTION_GENERATE_CLUSTERS,
+        options & LOAD_OPTION_GENERATE_MIPMAPS,
+        options & LOAD_OPTION_COMPRESS_TEXTURES);
 
     if (!result)
     {
         return INVALID_ENTITY;
     }
 
-    for (auto& texture : result->textures)
+    std::size_t texture_offset = m_textures.size();
+    for (auto& texture : scene_data.textures)
     {
-        m_textures.push_back(std::move(texture));
+        m_textures.push_back(std::make_unique<texture_2d>(texture));
     }
 
     std::size_t geometry_offset = m_geometries.size();
-    if (options & LOAD_OPTION_GENERATE_CLUSTERS)
+    for (const auto& geometry_data : scene_data.geometries)
     {
-        static constexpr std::string_view cluster_dir = "assets/clusters";
-        auto cluster_path =
-            std::format("{}/{}.cluster", cluster_dir, fs::path(model_path).filename().string());
+        auto model_geometry = std::make_unique<geometry>();
 
-        fs::create_directories(cluster_dir);
+        model_geometry->set_positions(geometry_data.positions);
+        model_geometry->set_normals(geometry_data.normals);
+        model_geometry->set_tangents(geometry_data.tangents);
+        model_geometry->set_texcoords(geometry_data.texcoords);
+        model_geometry->set_indexes(geometry_data.indexes);
 
-        if (fs::exists(cluster_path))
+        for (const auto& submesh_data : geometry_data.submeshes)
         {
-            std::ifstream cluster_fin(cluster_path, std::ios::binary);
-
-            for (std::size_t i = 0; i < result->geometries.size(); ++i)
-            {
-                auto model_geometry = std::make_unique<geometry>();
-
-                geometry_tool::cluster_output output;
-                output.load(cluster_fin);
-
-                model_geometry->set_positions(output.positions);
-                model_geometry->set_normals(output.normals);
-                model_geometry->set_tangents(output.tangents);
-                model_geometry->set_texcoords(output.texcoords);
-                model_geometry->set_indexes(output.indexes);
-
-                for (const auto& submesh : output.submeshes)
-                {
-                    model_geometry->add_submesh(submesh.clusters, submesh.cluster_nodes);
-                }
-
-                m_geometries.push_back(std::move(model_geometry));
-            }
-        }
-        else
-        {
-            std::vector<std::thread> threads(std::thread::hardware_concurrency());
-            std::vector<geometry_tool::cluster_output> cluster_outputs(result->geometries.size());
-
-            std::atomic<std::uint32_t> current{0};
-            std::atomic<std::uint32_t> total{0};
-
-            for (auto& thread : threads)
-            {
-                thread = std::thread(
-                    [&]()
-                    {
-                        while (true)
-                        {
-                            std::uint32_t index = current.fetch_add(1);
-
-                            if (index >= result->geometries.size())
-                            {
-                                break;
-                            }
-
-                            const auto& geometry_data = result->geometries[index];
-
-                            geometry_tool::cluster_input input = {
-                                .positions = geometry_data.positions,
-                                .normals = geometry_data.normals,
-                                .tangents = geometry_data.tangents,
-                                .texcoords = geometry_data.texcoords,
-                                .indexes = geometry_data.indexes,
-                            };
-
-                            for (const auto& submesh_data : geometry_data.submeshes)
-                            {
-                                input.submeshes.push_back({
-                                    .vertex_offset = submesh_data.vertex_offset,
-                                    .index_offset = submesh_data.index_offset,
-                                    .index_count = submesh_data.index_count,
-                                });
-                            }
-
-                            cluster_outputs[index] = geometry_tool::generate_clusters(input);
-
-                            log::info(
-                                "generate cluster: {} / {}",
-                                total.fetch_add(1) + 1,
-                                result->geometries.size());
-                        }
-                    });
-            }
-
-            for (auto& thread : threads)
-            {
-                thread.join();
-            }
-
-            std::ofstream cluster_fout(cluster_path, std::ios::binary);
-            for (const auto& output : cluster_outputs)
-            {
-                output.save(cluster_fout);
-
-                auto model_geometry = std::make_unique<geometry>();
-
-                model_geometry->set_positions(output.positions);
-                model_geometry->set_normals(output.normals);
-                model_geometry->set_tangents(output.tangents);
-                model_geometry->set_texcoords(output.texcoords);
-                model_geometry->set_indexes(output.indexes);
-
-                for (const auto& submesh : output.submeshes)
-                {
-                    model_geometry->add_submesh(submesh.clusters, submesh.cluster_nodes);
-                }
-
-                m_geometries.push_back(std::move(model_geometry));
-            }
-        }
-    }
-    else
-    {
-        for (const auto& geometry_data : result->geometries)
-        {
-            auto model_geometry = std::make_unique<geometry>();
-            model_geometry->set_positions(geometry_data.positions);
-            model_geometry->set_normals(geometry_data.normals);
-            model_geometry->set_tangents(geometry_data.tangents);
-            model_geometry->set_texcoords(geometry_data.texcoords);
-            model_geometry->set_indexes(geometry_data.indexes);
-
-            for (const auto& submesh : geometry_data.submeshes)
+            if (submesh_data.clusters.empty())
             {
                 model_geometry->add_submesh(
-                    submesh.vertex_offset,
-                    submesh.index_offset,
-                    submesh.index_count);
+                    submesh_data.vertex_offset,
+                    submesh_data.index_offset,
+                    submesh_data.index_count);
             }
-
-            m_geometries.push_back(std::move(model_geometry));
+            else
+            {
+                model_geometry->add_submesh(submesh_data.clusters, submesh_data.cluster_nodes);
+            }
         }
+
+        m_geometries.push_back(std::move(model_geometry));
     }
 
     std::size_t material_offset = m_materials.size();
-    for (const auto& material_data : result->materials)
+    for (const auto& material_data : scene_data.materials)
     {
         auto model_material = std::make_unique<pbr_material>();
         model_material->set_cull_mode(material_data.cull_mode);
@@ -291,26 +179,30 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         model_material->set_albedo(material_data.albedo);
         model_material->set_roughness(material_data.roughness);
         model_material->set_metallic(material_data.metallic);
-        model_material->set_emissive(material_data.emissive * 10.0f);
+        model_material->set_emissive(material_data.emissive);
 
-        if (material_data.albedo_texture != nullptr)
+        if (material_data.albedo_texture != -1)
         {
-            model_material->set_albedo(material_data.albedo_texture);
+            model_material->set_albedo(
+                m_textures[material_data.albedo_texture + texture_offset].get());
         }
 
-        if (material_data.roughness_metallic_texture != nullptr)
+        if (material_data.roughness_metallic_texture != -1)
         {
-            model_material->set_roughness_metallic(material_data.roughness_metallic_texture);
+            model_material->set_roughness_metallic(
+                m_textures[material_data.roughness_metallic_texture + texture_offset].get());
         }
 
-        if (material_data.emissive_texture != nullptr)
+        if (material_data.emissive_texture != -1)
         {
-            model_material->set_emissive(material_data.emissive_texture);
+            model_material->set_emissive(
+                m_textures[material_data.emissive_texture + texture_offset].get());
         }
 
-        if (material_data.normal_texture != nullptr)
+        if (material_data.normal_texture != -1)
         {
-            model_material->set_normal(material_data.normal_texture);
+            model_material->set_normal(
+                m_textures[material_data.normal_texture + texture_offset].get());
         }
 
         m_materials.push_back(std::move(model_material));
@@ -321,7 +213,7 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
 
     std::vector<entity> entities;
 
-    for (const auto& node_data : result->nodes)
+    for (const auto& node_data : scene_data.nodes)
     {
         entity entity = world.create();
         world.add_component<transform_component, parent_component, scene_component>(entity);
@@ -334,16 +226,16 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         entities.push_back(entity);
     }
 
-    for (std::size_t i = 0; i < result->nodes.size(); ++i)
+    for (std::size_t i = 0; i < scene_data.nodes.size(); ++i)
     {
-        const auto& node_data = result->nodes[i];
+        const auto& node_data = scene_data.nodes[i];
         auto entity = entities[i];
 
         if (node_data.mesh != -1)
         {
             world.add_component<mesh_component>(entity);
 
-            const auto& mesh_data = result->meshes[node_data.mesh];
+            const auto& mesh_data = scene_data.meshes[node_data.mesh];
 
             auto& entity_mesh = world.get_component<mesh_component>(entity);
             entity_mesh.geometry = m_geometries[mesh_data.geometry + geometry_offset].get();
@@ -434,7 +326,12 @@ void sample_system::initialize_scene(std::string_view skybox_path)
     {
         world.add_component<skybox_component>(m_sky);
         auto& skybox = world.get_component<skybox_component>(m_sky);
-        skybox.environment_map_path = skybox_path;
+
+        texture_data texture_data;
+        texture_tool::load(skybox_path, texture_data);
+        texture_data.format = RHI_FORMAT_R8G8B8A8_SRGB;
+
+        skybox.texture = texture_loader::load(texture_data);
     }
     else
     {
