@@ -1,7 +1,7 @@
 #pragma once
 
+#include "graphics/cluster.hpp"
 #include "graphics/resources/texture.hpp"
-#include <optional>
 
 namespace violet
 {
@@ -35,10 +35,10 @@ public:
         float metallic;
         vec3f emissive;
 
-        texture_2d* albedo_texture;
-        texture_2d* roughness_metallic_texture;
-        texture_2d* emissive_texture;
-        texture_2d* normal_texture;
+        std::int32_t albedo_texture{-1};
+        std::int32_t roughness_metallic_texture{-1};
+        std::int32_t emissive_texture{-1};
+        std::int32_t normal_texture{-1};
 
         rhi_cull_mode cull_mode{RHI_CULL_MODE_BACK};
         float opacity_cutoff{0.0f};
@@ -49,6 +49,9 @@ public:
         std::uint32_t vertex_offset;
         std::uint32_t index_offset;
         std::uint32_t index_count;
+
+        std::vector<cluster> clusters;
+        std::vector<cluster_node> cluster_nodes;
     };
 
     struct geometry_data
@@ -64,7 +67,7 @@ public:
 
     struct scene_data
     {
-        std::vector<std::unique_ptr<texture_2d>> textures;
+        std::vector<texture_data> textures;
         std::vector<material_data> materials;
         std::vector<geometry_data> geometries;
 
@@ -72,8 +75,14 @@ public:
         std::vector<node_data> nodes;
     };
 
-    virtual ~mesh_loader() = default;
+    static bool load(
+        std::string_view path,
+        scene_data& scene_data,
+        bool generate_clusters,
+        bool generate_mipmaps,
+        bool compress_textures);
 
-    virtual std::optional<scene_data> load(std::string_view path) = 0;
+    static bool load(std::string_view path, scene_data& scene_data);
+    static bool save(std::string_view path, const scene_data& scene_data);
 };
 } // namespace violet

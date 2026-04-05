@@ -1,5 +1,4 @@
 #include "graphics/geometries/plane_geometry.hpp"
-#include "graphics/tools/geometry_tool.hpp"
 
 namespace violet
 {
@@ -25,19 +24,21 @@ plane_geometry::plane_geometry(
 
     std::vector<vec3f> positions;
     std::vector<vec3f> normals;
+    std::vector<vec4f> tangents;
     std::vector<vec2f> texcoords;
     std::vector<std::uint32_t> indexes;
 
     for (int i = 0; i < grid_y1; ++i)
     {
-        const float y = static_cast<float>(i) * segment_height - height_half;
+        const float y = (static_cast<float>(i) * segment_height) - height_half;
 
         for (int j = 0; j < grid_x1; ++j)
         {
-            const float x = static_cast<float>(j) * segment_width - width_half;
+            const float x = (static_cast<float>(j) * segment_width) - width_half;
 
-            positions.push_back({x, -y, 0});
-            normals.push_back({0, 0, 1});
+            positions.push_back({.x = x, .y = -y, .z = 0});
+            normals.push_back({.x = 0, .y = 0, .z = 1});
+            tangents.push_back({.x = 1, .y = 0, .z = 0, .w = 1});
 
             vec2f texcoord;
             texcoord.x = static_cast<float>(j) / static_cast<float>(grid_x);
@@ -50,10 +51,10 @@ plane_geometry::plane_geometry(
     {
         for (int ix = 0; ix < grid_x; ix++)
         {
-            const std::uint32_t a = ix + grid_x1 * iy;
-            const std::uint32_t b = ix + grid_x1 * (iy + 1);
-            const std::uint32_t c = (ix + 1) + grid_x1 * (iy + 1);
-            const std::uint32_t d = (ix + 1) + grid_x1 * iy;
+            const std::uint32_t a = ix + (grid_x1 * iy);
+            const std::uint32_t b = ix + (grid_x1 * (iy + 1));
+            const std::uint32_t c = (ix + 1) + (grid_x1 * (iy + 1));
+            const std::uint32_t d = (ix + 1) + (grid_x1 * iy);
 
             indexes.push_back(a);
             indexes.push_back(d);
@@ -64,9 +65,6 @@ plane_geometry::plane_geometry(
             indexes.push_back(c);
         }
     }
-
-    std::vector<vec4f> tangents =
-        geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
 
     set_positions(positions);
     set_normals(normals);

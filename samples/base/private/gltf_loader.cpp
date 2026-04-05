@@ -1,5 +1,6 @@
-#include "sample/gltf_loader.hpp"
-#include "graphics/tools/geometry_tool.hpp"
+#include "gltf_loader.hpp"
+#include "tools/geometry_tool.hpp"
+#include "tools/texture_tool.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
@@ -82,7 +83,7 @@ std::uint32_t load_indexes(
 }
 } // namespace
 
-std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
+bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_data)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
@@ -112,74 +113,76 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
 
     if (!result)
     {
-        return std::nullopt;
+        return false;
     }
 
     std::filesystem::path model_path(path);
     std::filesystem::path dir_path = model_path.parent_path();
 
-    scene_data scene_data;
+    std::unordered_map<int, int> image_to_texture;
 
     // Load textures
-    auto get_texture = [&](int index, bool srgb = false) -> texture_2d*
+    auto get_texture = [&](int index, rhi_format format) -> std::int32_t
     {
         int image_index = model.textures[index].source;
-
-        if (scene_data.textures.size() <= image_index)
+        if (image_to_texture.contains(image_index))
         {
-            scene_data.textures.resize(image_index + 1);
+            return image_to_texture[image_index];
         }
 
-        if (scene_data.textures[image_index] != nullptr)
-        {
-            return scene_data.textures[image_index].get();
-        }
+        int texture_index = static_cast<int>(scene_data.textures.size());
+        image_to_texture[image_index] = texture_index;
 
-        texture_options options = srgb ? TEXTURE_OPTION_SRGB : TEXTURE_OPTION_NONE;
+        auto& texture = scene_data.textures.emplace_back();
 
         auto& image = model.images[image_index];
         if (!image.uri.empty())
         {
             std::filesystem::path texture_path = dir_path / image.uri;
-            scene_data.textures[image_index] =
-                std::make_unique<texture_2d>(texture_path.string(), options);
+            texture_tool::load(texture_path.string(), texture);
+
+            if (format == RHI_FORMAT_R8G8B8A8_SRGB)
+            {
+                texture.format = RHI_FORMAT_R8G8B8A8_SRGB;
+            }
         }
         else
         {
-            texture_data data;
+            texture = {
+                .layer_count = 1,
+                .level_count = 1,
+            };
 
-            if (srgb)
+            if (format == RHI_FORMAT_R8G8B8A8_SRGB)
             {
-                data.format = RHI_FORMAT_R8G8B8A8_SRGB;
+                texture.format = RHI_FORMAT_R8G8B8A8_SRGB;
             }
             else if (
                 image.component == 4 && image.bits == 8 &&
                 image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
-                data.format = RHI_FORMAT_R8G8B8A8_UNORM;
+                texture.format = RHI_FORMAT_R8G8B8A8_UNORM;
             }
 
-            data.mipmaps.resize(1);
-            data.mipmaps[0].extent.height = image.height;
-            data.mipmaps[0].extent.width = image.width;
-            data.mipmaps[0].pixels.resize(image.image.size());
-            std::memcpy(data.mipmaps[0].pixels.data(), image.image.data(), image.image.size());
-            scene_data.textures[image_index] = std::make_unique<texture_2d>(data, options);
+            texture.extent.height = image.height;
+            texture.extent.width = image.width;
+            texture.pixels.resize(image.image.size());
+            std::memcpy(texture.pixels.data(), image.image.data(), image.image.size());
         }
 
-        return scene_data.textures[image_index].get();
+        return texture_index;
     };
 
     // Load materials
     for (auto& material : model.materials)
     {
-        material_data data = {
+        mesh_loader::material_data material_data = {
             .cull_mode = material.doubleSided ? RHI_CULL_MODE_NONE : RHI_CULL_MODE_BACK,
             .opacity_cutoff =
                 material.alphaMode == "MASK" ? static_cast<float>(material.alphaCutoff) : 0.0f,
         };
 
-        data.albedo = {
+        material_data.albedo = {
             .x = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
             .y = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
             .z = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
@@ -187,40 +190,44 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
 
         if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
         {
-            data.albedo_texture =
-                get_texture(material.pbrMetallicRoughness.baseColorTexture.index, true);
+            material_data.albedo_texture = get_texture(
+                material.pbrMetallicRoughness.baseColorTexture.index,
+                RHI_FORMAT_R8G8B8A8_SRGB);
         }
 
-        data.roughness = static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
-        data.metallic = static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
+        material_data.roughness = static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
+        material_data.metallic = static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
         if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
         {
-            data.roughness_metallic_texture =
-                get_texture(material.pbrMetallicRoughness.metallicRoughnessTexture.index);
+            material_data.roughness_metallic_texture = get_texture(
+                material.pbrMetallicRoughness.metallicRoughnessTexture.index,
+                RHI_FORMAT_R8G8B8A8_UNORM);
         }
 
-        data.emissive = {
+        material_data.emissive = {
             .x = static_cast<float>(material.emissiveFactor[0]),
             .y = static_cast<float>(material.emissiveFactor[1]),
             .z = static_cast<float>(material.emissiveFactor[2]),
         };
         if (material.emissiveTexture.index != -1)
         {
-            data.emissive_texture = get_texture(material.emissiveTexture.index, true);
+            material_data.emissive_texture =
+                get_texture(material.emissiveTexture.index, RHI_FORMAT_R8G8B8A8_SRGB);
         }
 
         if (material.normalTexture.index != -1)
         {
-            data.normal_texture = get_texture(material.normalTexture.index);
+            material_data.normal_texture =
+                get_texture(material.normalTexture.index, RHI_FORMAT_R8G8B8A8_UNORM);
         }
 
-        scene_data.materials.push_back(data);
+        scene_data.materials.push_back(material_data);
     }
 
     // Load meshes
     for (auto& mesh : model.meshes)
     {
-        geometry_data geometry_data = {};
+        mesh_loader::geometry_data geometry_data = {};
 
         for (auto& primitive : mesh.primitives)
         {
@@ -336,7 +343,7 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
             tangent.w = -tangent.w;
         }
 
-        mesh_data mesh_data = {
+        mesh_loader::mesh_data mesh_data = {
             .geometry = static_cast<std::uint32_t>(scene_data.geometries.size()),
         };
 
@@ -385,6 +392,6 @@ std::optional<mesh_loader::scene_data> gltf_loader::load(std::string_view path)
         }
     }
 
-    return scene_data;
+    return true;
 }
 } // namespace violet

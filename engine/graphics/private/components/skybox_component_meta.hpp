@@ -8,7 +8,7 @@ namespace violet
 {
 struct skybox_component_meta
 {
-    std::string environment_map_path;
+    rhi_texture* texture;
 
     rhi_ptr<rhi_texture> environment_map;
     rhi_ptr<rhi_buffer> irradiance_sh;

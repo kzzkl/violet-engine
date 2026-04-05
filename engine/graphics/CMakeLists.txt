@@ -38,12 +38,6 @@ add_library(violet-graphics STATIC
     private/resources/texture.cpp
     private/shading_models/pbr_shading_model.cpp
     private/shading_models/unlit_shading_model.cpp
-    private/tools/cluster/cluster_builder.cpp
-    private/tools/cluster/graph_partitioner.cpp
-    private/tools/mesh_simplifier/mesh_simplifier.cpp
-    private/tools/mesh_simplifier/quadric.cpp
-    private/tools/geometry_tool.cpp
-    private/tools/texture_loader.cpp
     private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp
     private/debug_drawer.cpp
@@ -65,6 +59,7 @@ add_library(violet-graphics STATIC
     private/rhi_plugin.cpp
     private/shader_compiler.cpp
     private/skinning_system.cpp
+    private/texture_loader.cpp
     private/transient_allocator.cpp)
 add_library(violet::graphics ALIAS violet-graphics)
 
@@ -82,10 +77,7 @@ target_link_libraries(violet-graphics
         violet::math
         violet::scene
     PRIVATE
-        stb
-        dxcompiler
-        metis
-        MikkTSpace)
+        dxcompiler)
 
 install(TARGETS violet-graphics
     RUNTIME DESTINATION bin

@@ -56,16 +56,19 @@ void imgui_system::initialize_font()
     int font_height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &font_width, &font_height);
 
-    texture_data::mipmap font_mipmap_data;
-    font_mipmap_data.extent.width = font_width;
-    font_mipmap_data.extent.height = font_height;
-    font_mipmap_data.extent.depth = 1;
-    font_mipmap_data.pixels.resize(4ull * font_width * font_height);
-    std::memcpy(font_mipmap_data.pixels.data(), pixels, font_mipmap_data.pixels.size());
-
-    texture_data font_texture_data;
-    font_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
-    font_texture_data.mipmaps.push_back(font_mipmap_data);
+    texture_data font_texture_data = {
+        .format = RHI_FORMAT_R8G8B8A8_UNORM,
+        .extent =
+            {
+                .width = static_cast<std::uint32_t>(font_width),
+                .height = static_cast<std::uint32_t>(font_height),
+                .depth = 1,
+            },
+        .layer_count = 1,
+        .level_count = 1,
+    };
+    font_texture_data.pixels.resize(4ull * font_width * font_height);
+    std::memcpy(font_texture_data.pixels.data(), pixels, font_texture_data.pixels.size());
 
     m_font = std::make_unique<texture_2d>(font_texture_data);
 

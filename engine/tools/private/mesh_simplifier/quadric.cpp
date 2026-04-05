@@ -1,4 +1,4 @@
-#include "tools/mesh_simplifier/quadric.hpp"
+#include "mesh_simplifier/quadric.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include <cassert>

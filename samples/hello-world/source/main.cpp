@@ -38,7 +38,12 @@ public:
 
         if (config.contains("model"))
         {
-            m_root = load_model(config["model"], LOAD_OPTION_GENERATE_CLUSTERS);
+            load_options options = 0;
+            options |= LOAD_OPTION_GENERATE_CLUSTERS;
+            options |= LOAD_OPTION_GENERATE_MIPMAPS;
+            options |= LOAD_OPTION_COMPRESS_TEXTURES;
+
+            m_root = load_model(config["model"], options);
         }
 
         auto& world = get_world();

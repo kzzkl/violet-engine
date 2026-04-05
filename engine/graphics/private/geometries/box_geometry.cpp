@@ -1,5 +1,4 @@
 #include "graphics/geometries/box_geometry.hpp"
-#include "graphics/tools/geometry_tool.hpp"
 #include <array>
 
 namespace violet
@@ -16,6 +15,7 @@ box_geometry::box_geometry(
 
     std::vector<vec3f> positions;
     std::vector<vec3f> normals;
+    std::vector<vec4f> tangents;
     std::vector<vec2f> texcoords;
     std::vector<std::uint32_t> indexes;
 
@@ -73,6 +73,11 @@ box_geometry::box_geometry(
                 normal[w] = depth > 0 ? 1.0f : -1.0f;
                 normals.push_back(normal);
 
+                vec4f tangent = {};
+                tangent[u] = udir;
+                tangent.w = 1.0f;
+                tangents.push_back(tangent);
+
                 vec2f texcoord;
                 texcoord.x = static_cast<float>(j) / static_cast<float>(grid_x);
                 texcoord.y = 1.0f - (static_cast<float>(i) / static_cast<float>(grid_y));
@@ -110,9 +115,6 @@ box_geometry::box_geometry(
     build_plane(0, 2, 1, 1, -1, -1);  // ny
     build_plane(0, 1, 2, 1, -1, 1);   // pz
     build_plane(0, 1, 2, -1, -1, -1); // nz
-
-    std::vector<vec4f> tangents =
-        geometry_tool::generate_tangents(positions, normals, texcoords, indexes);
 
     set_positions(positions);
     set_normals(normals);

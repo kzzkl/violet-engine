@@ -1,6 +1,6 @@
 #include "graphics/resources/ramp_texture.hpp"
+#include "graphics/texture_loader.hpp"
 #include "math/vector.hpp"
-#include "tools/texture_loader.hpp"
 
 namespace violet
 {
@@ -10,11 +10,11 @@ ramp_texture::ramp_texture(const std::vector<point>& points, std::uint32_t width
 
     texture_data data = {
         .format = RHI_FORMAT_R8G8B8A8_UNORM,
+        .extent = {.width = width, .height = 1, .depth = 1},
+        .layer_count = 1,
+        .level_count = 1,
     };
-    data.mipmaps.resize(1);
-    data.mipmaps[0].extent.height = 1;
-    data.mipmaps[0].extent.width = width;
-    data.mipmaps[0].pixels.reserve(4ull * width);
+    data.pixels.reserve(4ull * width);
 
     std::size_t prev_index = 0;
     std::size_t next_index = 0;
@@ -45,10 +45,10 @@ ramp_texture::ramp_texture(const std::vector<point>& points, std::uint32_t width
                 (position - prev_point.position) / (next_point.position - prev_point.position));
         }
 
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.x * 255.0f));
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.y * 255.0f));
-        data.mipmaps[0].pixels.push_back(static_cast<char>(color.z * 255.0f));
-        data.mipmaps[0].pixels.push_back(static_cast<char>(255));
+        data.pixels.push_back(static_cast<char>(color.x * 255.0f));
+        data.pixels.push_back(static_cast<char>(color.y * 255.0f));
+        data.pixels.push_back(static_cast<char>(color.z * 255.0f));
+        data.pixels.push_back(static_cast<char>(255));
     }
 
     set_texture(texture_loader::load(data));

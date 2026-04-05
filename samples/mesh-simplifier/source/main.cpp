@@ -5,9 +5,9 @@
 #include "graphics/geometries/sphere_geometry.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/materials/unlit_material.hpp"
-#include "graphics/tools/geometry_tool.hpp"
-#include "sample/gltf_loader.hpp"
+#include "sample/mesh_loader.hpp"
 #include "sample/sample_system.hpp"
+#include "tools/geometry_tool.hpp"
 #include <imgui.h>
 
 namespace violet
@@ -47,10 +47,10 @@ private:
 
         if (!model_path.empty())
         {
-            gltf_loader loader;
-            if (auto result = loader.load(model_path))
+            mesh_loader::scene_data scene_data;
+            if (mesh_loader::load(model_path, scene_data))
             {
-                const auto& geometry_data = result->geometries[0];
+                const auto& geometry_data = scene_data.geometries[0];
 
                 m_original_geometry = std::make_unique<geometry>();
                 m_original_geometry->set_positions(geometry_data.positions);
@@ -66,9 +66,15 @@ private:
                         submesh.index_count);
                 }
 
-                if (!result->materials.empty())
+                std::size_t texture_offset = m_textures.size();
+                for (const auto& texture_data : scene_data.textures)
                 {
-                    const auto& material_data = result->materials[0];
+                    m_textures.push_back(std::make_unique<texture_2d>(texture_data));
+                }
+
+                if (!scene_data.materials.empty())
+                {
+                    const auto& material_data = scene_data.materials[0];
 
                     auto material = std::make_unique<pbr_material>();
                     material->set_albedo(material_data.albedo);
@@ -76,29 +82,32 @@ private:
                     material->set_metallic(material_data.metallic);
                     material->set_emissive(material_data.emissive);
 
-                    if (material_data.albedo_texture != nullptr)
+                    if (material_data.albedo_texture != -1)
                     {
-                        material->set_albedo(material_data.albedo_texture);
+                        material->set_albedo(
+                            m_textures[material_data.albedo_texture + texture_offset].get());
                     }
 
-                    if (material_data.roughness_metallic_texture != nullptr)
+                    if (material_data.roughness_metallic_texture != -1)
                     {
-                        material->set_roughness_metallic(material_data.roughness_metallic_texture);
+                        material->set_roughness_metallic(
+                            m_textures[material_data.roughness_metallic_texture + texture_offset]
+                                .get());
                     }
 
-                    if (material_data.emissive_texture != nullptr)
+                    if (material_data.emissive_texture != -1)
                     {
-                        material->set_emissive(material_data.emissive_texture);
+                        material->set_emissive(
+                            m_textures[material_data.emissive_texture + texture_offset].get());
                     }
 
-                    if (material_data.normal_texture != nullptr)
+                    if (material_data.normal_texture != -1)
                     {
-                        material->set_normal(material_data.normal_texture);
+                        material->set_normal(
+                            m_textures[material_data.normal_texture + texture_offset].get());
                     }
 
                     m_material = std::move(material);
-
-                    m_textures = std::move(result->textures);
                 }
             }
             else

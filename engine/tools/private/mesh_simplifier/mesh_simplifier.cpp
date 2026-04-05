@@ -1,4 +1,4 @@
-#include "tools/mesh_simplifier/mesh_simplifier.hpp"
+#include "mesh_simplifier/mesh_simplifier.hpp"
 #include "algorithm/disjoint_set.hpp"
 #include "math/vector.hpp"
 #include <algorithm>

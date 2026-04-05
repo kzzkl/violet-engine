@@ -61,9 +61,26 @@ enum rhi_format : std::uint8_t
     RHI_FORMAT_D24_UNORM_S8_UINT,
     RHI_FORMAT_D32_FLOAT,
     RHI_FORMAT_D32_FLOAT_S8_UINT,
+    RHI_FORMAT_BC1_RGB_UNORM,
+    RHI_FORMAT_BC1_RGB_SRGB,
+    RHI_FORMAT_BC1_RGBA_UNORM,
+    RHI_FORMAT_BC1_RGBA_SRGB,
+    RHI_FORMAT_BC3_UNORM,
+    RHI_FORMAT_BC3_SRGB,
+    RHI_FORMAT_BC5_UNORM,
+    RHI_FORMAT_BC7_UNORM,
+    RHI_FORMAT_BC7_SRGB,
 };
 
-inline std::size_t rhi_get_format_stride(rhi_format format)
+struct rhi_format_size
+{
+    std::uint32_t block_size;   // in bytes
+    std::uint32_t block_width;  // in texels
+    std::uint32_t block_height; // in texels
+    std::uint32_t block_depth;  // in texels
+};
+
+inline rhi_format_size rhi_get_format_size(rhi_format format)
 {
     switch (format)
     {
@@ -71,61 +88,117 @@ inline std::size_t rhi_get_format_stride(rhi_format format)
     case RHI_FORMAT_R8_SNORM:
     case RHI_FORMAT_R8_UINT:
     case RHI_FORMAT_R8_SINT:
-        return 1;
+        return {
+            .block_size = 1,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
     case RHI_FORMAT_R8G8_UNORM:
     case RHI_FORMAT_R8G8_SNORM:
     case RHI_FORMAT_R8G8_UINT:
     case RHI_FORMAT_R8G8_SINT:
-        return 2;
+        return {
+            .block_size = 2,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
     case RHI_FORMAT_R8G8B8_UNORM:
     case RHI_FORMAT_R8G8B8_SNORM:
     case RHI_FORMAT_R8G8B8_UINT:
     case RHI_FORMAT_R8G8B8_SINT:
-        return 3;
+    case RHI_FORMAT_B8G8R8_UNORM:
+    case RHI_FORMAT_B8G8R8_SNORM:
+        return {
+            .block_size = 3,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
     case RHI_FORMAT_R8G8B8A8_UNORM:
     case RHI_FORMAT_R8G8B8A8_SNORM:
     case RHI_FORMAT_R8G8B8A8_UINT:
     case RHI_FORMAT_R8G8B8A8_SINT:
     case RHI_FORMAT_R8G8B8A8_SRGB:
-        return 4;
-    case RHI_FORMAT_B8G8R8_UNORM:
-    case RHI_FORMAT_B8G8R8_SNORM:
-        return 3;
     case RHI_FORMAT_B8G8R8A8_UNORM:
     case RHI_FORMAT_B8G8R8A8_SNORM:
     case RHI_FORMAT_B8G8R8A8_UINT:
     case RHI_FORMAT_B8G8R8A8_SINT:
     case RHI_FORMAT_B8G8R8A8_SRGB:
-        return 4;
     case RHI_FORMAT_R16G16_UNORM:
-        return 4;
-    case RHI_FORMAT_R16G16B16A16_UNORM:
-    case RHI_FORMAT_R16G16B16A16_FLOAT:
-        return 8;
+    case RHI_FORMAT_R16G16_FLOAT:
     case RHI_FORMAT_R32_UINT:
     case RHI_FORMAT_R32_SINT:
     case RHI_FORMAT_R32_FLOAT:
-        return 4;
-    case RHI_FORMAT_R32G32_UINT:
-    case RHI_FORMAT_R32G32_SINT:
-    case RHI_FORMAT_R32G32_FLOAT:
-        return 8;
-    case RHI_FORMAT_R32G32B32_UINT:
-    case RHI_FORMAT_R32G32B32_SINT:
-    case RHI_FORMAT_R32G32B32_FLOAT:
-        return 12;
-    case RHI_FORMAT_R32G32B32A32_UINT:
-    case RHI_FORMAT_R32G32B32A32_SINT:
-    case RHI_FORMAT_R32G32B32A32_FLOAT:
-        return 16;
     case RHI_FORMAT_R11G11B10_FLOAT:
     case RHI_FORMAT_D24_UNORM_S8_UINT:
     case RHI_FORMAT_D32_FLOAT:
-        return 4;
+        return {
+            .block_size = 4,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_R16G16B16A16_UNORM:
+    case RHI_FORMAT_R16G16B16A16_FLOAT:
+    case RHI_FORMAT_R32G32_UINT:
+    case RHI_FORMAT_R32G32_SINT:
+    case RHI_FORMAT_R32G32_FLOAT:
     case RHI_FORMAT_D32_FLOAT_S8_UINT:
-        return 5;
+        return {
+            .block_size = 8,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_R32G32B32_UINT:
+    case RHI_FORMAT_R32G32B32_SINT:
+    case RHI_FORMAT_R32G32B32_FLOAT:
+        return {
+            .block_size = 12,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_R32G32B32A32_UINT:
+    case RHI_FORMAT_R32G32B32A32_SINT:
+    case RHI_FORMAT_R32G32B32A32_FLOAT:
+        return {
+            .block_size = 16,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_BC1_RGB_UNORM:
+    case RHI_FORMAT_BC1_RGB_SRGB:
+    case RHI_FORMAT_BC1_RGBA_UNORM:
+    case RHI_FORMAT_BC1_RGBA_SRGB:
+        return {
+            .block_size = 8,
+            .block_width = 4,
+            .block_height = 4,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_BC3_UNORM:
+    case RHI_FORMAT_BC3_SRGB:
+    case RHI_FORMAT_BC5_UNORM:
+    case RHI_FORMAT_BC7_UNORM:
+    case RHI_FORMAT_BC7_SRGB:
+        return {
+            .block_size = 16,
+            .block_width = 4,
+            .block_height = 4,
+            .block_depth = 1,
+        };
+    case RHI_FORMAT_UNDEFINED:
     default:
-        return 0;
+        return {
+            .block_size = 0,
+            .block_width = 1,
+            .block_height = 1,
+            .block_depth = 1,
+        };
     }
 }
 
@@ -834,6 +907,12 @@ struct rhi_buffer_region
     std::size_t size;
 };
 
+struct rhi_buffer_texture_copy
+{
+    rhi_buffer_region buffer_region;
+    rhi_texture_region texture_region;
+};
+
 class rhi_fence
 {
 public:
@@ -954,9 +1033,9 @@ public:
 
     virtual void copy_buffer_to_texture(
         rhi_buffer* buffer,
-        const rhi_buffer_region& buffer_region,
         rhi_texture* texture,
-        const rhi_texture_region& texture_region) = 0;
+        const rhi_buffer_texture_copy* regions,
+        std::uint32_t region_count) = 0;
 
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;

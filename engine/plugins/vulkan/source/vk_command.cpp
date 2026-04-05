@@ -482,35 +482,40 @@ void vk_command::copy_buffer(
 
 void vk_command::copy_buffer_to_texture(
     rhi_buffer* buffer,
-    const rhi_buffer_region& buffer_region,
     rhi_texture* texture,
-    const rhi_texture_region& texture_region)
+    const rhi_buffer_texture_copy* regions,
+    std::uint32_t region_count)
 {
     auto* src_buffer = static_cast<vk_buffer*>(buffer);
     auto* dst_image = static_cast<vk_texture*>(texture);
 
-    VkBufferImageCopy region = {
-        .bufferOffset = 0,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource =
-            {
-                .aspectMask = dst_image->get_aspect_mask(),
-                .mipLevel = texture_region.level,
-                .baseArrayLayer = texture_region.layer,
-                .layerCount = texture_region.layer_count,
-            },
-        .imageOffset = {0, 0, 0},
-        .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},
-    };
+    std::vector<VkBufferImageCopy> copy_regions(region_count);
+    for (std::size_t i = 0; i < region_count; ++i)
+    {
+        const auto& buffer_region = regions[i].buffer_region;
+        const auto& texture_region = regions[i].texture_region;
+
+        copy_regions[i] = {
+            .bufferOffset = buffer_region.offset,
+            .imageSubresource =
+                {
+                    .aspectMask = dst_image->get_aspect_mask(),
+                    .mipLevel = texture_region.level,
+                    .baseArrayLayer = texture_region.layer,
+                    .layerCount = texture_region.layer_count,
+                },
+            .imageOffset = {0, 0, 0},
+            .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},
+        };
+    }
 
     vkCmdCopyBufferToImage(
         m_command_buffer,
         src_buffer->get_buffer(),
         dst_image->get_image(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &region);
+        static_cast<std::uint32_t>(copy_regions.size()),
+        copy_regions.data());
 }
 
 void vk_command::write_timestamp(

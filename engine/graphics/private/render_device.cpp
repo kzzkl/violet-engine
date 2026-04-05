@@ -274,15 +274,14 @@ rhi_sampler* render_device::get_sampler(const rhi_sampler_desc& desc)
 void render_device::create_buildin_resources()
 {
     // Create empty texture.
-    texture_data::mipmap empty_mipmap_data;
-    empty_mipmap_data.extent.width = 1;
-    empty_mipmap_data.extent.height = 1;
-    empty_mipmap_data.pixels.resize(4);
-    *reinterpret_cast<std::uint32_t*>(empty_mipmap_data.pixels.data()) = 0xFFFFFFFF;
-
-    texture_data empty_texture_data;
-    empty_texture_data.format = RHI_FORMAT_R8G8B8A8_UNORM;
-    empty_texture_data.mipmaps.push_back(empty_mipmap_data);
+    texture_data empty_texture_data = {
+        .format = RHI_FORMAT_R8G8B8A8_UNORM,
+        .extent = {.width = 1, .height = 1, .depth = 1},
+        .layer_count = 1,
+        .level_count = 1,
+    };
+    empty_texture_data.pixels.resize(4);
+    *reinterpret_cast<std::uint32_t*>(empty_texture_data.pixels.data()) = 0xFFFFFFFF;
 
     auto empty_texture = std::make_unique<texture_2d>(empty_texture_data);
     // Ensure that the SRV bindless index of the empty_texture is 0.
