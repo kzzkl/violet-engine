@@ -1,4 +1,5 @@
 #include "graphics/texture_loader.hpp"
+#include "graphics/dds.hpp"
 #include <cstddef>
 
 namespace violet
@@ -47,6 +48,19 @@ rhi_ptr<rhi_texture> texture_loader::load(const texture_data& data, load_options
     render_device::instance().execute_sync(command);
 
     return texture;
+}
+
+rhi_ptr<rhi_texture> texture_loader::load(std::string_view path)
+{
+    assert(path.ends_with(".dds"));
+
+    texture_data data;
+    if (!dds::load(path, data))
+    {
+        return nullptr;
+    }
+
+    return load(data);
 }
 
 void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_texture* texture)

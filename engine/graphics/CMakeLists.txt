@@ -16,6 +16,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/cull_pass.cpp
     private/renderers/passes/debug/bounds_projection_pass.cpp
     private/renderers/passes/depth_only_pass.cpp
+    private/renderers/passes/dithering_pass.cpp
     private/renderers/passes/eye_adaptation_pass.cpp
     private/renderers/passes/gbuffer_pass.cpp
     private/renderers/passes/gtao_pass.cpp
@@ -35,11 +36,13 @@ add_library(violet-graphics STATIC
     private/resources/hilbert_lut.cpp
     private/resources/persistent_buffer.cpp
     private/resources/ramp_texture.cpp
+    private/resources/spatiotemporal_blue_noise.cpp
     private/resources/texture.cpp
     private/shading_models/pbr_shading_model.cpp
     private/shading_models/unlit_shading_model.cpp
     private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp
+    private/dds.cpp
     private/debug_drawer.cpp
     private/environment_system.cpp
     private/geometry_manager.cpp

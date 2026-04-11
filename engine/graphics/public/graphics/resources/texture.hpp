@@ -7,6 +7,11 @@ namespace violet
 class raw_texture
 {
 public:
+    raw_texture() = default;
+    raw_texture(const raw_texture&) = delete;
+
+    raw_texture& operator=(const raw_texture&) = delete;
+
     virtual ~raw_texture() = default;
 
     rhi_texture_srv* get_srv(
@@ -67,6 +72,7 @@ public:
         rhi_format format,
         rhi_texture_flags flags,
         std::uint32_t level_count = 1,
+        std::uint32_t layer_count = 1,
         rhi_sample_count samples = RHI_SAMPLE_COUNT_1,
         rhi_texture_layout layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
 

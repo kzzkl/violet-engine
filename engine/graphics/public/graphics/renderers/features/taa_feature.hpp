@@ -41,6 +41,17 @@ private:
         }
     }
 
+    void on_enable() override
+    {
+        m_history_valid = false;
+    }
+
+    void on_disable() override
+    {
+        m_history = nullptr;
+        m_history_valid = false;
+    }
+
     rhi_ptr<rhi_texture> m_history;
     bool m_history_valid{false};
 };

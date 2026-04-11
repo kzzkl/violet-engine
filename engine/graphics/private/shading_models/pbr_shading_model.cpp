@@ -53,8 +53,7 @@ const rdg_compute_pipeline& pbr_shading_model::get_pipeline()
 pbr_shading_model::constant_data pbr_shading_model::get_constant() const
 {
     return constant_data{
-        .brdf_lut =
-            render_device::instance().get_buildin_texture<brdf_lut>()->get_srv()->get_bindless(),
+        .brdf_lut = render_device::instance().get_texture<brdf_lut>()->get_srv()->get_bindless(),
     };
 }
 } // namespace violet

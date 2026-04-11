@@ -235,20 +235,20 @@ public:
     rhi_sampler* get_sampler(const rhi_sampler_desc& desc);
 
     template <typename T>
-    T* get_buildin_texture()
+    T* get_texture()
     {
-        std::size_t index = buildin_texture_index::value<T>();
-        if (m_buildin_textures.size() <= index)
+        std::size_t index = global_texture_index::value<T>();
+        if (m_global_textures.size() <= index)
         {
-            m_buildin_textures.resize(index + 1);
+            m_global_textures.resize(index + 1);
         }
 
-        if (m_buildin_textures[index] == nullptr)
+        if (m_global_textures[index] == nullptr)
         {
-            m_buildin_textures[index] = std::make_unique<T>();
+            m_global_textures[index] = std::make_unique<T>();
         }
 
-        return static_cast<T*>(m_buildin_textures[index].get());
+        return static_cast<T*>(m_global_textures[index].get());
     }
 
 private:
@@ -284,11 +284,11 @@ private:
         }
     };
 
-    struct buildin_texture_index : public type_index<buildin_texture_index, std::size_t, 1>
+    struct global_texture_index : public type_index<global_texture_index, std::size_t, 1>
     {
     };
 
-    void create_buildin_resources();
+    void create_global_resources();
 
     std::vector<std::uint8_t> compile_shader(
         std::string_view path,
@@ -306,8 +306,8 @@ private:
     std::unique_ptr<material_manager> m_material_manager;
     std::unique_ptr<geometry_manager> m_geometry_manager;
 
-    std::vector<std::unique_ptr<raw_texture>> m_buildin_textures;
-    std::vector<rhi_ptr<rhi_sampler>> m_buildin_samplers;
+    std::vector<std::unique_ptr<raw_texture>> m_global_textures;
+    std::vector<rhi_ptr<rhi_sampler>> m_global_samplers;
 
     std::unique_ptr<transient_allocator> m_transient_allocator;
 

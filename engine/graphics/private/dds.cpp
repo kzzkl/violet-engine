@@ -1,4 +1,4 @@
-#include "dds.hpp"
+#include "graphics/dds.hpp"
 #include <fstream>
 
 namespace violet
@@ -7,21 +7,27 @@ namespace
 {
 constexpr std::uint32_t MAGIC_NUMBER = 'D' << 0 | 'D' << 8 | 'S' << 16 | ' ' << 24;
 
-constexpr std::uint32_t DDPF_ALPHAPIXELS = 0x1;
-constexpr std::uint32_t DDPF_ALPHA = 0x2;
-constexpr std::uint32_t DDPF_FOURCC = 0x4;
-constexpr std::uint32_t DDPF_RGB = 0x40;
-constexpr std::uint32_t DDPF_YUV = 0x200;
-constexpr std::uint32_t DDPF_LUMINANCE = 0x20000;
+enum ddpf : std::uint32_t
+{
+    DDPF_ALPHAPIXELS = 0x1,
+    DDPF_ALPHA = 0x2,
+    DDPF_FOURCC = 0x4,
+    DDPF_RGB = 0x40,
+    DDPF_YUV = 0x200,
+    DDPF_LUMINANCE = 0x20000,
+};
 
-constexpr std::uint32_t FOURCC_DXT1 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '1' << 24;
-constexpr std::uint32_t FOURCC_DXT2 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '2' << 24;
-constexpr std::uint32_t FOURCC_DXT3 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '3' << 24;
-constexpr std::uint32_t FOURCC_DXT4 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '4' << 24;
-constexpr std::uint32_t FOURCC_DXT5 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '5' << 24;
-constexpr std::uint32_t FOURCC_DX10 = 'D' << 0 | 'X' << 8 | '1' << 16 | '0' << 24;
-constexpr std::uint32_t FOURCC_ATI1 = 'A' << 0 | 'T' << 8 | 'I' << 16 | '1' << 24;
-constexpr std::uint32_t FOURCC_ATI2 = 'A' << 0 | 'T' << 8 | 'I' << 16 | '2' << 24;
+enum fourcc : std::uint32_t
+{
+    FOURCC_DXT1 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '1' << 24,
+    FOURCC_DXT2 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '2' << 24,
+    FOURCC_DXT3 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '3' << 24,
+    FOURCC_DXT4 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '4' << 24,
+    FOURCC_DXT5 = 'D' << 0 | 'X' << 8 | 'T' << 16 | '5' << 24,
+    FOURCC_DX10 = 'D' << 0 | 'X' << 8 | '1' << 16 | '0' << 24,
+    FOURCC_ATI1 = 'A' << 0 | 'T' << 8 | 'I' << 16 | '1' << 24,
+    FOURCC_ATI2 = 'A' << 0 | 'T' << 8 | 'I' << 16 | '2' << 24,
+};
 
 struct dds_pixel_format
 {
@@ -35,18 +41,24 @@ struct dds_pixel_format
     std::uint32_t dwABitMask;
 };
 
-constexpr std::uint32_t DDSD_CAPS = 0x1;
-constexpr std::uint32_t DDSD_HEIGHT = 0x2;
-constexpr std::uint32_t DDSD_WIDTH = 0x4;
-constexpr std::uint32_t DDSD_PITCH = 0x8;
-constexpr std::uint32_t DDSD_PIXELFORMAT = 0x1000;
-constexpr std::uint32_t DDSD_MIPMAPCOUNT = 0x20000;
-constexpr std::uint32_t DDSD_LINEARSIZE = 0x80000;
-constexpr std::uint32_t DDSD_DEPTH = 0x800000;
+enum ddsd : std::uint32_t
+{
+    DDSD_CAPS = 0x1,
+    DDSD_HEIGHT = 0x2,
+    DDSD_WIDTH = 0x4,
+    DDSD_PITCH = 0x8,
+    DDSD_PIXELFORMAT = 0x1000,
+    DDSD_MIPMAPCOUNT = 0x20000,
+    DDSD_LINEARSIZE = 0x80000,
+    DDSD_DEPTH = 0x800000,
+};
 
-constexpr std::uint32_t DDSCAPS_COMPLEX = 0x8;
-constexpr std::uint32_t DDSCAPS_MIPMAP = 0x400000;
-constexpr std::uint32_t DDSCAPS_TEXTURE = 0x1000;
+enum ddscaps : std::uint32_t
+{
+    DDSCAPS_COMPLEX = 0x8,
+    DDSCAPS_MIPMAP = 0x400000,
+    DDSCAPS_TEXTURE = 0x1000,
+};
 
 struct dds_header
 {
@@ -214,6 +226,12 @@ dxgi_format get_dxgi_format(rhi_format format)
 {
     switch (format)
     {
+    case RHI_FORMAT_R8_UNORM:
+        return DXGI_FORMAT_R8_UNORM;
+    case RHI_FORMAT_R8G8_UNORM:
+        return DXGI_FORMAT_R8G8_UNORM;
+    case RHI_FORMAT_R8G8B8_UNORM:
+        return DXGI_FORMAT_R8G8B8A8_UNORM;
     case RHI_FORMAT_R8G8B8A8_UNORM:
         return DXGI_FORMAT_R8G8B8A8_UNORM;
     case RHI_FORMAT_R8G8B8A8_SRGB:
@@ -247,97 +265,43 @@ dxgi_format get_dxgi_format(rhi_format format)
     }
 }
 
-dds_pixel_format get_pixel_format(rhi_format format)
+rhi_format get_rhi_format(dxgi_format format)
 {
-    dds_pixel_format pixel_format = {
-        .dwSize = sizeof(dds_pixel_format),
-    };
-
     switch (format)
     {
-    case RHI_FORMAT_R8_UNORM: {
-        pixel_format.dwFlags = DDPF_LUMINANCE;
-        pixel_format.dwRGBBitCount = 8;
-        pixel_format.dwRBitMask = 0x000000FF;
-        return pixel_format;
+    case DXGI_FORMAT_R8_UNORM:
+        return RHI_FORMAT_R8_UNORM;
+    case DXGI_FORMAT_R8G8_UNORM:
+        return RHI_FORMAT_R8G8_UNORM;
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+        return RHI_FORMAT_R8G8B8A8_UNORM;
+    case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+        return RHI_FORMAT_R8G8B8A8_SRGB;
+    case DXGI_FORMAT_B8G8R8A8_UNORM:
+        return RHI_FORMAT_B8G8R8A8_UNORM;
+    case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+        return RHI_FORMAT_B8G8R8A8_SRGB;
+    case DXGI_FORMAT_R16G16B16A16_FLOAT:
+        return RHI_FORMAT_R16G16B16A16_FLOAT;
+    case DXGI_FORMAT_R32G32B32A32_FLOAT:
+        return RHI_FORMAT_R32G32B32A32_FLOAT;
+    case DXGI_FORMAT_BC1_UNORM:
+        return RHI_FORMAT_BC1_RGB_UNORM;
+    case DXGI_FORMAT_BC1_UNORM_SRGB:
+        return RHI_FORMAT_BC1_RGB_SRGB;
+    case DXGI_FORMAT_BC3_UNORM:
+        return RHI_FORMAT_BC3_UNORM;
+    case DXGI_FORMAT_BC3_UNORM_SRGB:
+        return RHI_FORMAT_BC3_SRGB;
+    case DXGI_FORMAT_BC5_UNORM:
+        return RHI_FORMAT_BC5_UNORM;
+    case DXGI_FORMAT_BC7_UNORM:
+        return RHI_FORMAT_BC7_UNORM;
+    case DXGI_FORMAT_BC7_UNORM_SRGB:
+        return RHI_FORMAT_BC7_SRGB;
+    default:
+        return RHI_FORMAT_UNDEFINED;
     }
-    case RHI_FORMAT_R8G8_UNORM: {
-        pixel_format.dwFlags = DDPF_RGB;
-        pixel_format.dwRGBBitCount = 16;
-        pixel_format.dwRBitMask = 0x000000FF;
-        pixel_format.dwGBitMask = 0x0000FF00;
-        return pixel_format;
-    }
-    case RHI_FORMAT_R8G8B8_UNORM: {
-        pixel_format.dwFlags = DDPF_RGB;
-        pixel_format.dwRGBBitCount = 24;
-        pixel_format.dwRBitMask = 0x000000FF;
-        pixel_format.dwGBitMask = 0x0000FF00;
-        pixel_format.dwBBitMask = 0x00FF0000;
-        return pixel_format;
-    }
-    case RHI_FORMAT_B8G8R8_UNORM: {
-        pixel_format.dwFlags = DDPF_RGB;
-        pixel_format.dwRGBBitCount = 24;
-        pixel_format.dwRBitMask = 0x00FF0000;
-        pixel_format.dwGBitMask = 0x0000FF00;
-        pixel_format.dwBBitMask = 0x000000FF;
-        return pixel_format;
-    }
-    case RHI_FORMAT_R8G8B8A8_UNORM:
-    case RHI_FORMAT_R8G8B8A8_SRGB: {
-        pixel_format.dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
-        pixel_format.dwRGBBitCount = 32;
-        pixel_format.dwRBitMask = 0x000000FF;
-        pixel_format.dwGBitMask = 0x0000FF00;
-        pixel_format.dwBBitMask = 0x00FF0000;
-        pixel_format.dwABitMask = 0xFF000000;
-        return pixel_format;
-    }
-
-    case RHI_FORMAT_B8G8R8A8_UNORM:
-    case RHI_FORMAT_B8G8R8A8_SRGB: {
-        pixel_format.dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
-        pixel_format.dwRGBBitCount = 32;
-        pixel_format.dwRBitMask = 0x00FF0000;
-        pixel_format.dwGBitMask = 0x0000FF00;
-        pixel_format.dwBBitMask = 0x000000FF;
-        pixel_format.dwABitMask = 0xFF000000;
-        return pixel_format;
-    }
-    case RHI_FORMAT_BC1_RGB_UNORM:
-    case RHI_FORMAT_BC1_RGBA_UNORM:
-    case RHI_FORMAT_BC1_RGB_SRGB:
-    case RHI_FORMAT_BC1_RGBA_SRGB: {
-        pixel_format.dwFlags = DDPF_FOURCC;
-        pixel_format.dwFourCC = FOURCC_DXT1;
-        return pixel_format;
-    }
-    case RHI_FORMAT_BC3_UNORM:
-    case RHI_FORMAT_BC3_SRGB: {
-        pixel_format.dwFlags = DDPF_FOURCC;
-        pixel_format.dwFourCC = FOURCC_DXT5;
-        return pixel_format;
-    }
-    case RHI_FORMAT_BC5_UNORM: {
-        pixel_format.dwFlags = DDPF_FOURCC;
-        pixel_format.dwFourCC = FOURCC_ATI2;
-        return pixel_format;
-    }
-    case RHI_FORMAT_BC7_UNORM:
-    case RHI_FORMAT_BC7_SRGB: {
-        pixel_format.dwFlags = DDPF_FOURCC;
-        pixel_format.dwFourCC = FOURCC_DX10;
-        return pixel_format;
-    }
-    default: {
-        pixel_format.dwFlags = DDPF_FOURCC;
-        pixel_format.dwFourCC = FOURCC_DX10;
-        return pixel_format;
-    }
-    }
-
-    return pixel_format;
 }
 
 bool is_compressed_format(rhi_format format)
@@ -376,7 +340,12 @@ bool dds::save(std::string_view path, const texture_data& data)
         .dwHeight = data.extent.height,
         .dwWidth = data.extent.width,
         .dwMipMapCount = data.level_count,
-        .ddspf = get_pixel_format(data.format),
+        .ddspf =
+            {
+                .dwSize = sizeof(dds_pixel_format),
+                .dwFlags = DDPF_FOURCC,
+                .dwFourCC = FOURCC_DX10,
+            },
     };
 
     if (data.level_count > 1)
@@ -408,15 +377,12 @@ bool dds::save(std::string_view path, const texture_data& data)
 
     fout.write(reinterpret_cast<const char*>(&header), sizeof(dds_header));
 
-    if (header.ddspf.dwFlags & DDPF_FOURCC && header.ddspf.dwFourCC == FOURCC_DX10)
-    {
-        dds_header_dxt10 header_dxt10 = {
-            .dxgiFormat = get_dxgi_format(data.format),
-            .resourceDimension = D3D10_RESOURCE_DIMENSION_TEXTURE2D,
-            .arraySize = 1,
-        };
-        fout.write(reinterpret_cast<const char*>(&header_dxt10), sizeof(dds_header_dxt10));
-    }
+    dds_header_dxt10 header_dxt10 = {
+        .dxgiFormat = get_dxgi_format(data.format),
+        .resourceDimension = D3D10_RESOURCE_DIMENSION_TEXTURE2D,
+        .arraySize = data.layer_count,
+    };
+    fout.write(reinterpret_cast<const char*>(&header_dxt10), sizeof(dds_header_dxt10));
 
     fout.write(data.pixels.data(), static_cast<std::streamsize>(data.pixels.size()));
 
@@ -425,6 +391,53 @@ bool dds::save(std::string_view path, const texture_data& data)
 
 bool dds::load(std::string_view path, texture_data& data)
 {
+    std::ifstream fin(std::string(path), std::ios::binary);
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
+    std::uint32_t magic_number;
+    fin.read(reinterpret_cast<char*>(&magic_number), sizeof(std::uint32_t));
+
+    if (magic_number != MAGIC_NUMBER)
+    {
+        return false;
+    }
+
+    dds_header header;
+    fin.read(reinterpret_cast<char*>(&header), sizeof(dds_header));
+
+    data.extent.width = header.dwWidth;
+    data.extent.height = header.dwHeight;
+    data.extent.depth = header.dwDepth > 0 ? header.dwDepth : 1;
+    data.level_count = header.dwMipMapCount > 0 ? header.dwMipMapCount : 1;
+
+    if (header.ddspf.dwFlags == DDPF_FOURCC && header.ddspf.dwFourCC == FOURCC_DX10)
+    {
+        dds_header_dxt10 header_dxt10;
+        fin.read(reinterpret_cast<char*>(&header_dxt10), sizeof(dds_header_dxt10));
+
+        data.format = get_rhi_format(header_dxt10.dxgiFormat);
+        data.layer_count = header_dxt10.arraySize;
+    }
+    else
+    {
+        data.layer_count = 1;
+    }
+
+    std::streampos current = fin.tellg();
+
+    fin.seekg(0, std::ios::end);
+    std::streampos end = fin.tellg();
+
+    std::streampos remaining = end - current;
+
+    fin.seekg(current);
+
+    data.pixels.resize(static_cast<std::size_t>(remaining));
+    fin.read(data.pixels.data(), remaining);
+
     return true;
 }
 } // namespace violet

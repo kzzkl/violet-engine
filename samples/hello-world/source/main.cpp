@@ -10,6 +10,7 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/dithering_feature.hpp"
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
@@ -289,6 +290,25 @@ private:
             ImGui::SliderFloat("Constant Bias", &shadow->constant_bias, 0.0f, 2.0f);
         }
 
+        if (ImGui::CollapsingHeader("Dithering"))
+        {
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* dithering = main_camera.renderer->get_feature<dithering_feature>();
+
+            static bool enable_dithering = dithering->is_enable();
+            if (ImGui::Checkbox("Enable##Dithering", &enable_dithering))
+            {
+                if (enable_dithering)
+                {
+                    dithering->enable();
+                }
+                else
+                {
+                    dithering->disable();
+                }
+            }
+        }
+
         if (ImGui::CollapsingHeader("TAA"))
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
@@ -475,8 +495,10 @@ private:
 
 int main()
 {
-    violet::application app("assets/config/hello-world.json");
-    app.install<violet::hello_world>();
+    using namespace violet;
+
+    application app("assets/config/hello-world.json");
+    app.install<hello_world>();
     app.run();
 
     return 0;

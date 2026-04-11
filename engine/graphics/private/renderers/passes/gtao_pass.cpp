@@ -70,8 +70,7 @@ void gtao_pass::add(render_graph& graph, const parameter& parameter)
                     .depth_buffer = data.depth_buffer.get_bindless(),
                     .normal_buffer = data.normal_buffer.get_bindless(),
                     .ao_buffer = data.ao_buffer.get_bindless(),
-                    .hilbert_lut =
-                        device.get_buildin_texture<hilbert_lut>()->get_srv()->get_bindless(),
+                    .hilbert_lut = device.get_texture<hilbert_lut>()->get_srv()->get_bindless(),
                     .slice_count = data.slice_count,
                     .step_count = data.step_count,
                     .radius = data.radius,

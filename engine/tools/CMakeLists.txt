@@ -3,7 +3,6 @@ add_library(violet-tools STATIC
     private/cluster/graph_partitioner.cpp
     private/mesh_simplifier/mesh_simplifier.cpp
     private/mesh_simplifier/quadric.cpp
-    private/dds.cpp
     private/geometry_tool.cpp
     private/texture_tool.cpp)
 add_library(violet::tools ALIAS violet-tools)

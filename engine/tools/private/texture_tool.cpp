@@ -1,5 +1,5 @@
 #include "tools/texture_tool.hpp"
-#include "dds.hpp"
+#include "graphics/dds.hpp"
 #include <compressonator.h>
 #include <fstream>
 
@@ -154,6 +154,15 @@ bool texture_tool::load(std::string_view path, texture_data& data)
         return dds::load(path, data);
     }
 
+    rhi_format format = data.format;
+    std::uint32_t req_comp = STBI_default;
+
+    if (format != RHI_FORMAT_UNDEFINED)
+    {
+        rhi_format_size format_size = rhi_get_format_size(format);
+        req_comp = format_size.block_size;
+    }
+
     int width;
     int height;
     int channels;
@@ -165,17 +174,40 @@ bool texture_tool::load(std::string_view path, texture_data& data)
         &width,
         &height,
         &channels,
-        STBI_rgb_alpha);
+        req_comp);
 
     if (pixels == nullptr)
     {
         return false;
     }
 
-    std::size_t image_size = static_cast<std::size_t>(width * height) * 4;
+    if (format == RHI_FORMAT_UNDEFINED)
+    {
+        switch (channels)
+        {
+        case 1:
+            format = RHI_FORMAT_R8_UNORM;
+            break;
+        case 2:
+            format = RHI_FORMAT_R8G8_UNORM;
+            break;
+        case 3:
+            format = RHI_FORMAT_R8G8B8_UNORM;
+            break;
+        case 4:
+            format = RHI_FORMAT_R8G8B8A8_UNORM;
+            break;
+        default:
+            stbi_image_free(pixels);
+            return false;
+        }
+    }
+
+    std::size_t image_size = static_cast<std::size_t>(width * height);
+    image_size *= req_comp == STBI_default ? channels : req_comp;
 
     data = {
-        .format = RHI_FORMAT_R8G8B8A8_UNORM,
+        .format = format,
         .extent =
             {
                 .width = static_cast<std::uint32_t>(width),
@@ -192,6 +224,16 @@ bool texture_tool::load(std::string_view path, texture_data& data)
     stbi_image_free(pixels);
 
     return true;
+}
+
+bool texture_tool::save(std::string_view path, const texture_data& data)
+{
+    if (path.ends_with(".dds"))
+    {
+        return dds::save(path, data);
+    }
+
+    return false;
 }
 
 bool texture_tool::compress(const texture_data& src, texture_data& dst)

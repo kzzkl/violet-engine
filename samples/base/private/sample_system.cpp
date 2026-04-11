@@ -327,9 +327,10 @@ void sample_system::initialize_scene(std::string_view skybox_path)
         world.add_component<skybox_component>(m_sky);
         auto& skybox = world.get_component<skybox_component>(m_sky);
 
-        texture_data texture_data;
+        texture_data texture_data = {
+            .format = RHI_FORMAT_R8G8B8A8_SRGB,
+        };
         texture_tool::load(skybox_path, texture_data);
-        texture_data.format = RHI_FORMAT_R8G8B8A8_SRGB;
 
         skybox.texture = texture_loader::load(texture_data);
     }

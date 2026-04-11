@@ -23,19 +23,32 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 texcoord = (float2(dtid.xy) + 0.5) / float2(width, height);
+    float2 uv = get_compute_texcoord(dtid.xy, width, height);
 
-    float4 position_ws = reconstruct_position(constant.depth_buffer, texcoord, camera.matrix_vp_inv);
+    Texture2D<float> buffer = ResourceDescriptorHeap[constant.depth_buffer];
+    float depth = buffer.SampleLevel(get_point_clamp_sampler(), uv, 0.0);
 
-    float4 position_cs = mul(camera.matrix_vp_no_jitter, position_ws);
-    position_cs.xy /= position_cs.w;
+    float4 position_ws;
+    if (depth == 0.0)
+    {
+        uv.y = 1.0 - uv.y;
+        float4 ndc = float4(uv * 2.0 - 1.0, 0.0, 1.0);
+        position_ws = mul(camera.matrix_vp_inv, ndc);
+        position_ws = float4(normalize(position_ws.xyz), 0.0);
+    }
+    else
+    {
+        position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
+    }
+
+    float4 curr_position_cs = mul(camera.matrix_vp_no_jitter, position_ws);
+    curr_position_cs.xy /= curr_position_cs.w;
 
     float4 prev_position_cs = mul(camera.prev_matrix_vp_no_jitter, position_ws);
     prev_position_cs.xy /= prev_position_cs.w;
 
-    float2 motion_vector = position_cs.xy - prev_position_cs.xy;
-    motion_vector.y = -motion_vector.y;
-    motion_vector *= 0.5;
+    float2 motion_vector = prev_position_cs.xy - curr_position_cs.xy;
+    motion_vector *= float2(0.5, -0.5);
 
     motion_vector_buffer[dtid.xy] = motion_vector;
 }

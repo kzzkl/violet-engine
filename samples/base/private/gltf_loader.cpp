@@ -134,36 +134,18 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
         image_to_texture[image_index] = texture_index;
 
         auto& texture = scene_data.textures.emplace_back();
+        texture.format = format;
 
         auto& image = model.images[image_index];
         if (!image.uri.empty())
         {
             std::filesystem::path texture_path = dir_path / image.uri;
             texture_tool::load(texture_path.string(), texture);
-
-            if (format == RHI_FORMAT_R8G8B8A8_SRGB)
-            {
-                texture.format = RHI_FORMAT_R8G8B8A8_SRGB;
-            }
         }
         else
         {
-            texture = {
-                .layer_count = 1,
-                .level_count = 1,
-            };
-
-            if (format == RHI_FORMAT_R8G8B8A8_SRGB)
-            {
-                texture.format = RHI_FORMAT_R8G8B8A8_SRGB;
-            }
-            else if (
-                image.component == 4 && image.bits == 8 &&
-                image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
-            {
-                texture.format = RHI_FORMAT_R8G8B8A8_UNORM;
-            }
-
+            texture.layer_count = 1;
+            texture.level_count = 1;
             texture.extent.height = image.height;
             texture.extent.width = image.width;
             texture.pixels.resize(image.image.size());

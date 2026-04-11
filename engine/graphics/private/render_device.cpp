@@ -96,7 +96,7 @@ void render_device::initialize(rhi* rhi)
 
     m_transient_allocator = std::make_unique<transient_allocator>();
 
-    create_buildin_resources();
+    create_global_resources();
 }
 
 void render_device::reset()
@@ -108,8 +108,8 @@ void render_device::reset()
     m_material_manager = nullptr;
     m_geometry_manager = nullptr;
 
-    m_buildin_textures.clear();
-    m_buildin_samplers.clear();
+    m_global_textures.clear();
+    m_global_samplers.clear();
 
     m_rhi_deleter = {};
     m_rhi = nullptr;
@@ -271,7 +271,7 @@ rhi_sampler* render_device::get_sampler(const rhi_sampler_desc& desc)
     return m_transient_allocator->get_sampler(desc);
 }
 
-void render_device::create_buildin_resources()
+void render_device::create_global_resources()
 {
     // Create empty texture.
     texture_data empty_texture_data = {
@@ -288,12 +288,12 @@ void render_device::create_buildin_resources()
     (void)empty_texture->get_srv();
     assert(empty_texture->get_srv()->get_bindless() == 0);
 
-    m_buildin_textures.push_back(std::move(empty_texture));
+    m_global_textures.push_back(std::move(empty_texture));
 
-    // Create buildin samplers.
+    // Create global samplers.
 
     // Bindless index 0: point repeat sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -302,10 +302,10 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[0]->get_bindless() == 0);
+    assert(m_global_samplers[0]->get_bindless() == 0);
 
     // Bindless index 1: point mirrored repeat sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
@@ -314,10 +314,10 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[1]->get_bindless() == 1);
+    assert(m_global_samplers[1]->get_bindless() == 1);
 
     // Bindless index 2: point clamp sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_POINT,
         .min_filter = RHI_FILTER_POINT,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -326,10 +326,10 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[2]->get_bindless() == 2);
+    assert(m_global_samplers[2]->get_bindless() == 2);
 
     // Bindless index 3: linear repeat sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -338,10 +338,10 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[3]->get_bindless() == 3);
+    assert(m_global_samplers[3]->get_bindless() == 3);
 
     // Bindless index 4: linear mirrored repeat sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
@@ -350,10 +350,10 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[4]->get_bindless() == 4);
+    assert(m_global_samplers[4]->get_bindless() == 4);
 
     // Bindless index 5: linear clamp sampler.
-    m_buildin_samplers.push_back(create_sampler({
+    m_global_samplers.push_back(create_sampler({
         .mag_filter = RHI_FILTER_LINEAR,
         .min_filter = RHI_FILTER_LINEAR,
         .address_mode_u = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -362,7 +362,7 @@ void render_device::create_buildin_resources()
         .min_level = 0.0f,
         .max_level = -1.0f,
     }));
-    assert(m_buildin_samplers[5]->get_bindless() == 5);
+    assert(m_global_samplers[5]->get_bindless() == 5);
 }
 
 std::vector<std::uint8_t> render_device::compile_shader(
