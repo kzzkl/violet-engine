@@ -52,6 +52,7 @@ private:
     void add_shading_pass(render_graph& graph);
     void add_sky_lut_pass(render_graph& graph);
     void add_sky_pass(render_graph& graph);
+    void add_dithering_pass(render_graph& graph);
     void add_motion_vector_pass(render_graph& graph);
     void add_taa_pass(render_graph& graph);
     void add_eye_adaptation_pass(render_graph& graph);

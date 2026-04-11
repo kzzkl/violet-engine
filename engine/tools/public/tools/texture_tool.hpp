@@ -8,6 +8,8 @@ class texture_tool
 {
 public:
     static bool load(std::string_view path, texture_data& data);
+    static bool save(std::string_view path, const texture_data& data);
+
     static bool compress(const texture_data& src, texture_data& dst);
     static bool generate_mipmaps(const texture_data& src, texture_data& dst);
 };

@@ -19,6 +19,8 @@ public:
         const texture_data& data,
         load_options options = LOAD_OPTION_NONE);
 
+    static rhi_ptr<rhi_texture> load(std::string_view path);
+
 private:
     static void upload(rhi_command* command, const texture_data& data, rhi_texture* texture);
 };

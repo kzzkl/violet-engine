@@ -18,6 +18,7 @@ texture_2d::texture_2d(
     rhi_format format,
     rhi_texture_flags flags,
     std::uint32_t level_count,
+    std::uint32_t layer_count,
     rhi_sample_count samples,
     rhi_texture_layout layout)
 {
@@ -26,7 +27,7 @@ texture_2d::texture_2d(
         .format = format,
         .flags = flags,
         .level_count = level_count,
-        .layer_count = 1,
+        .layer_count = layer_count,
         .samples = samples,
         .layout = layout,
     });

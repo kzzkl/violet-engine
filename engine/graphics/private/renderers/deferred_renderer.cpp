@@ -2,6 +2,7 @@
 #include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/dithering_feature.hpp"
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
@@ -11,6 +12,7 @@
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/bloom_pass.hpp"
 #include "graphics/renderers/passes/cull_pass.hpp"
+#include "graphics/renderers/passes/dithering_pass.hpp"
 #include "graphics/renderers/passes/eye_adaptation_pass.hpp"
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
 #include "graphics/renderers/passes/gtao_pass.hpp"
@@ -33,6 +35,7 @@ deferred_renderer::deferred_renderer()
     add_feature<eye_adaptation_feature>();
     add_feature<bloom_feature>();
     add_feature<atmosphere_feature>();
+    add_feature<dithering_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -78,6 +81,7 @@ void deferred_renderer::on_render(render_graph& graph)
 
         add_eye_adaptation_pass(graph);
         add_bloom_pass(graph);
+        add_dithering_pass(graph);
         add_tone_mapping_pass(graph);
     }
 
@@ -501,6 +505,20 @@ void deferred_renderer::add_sky_pass(render_graph& graph)
     default:
         break;
     }
+}
+
+void deferred_renderer::add_dithering_pass(render_graph& graph)
+{
+    auto* dithering = get_feature<dithering_feature>(true);
+    if (dithering == nullptr)
+    {
+        return;
+    }
+
+    graph.add_pass<dithering_pass>({
+        .render_target = m_render_target,
+        .frame = get_frame(),
+    });
 }
 
 void deferred_renderer::add_motion_vector_pass(render_graph& graph)

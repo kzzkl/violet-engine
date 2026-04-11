@@ -33,11 +33,6 @@ float2 get_motion_vector(uint2 st)
         }
     }
 
-    if (closest_depth == 0.0)
-    {
-        return float2(0.0, 0.0);
-    }
-
     Texture2D<float2> motion_vector_buffer = ResourceDescriptorHeap[constant.motion_vector];
     return motion_vector_buffer[st + closest_offset];
 }
@@ -121,7 +116,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
 #if defined(USE_MOTION_VECTOR)
     float2 motion_vector = get_motion_vector(dtid.xy);
-    float2 history_texcoord = texcoord - motion_vector;
+    float2 history_texcoord = texcoord + motion_vector;
 #else
     float2 history_texcoord = texcoord;
 #endif

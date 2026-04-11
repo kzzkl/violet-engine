@@ -12,7 +12,7 @@ public:
 
     float low_percent{0.1f};
     float high_percent{0.9f};
-    float min_brightness{0.001f};
+    float min_brightness{0.05f};
     float max_brightness{10.0f};
     float speed_down{1.0f};
     float speed_up{3.0f};
