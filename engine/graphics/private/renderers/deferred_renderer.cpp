@@ -21,6 +21,7 @@
 #include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/renderers/passes/shadow_pass.hpp"
 #include "graphics/renderers/passes/skybox_pass.hpp"
+#include "graphics/renderers/passes/ssgi_pass.hpp"
 #include "graphics/renderers/passes/taa_pass.hpp"
 #include "graphics/renderers/passes/tone_mapping_pass.hpp"
 
@@ -69,6 +70,7 @@ void deferred_renderer::on_render(render_graph& graph)
 
     add_sky_lut_pass(graph);
     add_shading_pass(graph);
+    add_ssgi_pass(graph);
     add_sky_pass(graph);
 
     {
@@ -402,6 +404,18 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .irradiance_sh = m_irradiance_sh,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
+    });
+}
+
+void deferred_renderer::add_ssgi_pass(render_graph& graph)
+{
+    graph.add_pass<ssgi_pass>({
+        .gbuffers = m_gbuffers,
+        .render_target = m_render_target,
+        .depth_buffer = m_depth_buffer,
+        .debug_mode = m_debug_mode == DEBUG_MODE_SSGI ? ssgi_pass::DEBUG_MODE_SSGI :
+                                                        ssgi_pass::DEBUG_MODE_NONE,
+        .debug_output = m_debug_mode == DEBUG_MODE_SSGI ? m_debug_output : nullptr,
     });
 }
 

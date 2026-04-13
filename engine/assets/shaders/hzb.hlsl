@@ -13,6 +13,21 @@ PushConstant(constant_data, constant);
 
 groupshared float gs_depth[8][8];
 
+#ifdef HZB_REDUCTION_MAX
+static const float default_depth = 0.0;
+#else
+static const float default_depth = 1.0;
+#endif
+
+float reduce_depth(float a, float b, float c, float d)
+{
+#ifdef HZB_REDUCTION_MAX
+    return max(max(a, b), max(c, d));
+#else
+    return min(min(a, b), min(c, d));
+#endif
+}
+
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID)
 {
@@ -36,7 +51,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     }
     else
     {
-        gs_depth[gtid.y][gtid.x] = 1.0;
+        gs_depth[gtid.y][gtid.x] = default_depth;
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -51,9 +66,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     {
         uint2 base = gtid.xy * 2;
 
-        float depth_mip1 = min(
-            min(gs_depth[base.y][base.x], gs_depth[base.y][base.x + 1]),
-            min(gs_depth[base.y + 1][base.x], gs_depth[base.y + 1][base.x + 1]));
+        float depth_mip1 = reduce_depth(
+            gs_depth[base.y][base.x],
+            gs_depth[base.y][base.x + 1],
+            gs_depth[base.y + 1][base.x],
+            gs_depth[base.y + 1][base.x + 1]);
 
         RWTexture2D<float> dst_mip1 = ResourceDescriptorHeap[constant.dst_mip1];
 
@@ -73,9 +90,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     {
         uint2 base = gtid.xy * 4;
 
-        float depth_mip2 = min(
-            min(gs_depth[base.y][base.x], gs_depth[base.y][base.x + 2]),
-            min(gs_depth[base.y + 2][base.x], gs_depth[base.y + 2][base.x + 2]));
+        float depth_mip2 = reduce_depth(
+            gs_depth[base.y][base.x],
+            gs_depth[base.y][base.x + 2],
+            gs_depth[base.y + 2][base.x],
+            gs_depth[base.y + 2][base.x + 2]);
 
         RWTexture2D<float> dst_mip2 = ResourceDescriptorHeap[constant.dst_mip2];
 
@@ -93,9 +112,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
 
     if (gtid.x == 0 && gtid.y == 0)
     {
-        float depth_mip3 = min(
-            min(gs_depth[0][0], gs_depth[0][4]),
-            min(gs_depth[4][0], gs_depth[4][4]));
+        float depth_mip3 = reduce_depth(
+            gs_depth[0][0],
+            gs_depth[0][4],
+            gs_depth[4][0],
+            gs_depth[4][4]);
 
         RWTexture2D<float> dst_mip3 = ResourceDescriptorHeap[constant.dst_mip3];
 

@@ -31,6 +31,7 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
         rdg_texture_srv src;
         rdg_texture_uav dst_mips[4];
         rhi_sampler* hzb_sampler;
+        reduction_mode mode;
     };
 
     auto* hzb_sampler = render_device::instance().get_sampler({
@@ -41,7 +42,8 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
         .address_mode_w = RHI_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .min_level = 0.0f,
         .max_level = -1.0f,
-        .reduction_mode = RHI_SAMPLER_REDUCTION_MODE_MIN,
+        .reduction_mode = parameter.mode == REDUCTION_MODE_MAX ? RHI_SAMPLER_REDUCTION_MODE_MAX :
+                                                                 RHI_SAMPLER_REDUCTION_MODE_MIN,
     });
 
     std::uint32_t level_count = parameter.hzb->get_level_count();
@@ -86,11 +88,18 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                 }
 
                 data.hzb_sampler = hzb_sampler;
+                data.mode = parameter.mode;
             },
             [](const pass_data& data, rdg_command& command)
             {
+                std::vector<std::wstring> defines;
+                if (data.mode == REDUCTION_MODE_MAX)
+                {
+                    defines.emplace_back(L"-DHZB_REDUCTION_MAX");
+                }
+
                 command.set_pipeline({
-                    .compute_shader = render_device::instance().get_shader<hzb_cs>(),
+                    .compute_shader = render_device::instance().get_shader<hzb_cs>(defines),
                 });
                 command.set_constant(
                     hzb_cs::constant_data{

@@ -238,7 +238,7 @@ private:
                 transform_dirty = true;
             }
 
-            if (ImGui::SliderFloat("Sun Rotate Y", &euler.y, 0.0, math::TWO_PI))
+            if (ImGui::SliderFloat("Sun Rotate Y", &euler.y, -math::PI, math::PI))
             {
                 transform_dirty = true;
             }
@@ -439,6 +439,7 @@ private:
                 "Bloom",
                 "Bloom Prefilter",
                 "Eye Adaptation",
+                "SSGI",
             };
 
             if (ImGui::Combo(

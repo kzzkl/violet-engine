@@ -28,6 +28,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/shading_pass.cpp
     private/renderers/passes/shadow_pass.cpp
     private/renderers/passes/skybox_pass.cpp
+    private/renderers/passes/ssgi_pass.cpp
     private/renderers/passes/taa_pass.cpp
     private/renderers/passes/tone_mapping_pass.cpp
     private/renderers/deferred_renderer.cpp

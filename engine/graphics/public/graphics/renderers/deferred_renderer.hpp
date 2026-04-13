@@ -20,6 +20,7 @@ public:
         DEBUG_MODE_BLOOM,
         DEBUG_MODE_BLOOM_PREFILTER,
         DEBUG_MODE_EYE_ADAPTATION,
+        DEBUG_MODE_SSGI,
     };
 
     deferred_renderer();
@@ -50,6 +51,7 @@ private:
     void add_gtao_pass(render_graph& graph);
     void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
+    void add_ssgi_pass(render_graph& graph);
     void add_sky_lut_pass(render_graph& graph);
     void add_sky_pass(render_graph& graph);
     void add_dithering_pass(render_graph& graph);
@@ -93,7 +95,7 @@ private:
     rdg_texture* m_prefilter_map{nullptr};
     rdg_buffer* m_irradiance_sh{nullptr};
 
-    debug_mode m_debug_mode{DEBUG_MODE_NONE};
+    debug_mode m_debug_mode{DEBUG_MODE_SSGI};
     rdg_texture* m_debug_output{nullptr};
 
     bool m_ibl_dirty{false};
