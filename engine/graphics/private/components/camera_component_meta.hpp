@@ -17,7 +17,6 @@ public:
     mat4f matrix_vp;
     mat4f matrix_vp_no_jitter;
 
-    rhi_ptr<rhi_texture> hzb;
     rhi_ptr<rhi_parameter> parameter;
 
     rhi_extent render_target_extent;

@@ -5,6 +5,7 @@
 #include "gbuffer.hlsli"
 #include "virtual_shadow_map/vsm_common.hlsli"
 #include "atmosphere/atmosphere.hlsli"
+#include "spherical_harmonics.hlsli"
 
 struct constant_common
 {
@@ -23,9 +24,9 @@ struct constant_common
     float planet_radius;
     float atmosphere_radius;
     uint transmittance_lut;
+    uint indirect_diffuse;
     uint padding0;
     uint padding1;
-    uint padding2;
 };
 
 static const uint LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED = 0;
@@ -112,7 +113,20 @@ void evaluate_lighting(constant_common constant, scene_data scene, camera_data c
     }
     else if (constant.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
     {
-        lighting = shading_model.evaluate_indirect_lighting();
+        float3 irradiance = 0.0;
+        if (constant.indirect_diffuse != 0)
+        {
+            Texture2D<float3> indirect_diffuse = ResourceDescriptorHeap[constant.indirect_diffuse];
+            irradiance = indirect_diffuse.SampleLevel(get_linear_clamp_sampler(), texcoord, 0.0);
+        }
+        else
+        {
+            StructuredBuffer<sh9> irradiance_sh = ResourceDescriptorHeap[constant.irradiance_sh];
+            sh9 sh = irradiance_sh[0];
+            irradiance = sh.evaluate(gbuffer.normal);
+        }
+
+        lighting = shading_model.evaluate_indirect_lighting(irradiance);
     }
 
     render_target[coord] += float4(lighting, 0.0);

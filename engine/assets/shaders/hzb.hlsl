@@ -29,7 +29,7 @@ float reduce_depth(float a, float b, float c, float d)
 }
 
 [numthreads(8, 8, 1)]
-void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID)
+void hzb_reduce(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID)
 {
     RWTexture2D<float> dst_mip0 = ResourceDescriptorHeap[constant.dst_mip0];
 
@@ -122,4 +122,22 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
 
         dst_mip3[gid.xy] = depth_mip3;
     }
+}
+
+[numthreads(16, 16, 1)]
+void hzb_copy(uint3 dtid : SV_DispatchThreadID)
+{
+    Texture2D<float> src = ResourceDescriptorHeap[constant.src];
+    RWTexture2D<float> dst = ResourceDescriptorHeap[constant.dst_mip0];
+
+    uint width;
+    uint height;
+    dst.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    dst[dtid.xy] = src[dtid.xy];
 }

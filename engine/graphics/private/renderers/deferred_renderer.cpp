@@ -6,6 +6,7 @@
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
+#include "graphics/renderers/features/ssgi_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/renderers/features/vsm_feature.hpp"
 #include "graphics/renderers/passes/atmosphere_pass.hpp"
@@ -27,12 +28,28 @@
 
 namespace violet
 {
+namespace
+{
+std::uint32_t previous_pow2(std::uint32_t v)
+{
+    std::uint32_t r = 1;
+
+    while (r * 2 < v)
+    {
+        r *= 2;
+    }
+
+    return r;
+}
+} // namespace
+
 deferred_renderer::deferred_renderer()
 {
     add_feature<shadow_feature>();
     add_feature<vsm_feature>();
     add_feature<taa_feature>();
     add_feature<gtao_feature>();
+    add_feature<ssgi_feature>();
     add_feature<eye_adaptation_feature>();
     add_feature<bloom_feature>();
     add_feature<atmosphere_feature>();
@@ -47,15 +64,17 @@ void deferred_renderer::on_render(render_graph& graph)
         rdg_scope scope(graph, "Main Pass");
         add_cull_pass(graph, true);
         add_gbuffer_pass(graph, true);
-        add_hzb_pass(graph);
+        add_culling_hzb_pass(graph);
     }
 
     {
         rdg_scope scope(graph, "Post Pass");
         add_cull_pass(graph, false);
         add_gbuffer_pass(graph, false);
-        add_hzb_pass(graph);
+        add_tracing_hzb_pass(graph);
     }
+
+    add_tracing_hzb_pass(graph);
 
     if (get_feature<gtao_feature>(true))
     {
@@ -69,15 +88,29 @@ void deferred_renderer::on_render(render_graph& graph)
     add_shadow_pass(graph);
 
     add_sky_lut_pass(graph);
+
+    if (get_feature<taa_feature>(true) || get_feature<ssgi_feature>(true))
+    {
+        add_motion_vector_pass(graph);
+    }
+
+    if (get_feature<ssgi_feature>(true))
+    {
+        add_ssgi_pass(graph);
+    }
+    else
+    {
+        m_indirect_diffuse = nullptr;
+    }
+
     add_shading_pass(graph);
-    add_ssgi_pass(graph);
+
     add_sky_pass(graph);
 
     {
         rdg_scope scope(graph, "Post Processing");
         if (get_feature<taa_feature>(true))
         {
-            add_motion_vector_pass(graph);
             add_taa_pass(graph);
         }
 
@@ -92,22 +125,101 @@ void deferred_renderer::on_render(render_graph& graph)
 
 void deferred_renderer::prepare(render_graph& graph)
 {
-    const auto& context = graph.get_context();
+    prepare_rhi_resources(graph);
+    prepare_rdg_resources(graph);
 
     m_render_extent = graph.get_context().get_render_target()->get_extent();
+}
+
+void deferred_renderer::prepare_rhi_resources(render_graph& graph)
+{
+    rhi_extent render_extent = graph.get_context().get_render_target()->get_extent();
+    bool render_extent_changed = m_render_extent != render_extent;
+
+    if (render_extent_changed || m_resources.hzb == nullptr)
+    {
+        rhi_extent hzb_extent = {
+            .width = previous_pow2(render_extent.width),
+            .height = previous_pow2(render_extent.height),
+        };
+
+        if (m_resources.hzb == nullptr || m_resources.hzb->get_extent() != hzb_extent)
+        {
+            std::uint32_t max_size = std::max(hzb_extent.width, hzb_extent.height);
+            std::uint32_t level_count =
+                static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
+
+            m_resources.hzb = render_device::instance().create_texture({
+                .extent = hzb_extent,
+                .format = RHI_FORMAT_R32_FLOAT,
+                .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
+                .level_count = level_count,
+                .layer_count = 1,
+                .samples = RHI_SAMPLE_COUNT_1,
+                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            });
+        }
+    }
+
+    if (get_feature<taa_feature>(true) || get_feature<ssgi_feature>(true))
+    {
+        if (m_resources.prev_scene_color == nullptr ||
+            m_resources.prev_scene_color->get_extent() != render_extent)
+        {
+            m_resources.prev_scene_color = render_device::instance().create_texture({
+                .extent = render_extent,
+                .format = RHI_FORMAT_R16G16B16A16_FLOAT,
+                .flags =
+                    RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_DST,
+                .level_count = 1,
+                .layer_count = 1,
+                .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            });
+            m_prev_scene_color_valid = false;
+        }
+        else
+        {
+            m_prev_scene_color_valid = true;
+        }
+    }
+    else
+    {
+        m_resources.prev_scene_color = nullptr;
+        m_prev_scene_color_valid = false;
+    }
+}
+
+void deferred_renderer::prepare_rdg_resources(render_graph& graph)
+{
+    const auto& context = graph.get_context();
+
+    rhi_extent render_extent = context.get_render_target()->get_extent();
 
     m_render_target = graph.add_texture(
         "Render Target",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R16G16B16A16_FLOAT,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE |
             RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_TRANSFER_DST);
 
-    m_hzb = graph.add_texture(
-        "HZB",
-        context.get_hzb(),
+    m_culling_hzb = graph.add_texture(
+        "Culling HZB",
+        m_resources.hzb.get(),
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
         RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
+    if (m_resources.prev_scene_color != nullptr)
+    {
+        m_prev_scene_color = graph.add_texture(
+            "Previous Scene Color",
+            m_resources.prev_scene_color.get(),
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+            RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+    }
+    else
+    {
+        m_prev_scene_color = nullptr;
+    }
 
     m_cluster_queue = graph.add_buffer(
         "Cluster Queue",
@@ -139,38 +251,38 @@ void deferred_renderer::prepare(render_graph& graph)
     m_gbuffers.resize(4);
     m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
         "GBuffer Albedo",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R8G8B8A8_UNORM,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
     m_gbuffers[SHADING_GBUFFER_MATERIAL] = graph.add_texture(
         "GBuffer Material",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R8G8_UNORM,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
     m_gbuffers[SHADING_GBUFFER_NORMAL] = graph.add_texture(
         "GBuffer Normal",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R32_UINT,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
     m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
         "GBuffer Emissive",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R11G11B10_FLOAT,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
 
     m_visibility_buffer = graph.add_texture(
         "Visibility Buffer",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_R32G32_UINT,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_SHADER_RESOURCE);
 
     m_depth_buffer = graph.add_texture(
         "Depth Buffer",
-        m_render_extent,
+        render_extent,
         RHI_FORMAT_D32_FLOAT,
         RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
@@ -209,7 +321,7 @@ void deferred_renderer::prepare(render_graph& graph)
     {
         m_debug_output = graph.add_texture(
             "Debug Output",
-            m_render_extent,
+            render_extent,
             RHI_FORMAT_R32G32B32A32_FLOAT,
             RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_SRC |
                 RHI_TEXTURE_TRANSFER_DST);
@@ -249,7 +361,7 @@ void deferred_renderer::add_cull_pass(render_graph& graph, bool main_pass)
 {
     graph.add_pass<cull_pass>({
         .stage = main_pass ? CULL_STAGE_MAIN_PASS : CULL_STAGE_POST_PASS,
-        .hzb = m_hzb,
+        .hzb = m_culling_hzb,
         .cluster_queue = m_cluster_queue,
         .cluster_queue_state = m_cluster_queue_state,
         .draw_buffer = m_draw_buffer,
@@ -292,14 +404,6 @@ void deferred_renderer::add_gbuffer_pass(render_graph& graph, bool main_pass)
     });
 }
 
-void deferred_renderer::add_hzb_pass(render_graph& graph)
-{
-    graph.add_pass<hzb_pass>({
-        .depth_buffer = m_depth_buffer,
-        .hzb = m_hzb,
-    });
-}
-
 void deferred_renderer::add_gtao_pass(render_graph& graph)
 {
     auto* gtao = get_feature<gtao_feature>();
@@ -315,7 +419,7 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
         .step_count = gtao->step_count,
         .radius = gtao->radius,
         .falloff = gtao->falloff,
-        .hzb = m_hzb,
+        .hzb = m_tracing_hzb,
         .depth_buffer = m_depth_buffer,
         .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
         .ao_buffer = m_ao_buffer,
@@ -402,17 +506,78 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         .shadow_constant_bias = shadow->constant_bias,
         .prefilter_map = m_prefilter_map,
         .irradiance_sh = m_irradiance_sh,
+        .indirect_diffuse = m_indirect_diffuse,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
     });
 }
 
+void deferred_renderer::add_culling_hzb_pass(render_graph& graph)
+{
+    graph.add_pass<hzb_pass>({
+        .depth_buffer = m_depth_buffer,
+        .hzb = m_culling_hzb,
+    });
+}
+
+void deferred_renderer::add_tracing_hzb_pass(render_graph& graph)
+{
+    rhi_extent extent = m_depth_buffer->get_extent();
+
+    std::uint32_t hzb_level_count =
+        static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) +
+        1;
+    hzb_level_count = std::min(hzb_level_count, 5u);
+
+    m_tracing_hzb = graph.add_texture(
+        "HZB for Trace",
+        extent,
+        RHI_FORMAT_R32_FLOAT,
+        RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE,
+        hzb_level_count);
+
+    graph.add_pass<hzb_pass>({
+        .depth_buffer = m_depth_buffer,
+        .hzb = m_tracing_hzb,
+        .mode = hzb_pass::REDUCTION_MODE_MAX,
+    });
+}
+
 void deferred_renderer::add_ssgi_pass(render_graph& graph)
 {
+    auto* ssgi = get_feature<ssgi_feature>();
+
+    rhi_extent half_extent = {
+        .width = m_render_extent.width / 2,
+        .height = m_render_extent.height / 2,
+    };
+
+    m_indirect_diffuse = graph.add_texture(
+        "Indirect Diffuse",
+        half_extent,
+        RHI_FORMAT_R16G16B16A16_FLOAT,
+        RHI_TEXTURE_TRANSFER_SRC | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE);
+
+    rdg_texture* history = graph.add_texture(
+        "SSGI History",
+        ssgi->get_history(),
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+
     graph.add_pass<ssgi_pass>({
-        .gbuffers = m_gbuffers,
-        .render_target = m_render_target,
-        .depth_buffer = m_depth_buffer,
+        .scene_color = m_prev_scene_color,
+        .motion_vector = m_motion_vectors,
+        .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
+        .hzb = m_tracing_hzb,
+        .irradiance_sh = m_irradiance_sh,
+        .indirect_diffuse = m_indirect_diffuse,
+        .history = history,
+        .history_valid = ssgi->is_history_valid(),
+        .bilateral_denoise = ssgi->bilateral_denoise,
+        .bilateral_blur_factor = ssgi->bilateral_blur_factor,
+        .thickness = ssgi->thickness,
+        .iteration_count = ssgi->iteration_count,
+        .frame = get_frame(),
         .debug_mode = m_debug_mode == DEBUG_MODE_SSGI ? ssgi_pass::DEBUG_MODE_SSGI :
                                                         ssgi_pass::DEBUG_MODE_NONE,
         .debug_output = m_debug_mode == DEBUG_MODE_SSGI ? m_debug_output : nullptr,
@@ -551,20 +716,12 @@ void deferred_renderer::add_motion_vector_pass(render_graph& graph)
 
 void deferred_renderer::add_taa_pass(render_graph& graph)
 {
-    auto* taa = get_feature<taa_feature>();
-
-    rdg_texture* history_render_target = graph.add_texture(
-        "History Render Target",
-        taa->get_history(),
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-
     graph.add_pass<taa_pass>({
         .current_render_target = m_render_target,
-        .history_render_target = history_render_target,
+        .history_render_target = m_prev_scene_color,
         .depth_buffer = m_depth_buffer,
         .motion_vector = m_motion_vectors,
-        .history_valid = taa->is_history_valid(),
+        .history_valid = m_prev_scene_color_valid,
     });
 }
 

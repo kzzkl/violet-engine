@@ -14,6 +14,7 @@
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
 #include "graphics/renderers/features/shadow_feature.hpp"
+#include "graphics/renderers/features/ssgi_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/renderers/features/vsm_feature.hpp"
 #include "math/euler.hpp"
@@ -120,14 +121,14 @@ private:
             }
 
             static float translate = 0.0f;
-            if (ImGui::SliderFloat("Translate", &translate, -50000.0f, 5.0))
+            if (ImGui::SliderFloat("Translate", &translate, -5.0f, 5.0))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_position({0.0f, translate, 0.0f});
+                transform.set_position({translate, 0.0f, 0.0f});
             }
 
             static float scale = 1.0f;
-            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 5000.0f))
+            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 10.0f))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
                 transform.set_scale({scale, scale, scale});
@@ -353,6 +354,45 @@ private:
                 ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&gtao->step_count), 1, 5);
                 ImGui::SliderFloat("Radius", &gtao->radius, 0.0f, 10.0f);
                 ImGui::SliderFloat("Falloff", &gtao->falloff, 0.1f, 1.0f);
+            }
+        }
+
+        if (ImGui::CollapsingHeader("SSGI"))
+        {
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* ssgi = main_camera.renderer->get_feature<ssgi_feature>();
+
+            static bool enable_ssgi = ssgi->is_enable();
+            if (ImGui::Checkbox("Enable##SSGI", &enable_ssgi))
+            {
+                if (enable_ssgi)
+                {
+                    ssgi->enable();
+                }
+                else
+                {
+                    ssgi->disable();
+                }
+            }
+
+            if (enable_ssgi)
+            {
+                ImGui::SliderFloat("Thickness##SSGI", &ssgi->thickness, 0.0f, 1.0f);
+                ImGui::SliderInt(
+                    "Iteration Count##SSGI",
+                    reinterpret_cast<int*>(&ssgi->iteration_count),
+                    1,
+                    128);
+
+                ImGui::Checkbox("Bilateral Denoise##SSGI", &ssgi->bilateral_denoise);
+                if (ssgi->bilateral_denoise)
+                {
+                    ImGui::SliderFloat(
+                        "Bilateral Blur Factor##SSGI",
+                        &ssgi->bilateral_blur_factor,
+                        0.0f,
+                        1.0f);
+                }
             }
         }
 

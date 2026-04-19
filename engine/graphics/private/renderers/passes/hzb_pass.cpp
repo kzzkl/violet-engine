@@ -3,9 +3,10 @@
 
 namespace violet
 {
-struct hzb_cs : public shader_cs
+struct hzb_reduce_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/hzb.hlsl";
+    static constexpr std::string_view entry_point = "hzb_reduce";
 
     struct constant_data
     {
@@ -22,10 +23,76 @@ struct hzb_cs : public shader_cs
     };
 };
 
+struct hzb_copy_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/hzb.hlsl";
+    static constexpr std::string_view entry_point = "hzb_copy";
+
+    using constant_data = hzb_reduce_cs::constant_data;
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
 void hzb_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "HZB");
 
+    std::uint32_t level_offset = 0;
+
+    if (parameter.hzb->get_extent() == parameter.depth_buffer->get_extent())
+    {
+        add_copy_pass(graph, parameter);
+        level_offset = 1;
+    }
+
+    add_reduce_pass(graph, parameter, level_offset);
+}
+
+void hzb_pass::add_copy_pass(render_graph& graph, const parameter& parameter)
+{
+    struct pass_data
+    {
+        rdg_texture_srv src;
+        rdg_texture_uav dst;
+    };
+
+    graph.add_pass<pass_data>(
+        "Copy Depth Buffer",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.src = pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.dst = pass.add_texture_uav(
+                parameter.hzb,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_TEXTURE_DIMENSION_2D,
+                0,
+                1);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            command.set_pipeline({
+                .compute_shader = render_device::instance().get_shader<hzb_copy_cs>(),
+            });
+            command.set_constant(
+                hzb_copy_cs::constant_data{
+                    .src = data.src.get_bindless(),
+                    .dst_mip0 = data.dst.get_bindless(),
+                });
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            rhi_extent extent = data.dst.get_extent();
+            command.dispatch_2d(extent.width, extent.height, 16, 16);
+        });
+}
+
+void hzb_pass::add_reduce_pass(
+    render_graph& graph,
+    const parameter& parameter,
+    std::uint32_t level_offset)
+{
     struct pass_data
     {
         rdg_texture_srv src;
@@ -48,7 +115,7 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
 
     std::uint32_t level_count = parameter.hzb->get_level_count();
 
-    for (std::uint32_t level = 0; level < level_count; level += 4)
+    for (std::uint32_t level = level_offset; level < level_count; level += 4)
     {
         graph.add_pass<pass_data>(
             std::format("Level {} ~ {}", level, std::min(level + 3, level_count - 1)),
@@ -99,10 +166,10 @@ void hzb_pass::add(render_graph& graph, const parameter& parameter)
                 }
 
                 command.set_pipeline({
-                    .compute_shader = render_device::instance().get_shader<hzb_cs>(defines),
+                    .compute_shader = render_device::instance().get_shader<hzb_reduce_cs>(defines),
                 });
                 command.set_constant(
-                    hzb_cs::constant_data{
+                    hzb_reduce_cs::constant_data{
                         .src = data.src.get_bindless(),
                         .dst_mip0 = data.dst_mips[0].get_bindless(),
                         .dst_mip1 = data.dst_mips[1] ? data.dst_mips[1].get_bindless() : 0,

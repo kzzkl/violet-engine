@@ -1131,11 +1131,6 @@ background_type render_context::get_background_type() const noexcept
     return m_camera->background;
 }
 
-rhi_texture* render_context::get_hzb() const noexcept
-{
-    return m_camera_meta->hzb.get();
-}
-
 rhi_buffer* render_context::get_vsm_buffer() const noexcept
 {
     return m_scene->m_vsm_manager->get_vsm_buffer();

@@ -44,14 +44,27 @@ protected:
     }
 
 private:
+    struct resources
+    {
+        rhi_ptr<rhi_texture> hzb;
+        rhi_ptr<rhi_texture> prev_scene_color;
+    };
+
     void prepare(render_graph& graph);
+    void prepare_rhi_resources(render_graph& graph);
+    void prepare_rdg_resources(render_graph& graph);
+
     void add_cull_pass(render_graph& graph, bool main_pass);
     void add_gbuffer_pass(render_graph& graph, bool main_pass);
-    void add_hzb_pass(render_graph& graph);
     void add_gtao_pass(render_graph& graph);
     void add_shadow_pass(render_graph& graph);
     void add_shading_pass(render_graph& graph);
+
+    void add_culling_hzb_pass(render_graph& graph);
+    void add_tracing_hzb_pass(render_graph& graph);
+
     void add_ssgi_pass(render_graph& graph);
+
     void add_sky_lut_pass(render_graph& graph);
     void add_sky_pass(render_graph& graph);
     void add_dithering_pass(render_graph& graph);
@@ -63,6 +76,7 @@ private:
     void add_present_pass(render_graph& graph);
 
     rhi_extent m_render_extent;
+    resources m_resources;
 
     std::vector<rdg_texture*> m_gbuffers;
     rdg_texture* m_visibility_buffer{nullptr};
@@ -70,8 +84,11 @@ private:
     rdg_texture* m_ao_buffer;
 
     rdg_texture* m_render_target{nullptr};
-    rdg_texture* m_hzb{nullptr};
+    rdg_texture* m_culling_hzb{nullptr};
+    rdg_texture* m_tracing_hzb{nullptr};
 
+    rdg_texture* m_prev_scene_color{nullptr};
+    bool m_prev_scene_color_valid{false};
     rdg_texture* m_motion_vectors{nullptr};
 
     rdg_buffer* m_cluster_queue;
@@ -95,7 +112,9 @@ private:
     rdg_texture* m_prefilter_map{nullptr};
     rdg_buffer* m_irradiance_sh{nullptr};
 
-    debug_mode m_debug_mode{DEBUG_MODE_SSGI};
+    rdg_texture* m_indirect_diffuse{nullptr};
+
+    debug_mode m_debug_mode{DEBUG_MODE_NONE};
     rdg_texture* m_debug_output{nullptr};
 
     bool m_ibl_dirty{false};

@@ -21,5 +21,12 @@ public:
     };
 
     void add(render_graph& graph, const parameter& parameter);
+
+private:
+    void add_copy_pass(render_graph& graph, const parameter& parameter);
+    void add_reduce_pass(
+        render_graph& graph,
+        const parameter& parameter,
+        std::uint32_t level_offset);
 };
 } // namespace violet

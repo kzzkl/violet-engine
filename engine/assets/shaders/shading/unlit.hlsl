@@ -26,7 +26,7 @@ struct unlit_shading_model
         return 0.0;
     }
 
-    float3 evaluate_indirect_lighting()
+    float3 evaluate_indirect_lighting(float3 irradiance)
     {
         return albedo;
     }

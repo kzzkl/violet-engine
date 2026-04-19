@@ -32,6 +32,7 @@ public:
 
         rdg_texture* prefilter_map;
         rdg_buffer* irradiance_sh;
+        rdg_texture* indirect_diffuse;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_index{0};

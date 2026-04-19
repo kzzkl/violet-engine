@@ -325,8 +325,6 @@ public:
         return m_render_target;
     }
 
-    rhi_texture* get_hzb() const noexcept;
-
     std::uint32_t get_mesh_count() const noexcept
     {
         return m_scene->m_meshes.get_size();

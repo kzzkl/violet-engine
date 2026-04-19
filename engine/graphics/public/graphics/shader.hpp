@@ -317,9 +317,9 @@ struct shading_model_cs : public shader_cs
         float planet_radius;
         float atmosphere_radius;
         std::uint32_t transmittance_lut;
+        std::uint32_t indirect_diffuse;
         std::uint32_t padding0;
         std::uint32_t padding1;
-        std::uint32_t padding2;
     };
 
     static constexpr parameter_layout parameters = {

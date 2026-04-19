@@ -78,7 +78,7 @@ struct pbr_shading_model
         return (specular + diffuse) * NdotL * light.color * shadow;
     }
 
-    float3 evaluate_indirect_lighting()
+    float3 evaluate_indirect_lighting(float3 irradiance)
     {
         float3 R = reflect(-V, N);
         float3 f = f_schlick_roughness(NdotV, F0, roughness);
@@ -93,9 +93,6 @@ struct pbr_shading_model
         float2 brdf = brdf_lut.SampleLevel(linear_clamp_sampler, float2(NdotV, roughness), 0.0);
         float3 specular = F0 * brdf.x + brdf.y;
 
-        StructuredBuffer<sh9> irradiance_sh = ResourceDescriptorHeap[constant.common.irradiance_sh];
-        sh9 sh = irradiance_sh[0];
-        float3 irradiance = sh.evaluate(N);
         float3 diffuse = albedo * kd;
 
         float3 lighting = specular * prefilter + diffuse * irradiance;
