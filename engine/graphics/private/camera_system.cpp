@@ -9,18 +9,6 @@ namespace violet
 {
 namespace
 {
-std::uint32_t previous_pow2(std::uint32_t v)
-{
-    std::uint32_t r = 1;
-
-    while (r * 2 < v)
-    {
-        r *= 2;
-    }
-
-    return r;
-}
-
 shader::camera_data get_camera_data(
     const camera_component& camera,
     const transform_world_component& transform)
@@ -162,33 +150,6 @@ void camera_system::update(render_scene_manager& scene_manager)
                 {
                     camera_meta.parameter =
                         render_device::instance().create_parameter(shader::camera);
-                }
-
-                if (camera_meta.render_target_extent != camera.get_extent())
-                {
-                    camera_meta.render_target_extent = camera.get_extent();
-
-                    rhi_extent hzb_extent = {
-                        .width = previous_pow2(camera_meta.render_target_extent.width),
-                        .height = previous_pow2(camera_meta.render_target_extent.height),
-                    };
-
-                    if (camera_meta.hzb == nullptr || camera_meta.hzb->get_extent() != hzb_extent)
-                    {
-                        std::uint32_t max_size = std::max(hzb_extent.width, hzb_extent.height);
-                        std::uint32_t level_count =
-                            static_cast<std::uint32_t>(std::floor(std::log2(max_size))) + 1;
-
-                        camera_meta.hzb = render_device::instance().create_texture({
-                            .extent = hzb_extent,
-                            .format = RHI_FORMAT_R32_FLOAT,
-                            .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE,
-                            .level_count = level_count,
-                            .layer_count = 1,
-                            .samples = RHI_SAMPLE_COUNT_1,
-                            .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-                        });
-                    }
                 }
 
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);

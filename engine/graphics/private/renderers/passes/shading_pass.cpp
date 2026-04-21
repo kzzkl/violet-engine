@@ -276,6 +276,7 @@ void shading_pass::add_tile_shading_pass(
 
         rdg_texture_srv prefilter_map;
         rdg_buffer_srv irradiance_sh;
+        rdg_texture_srv indirect_diffuse;
 
         lighting_stage stage;
     };
@@ -337,6 +338,17 @@ void shading_pass::add_tile_shading_pass(
                         data.irradiance_sh = pass.add_buffer_srv(
                             parameter.irradiance_sh,
                             RHI_PIPELINE_STAGE_COMPUTE);
+
+                        if (parameter.indirect_diffuse != nullptr)
+                        {
+                            data.indirect_diffuse = pass.add_texture_srv(
+                                parameter.indirect_diffuse,
+                                RHI_PIPELINE_STAGE_COMPUTE);
+                        }
+                        else
+                        {
+                            data.indirect_diffuse.reset();
+                        }
                     }
 
                     if (context.get_background_type() == BACKGROUND_TYPE_ATMOSPHERE)
@@ -390,6 +402,8 @@ void shading_pass::add_tile_shading_pass(
                     {
                         constant.prefilter_map = data.prefilter_map.get_bindless();
                         constant.irradiance_sh = data.irradiance_sh.get_bindless();
+                        constant.indirect_diffuse =
+                            data.indirect_diffuse ? data.indirect_diffuse.get_bindless() : 0;
                     }
 
                     for (std::uint32_t gbuffer : shading_model->get_required_gbuffers())

@@ -308,20 +308,20 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
             geometry_data.texcoords.resize(geometry_data.positions.size());
         }
 
-        // Convert to left-handed coordinate system.
+        // Convert to left-handed coordinate system (negate Z).
         for (vec3f& position : geometry_data.positions)
         {
-            position.x = -position.x;
+            position.z = -position.z;
         }
 
         for (vec3f& normal : geometry_data.normals)
         {
-            normal.x = -normal.x;
+            normal.z = -normal.z;
         }
 
         for (vec4f& tangent : geometry_data.tangents)
         {
-            tangent.x = -tangent.x;
+            tangent.z = -tangent.z;
             tangent.w = -tangent.w;
         }
 
@@ -355,13 +355,13 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
         {
             scene_data.nodes[i].position.x = static_cast<float>(model.nodes[i].translation[0]);
             scene_data.nodes[i].position.y = static_cast<float>(model.nodes[i].translation[1]);
-            scene_data.nodes[i].position.z = static_cast<float>(model.nodes[i].translation[2]);
+            scene_data.nodes[i].position.z = -static_cast<float>(model.nodes[i].translation[2]);
         }
 
         if (!model.nodes[i].rotation.empty())
         {
-            scene_data.nodes[i].rotation.x = static_cast<float>(model.nodes[i].rotation[0]);
-            scene_data.nodes[i].rotation.y = static_cast<float>(model.nodes[i].rotation[1]);
+            scene_data.nodes[i].rotation.x = -static_cast<float>(model.nodes[i].rotation[0]);
+            scene_data.nodes[i].rotation.y = -static_cast<float>(model.nodes[i].rotation[1]);
             scene_data.nodes[i].rotation.z = static_cast<float>(model.nodes[i].rotation[2]);
             scene_data.nodes[i].rotation.w = static_cast<float>(model.nodes[i].rotation[3]);
         }

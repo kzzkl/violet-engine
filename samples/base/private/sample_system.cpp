@@ -341,7 +341,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 
     auto& light_transform = world.get_component<transform_component>(m_sky);
     light_transform.set_rotation(
-        quaternion::from_euler(vec3f{math::to_radians(145.0f), math::to_radians(45.0f), 0.0f}));
+        quaternion::from_euler(vec3f{math::to_radians(145.0f), math::to_radians(145.0f), 0.0f}));
 
     auto& main_light = world.get_component<light_component>(m_sky);
     main_light.type = LIGHT_DIRECTIONAL;
