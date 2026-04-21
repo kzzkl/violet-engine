@@ -377,6 +377,12 @@ private:
 
             if (enable_ssgi)
             {
+                ImGui::SliderInt(
+                    "Sample Count##SSGI",
+                    reinterpret_cast<int*>(&ssgi->sample_count),
+                    1,
+                    16);
+
                 ImGui::SliderFloat("Thickness##SSGI", &ssgi->thickness, 0.0f, 1.0f);
                 ImGui::SliderInt(
                     "Iteration Count##SSGI",
@@ -385,14 +391,6 @@ private:
                     128);
 
                 ImGui::Checkbox("Bilateral Denoise##SSGI", &ssgi->bilateral_denoise);
-                if (ssgi->bilateral_denoise)
-                {
-                    ImGui::SliderFloat(
-                        "Bilateral Blur Factor##SSGI",
-                        &ssgi->bilateral_blur_factor,
-                        0.0f,
-                        1.0f);
-                }
             }
         }
 

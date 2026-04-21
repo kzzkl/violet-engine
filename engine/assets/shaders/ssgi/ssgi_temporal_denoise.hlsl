@@ -68,7 +68,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint height;
     indirect_diffuse.GetDimensions(width, height);
 
-    if (dtid.x >= width || dtid.y >= height || !constant.history_valid)
+    if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
@@ -81,10 +81,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float4> history_buffer = ResourceDescriptorHeap[constant.history_buffer];
     Texture2D<float2> motion_vector = ResourceDescriptorHeap[constant.motion_vector];
 
-    float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, texcoord, 0.0).xy;
-
     float4 curr_color = current_buffer.SampleLevel(linear_clamp_sampler, texcoord, 0.0);
+    if (constant.history_valid == 0)
+    {
+        indirect_diffuse[dtid.xy] = curr_color;
+        return;
+    }
 
+    float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, texcoord, 0.0).xy;
     float2 history_texcoord = texcoord + velocity;
     if (any(history_texcoord < 0.0) || any(history_texcoord > 1.0))
     {
@@ -93,7 +97,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     }
 
     float3 prev_color = history_buffer.SampleLevel(linear_clamp_sampler, history_texcoord, 0.0).rgb;
-    prev_color = tonemap(prev_color);
 
     float3 aabb_min;
     float3 aabb_max;
@@ -102,7 +105,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     prev_color = clamp(prev_color, aabb_min, aabb_max);
 
     float3 blended_color = lerp(curr_color.rgb, prev_color, 0.95);
-    blended_color = tonemap_invert(blended_color);
 
     indirect_diffuse[dtid.xy] = float4(blended_color, curr_color.a);
 }

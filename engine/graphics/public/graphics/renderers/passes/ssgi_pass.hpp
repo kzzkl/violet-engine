@@ -26,7 +26,8 @@ public:
         bool history_valid;
 
         bool bilateral_denoise{true};
-        float bilateral_blur_factor{10.0f};
+
+        std::uint32_t sample_count;
 
         float thickness;
         std::uint32_t iteration_count;
@@ -42,7 +43,7 @@ public:
 private:
     void add_ssgi_pass(render_graph& graph, const parameter& parameter);
     void add_temporal_denoise_pass(render_graph& graph, const parameter& parameter);
-    void add_bilatral_denoise_pass(render_graph& graph, const parameter& parameter);
+    void add_bilateral_denoise_pass(render_graph& graph, const parameter& parameter);
     void add_debug_pass(render_graph& graph, const parameter& parameter);
 
     rdg_texture* m_ssgi_buffer;

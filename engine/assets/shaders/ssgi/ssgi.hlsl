@@ -65,6 +65,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float4> scene_color = ResourceDescriptorHeap[constant.scene_color];
     Texture2DArray<float4> stbn_cosine = ResourceDescriptorHeap[constant.stbn_cosine];
 
+    Texture2D<float2> motion_vector = ResourceDescriptorHeap[constant.motion_vector];
+
     StructuredBuffer<sh9> irradiance_sh = ResourceDescriptorHeap[constant.irradiance_sh];
     sh9 sh = irradiance_sh[0];
 
@@ -103,12 +105,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             constant.hzb_end_level,
             camera.near);
 
-        float3 sky = sh.evaluate(sample_direction);
-        float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.xy, 0.0).rgb;
-        float3 trace_color = lerp(sky, scene, hit.w);
+        float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, hit.xy, 0.0).xy;
 
-        trace_color *= rcp(1.0 + get_luminance(trace_color));
-        trace_color *= stbn.w;
+        float3 sky = sh.evaluate(sample_direction);
+        float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.xy + velocity, 0.0).rgb;
+        float3 trace_color = lerp(sky, scene, hit.w);
 
         color += trace_color;
     }

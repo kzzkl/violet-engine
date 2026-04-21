@@ -52,16 +52,16 @@ struct ssgi_temporal_denoise_cs : public shader_cs
     };
 };
 
-struct ssgi_bilatral_denoise_cs : public shader_cs
+struct ssgi_bilateral_denoise_cs : public shader_cs
 {
-    static constexpr std::string_view path = "assets/shaders/ssgi/ssgi_bilatral_denoise.hlsl";
+    static constexpr std::string_view path = "assets/shaders/ssgi/ssgi_bilateral_denoise.hlsl";
 
     struct constant_data
     {
         std::uint32_t src;
         std::uint32_t dst;
         vec2f texel_size;
-        float blur_factor;
+        std::uint32_t normal_buffer;
     };
 
     static constexpr parameter_layout parameters = {
@@ -84,7 +84,7 @@ void ssgi_pass::add(render_graph& graph, const parameter& parameter)
 
     if (parameter.bilateral_denoise)
     {
-        add_bilatral_denoise_pass(graph, parameter);
+        add_bilateral_denoise_pass(graph, parameter);
     }
 
     add_debug_pass(graph, parameter);
@@ -97,8 +97,10 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
         rdg_texture_srv scene_color;
         rdg_texture_srv normal_buffer;
         rdg_texture_srv hzb;
+        rdg_texture_srv motion_vector;
         rdg_buffer_srv irradiance_sh;
         rdg_texture_uav indirect_diffuse;
+        std::uint32_t sample_count;
         float thickness;
         std::uint32_t iteration_count;
         std::uint32_t frame;
@@ -114,10 +116,13 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
             data.normal_buffer =
                 pass.add_texture_srv(parameter.normal_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.hzb = pass.add_texture_srv(parameter.hzb, RHI_PIPELINE_STAGE_COMPUTE);
+            data.motion_vector =
+                pass.add_texture_srv(parameter.motion_vector, RHI_PIPELINE_STAGE_COMPUTE);
             data.irradiance_sh =
                 pass.add_buffer_srv(parameter.irradiance_sh, RHI_PIPELINE_STAGE_COMPUTE);
             data.indirect_diffuse = pass.add_texture_uav(m_ssgi_buffer, RHI_PIPELINE_STAGE_COMPUTE);
 
+            data.sample_count = parameter.sample_count;
             data.thickness = parameter.thickness;
             data.iteration_count = parameter.iteration_count;
             data.frame = parameter.frame;
@@ -153,11 +158,12 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
                     .hzb = data.hzb.get_bindless(),
                     .hzb_start_level = 1,
                     .hzb_end_level = static_cast<std::uint32_t>(data.hzb.get_level_count()) - 1,
+                    .motion_vector = data.motion_vector.get_bindless(),
                     .stbn_cosine_texel_size = stbn_cosine_texel_size,
                     .stbn_cosine =
                         stbn_cosine->get_srv(RHI_TEXTURE_DIMENSION_2D_ARRAY)->get_bindless(),
                     .stbn_cosine_slice = stbn_cosine_slice,
-                    .sample_count = 2,
+                    .sample_count = data.sample_count,
                     .irradiance_sh = data.irradiance_sh.get_bindless(),
                     .indirect_diffuse = data.indirect_diffuse.get_bindless(),
                     .thickness = data.thickness,
@@ -243,23 +249,24 @@ void ssgi_pass::add_temporal_denoise_pass(render_graph& graph, const parameter& 
     });
 }
 
-void ssgi_pass::add_bilatral_denoise_pass(render_graph& graph, const parameter& parameter)
+void ssgi_pass::add_bilateral_denoise_pass(render_graph& graph, const parameter& parameter)
 {
     struct pass_data
     {
         rdg_texture_srv src;
         rdg_texture_uav dst;
-        float blur_factor;
+        rdg_texture_srv normal_buffer;
     };
 
     graph.add_pass<pass_data>(
-        "SSGI Bilatral Denoise Pass: Horizontal",
+        "SSGI bilateral Denoise Pass: Horizontal",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
             data.src = pass.add_texture_srv(parameter.indirect_diffuse, RHI_PIPELINE_STAGE_COMPUTE);
             data.dst = pass.add_texture_uav(m_ssgi_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            data.blur_factor = parameter.bilateral_blur_factor;
+            data.normal_buffer =
+                pass.add_texture_srv(parameter.normal_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -268,13 +275,13 @@ void ssgi_pass::add_bilatral_denoise_pass(render_graph& graph, const parameter& 
             std::vector<std::wstring> defines = {L"-DBLUR_HORIZONTAL"};
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<ssgi_bilatral_denoise_cs>(defines),
+                .compute_shader = device.get_shader<ssgi_bilateral_denoise_cs>(defines),
             });
 
             rhi_extent extent = data.dst.get_extent();
 
             command.set_constant(
-                ssgi_bilatral_denoise_cs::constant_data{
+                ssgi_bilateral_denoise_cs::constant_data{
                     .src = data.src.get_bindless(),
                     .dst = data.dst.get_bindless(),
                     .texel_size =
@@ -282,7 +289,7 @@ void ssgi_pass::add_bilatral_denoise_pass(render_graph& graph, const parameter& 
                             1.0f / static_cast<float>(extent.width),
                             1.0f / static_cast<float>(extent.height),
                         },
-                    .blur_factor = data.blur_factor,
+                    .normal_buffer = data.normal_buffer.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -291,26 +298,27 @@ void ssgi_pass::add_bilatral_denoise_pass(render_graph& graph, const parameter& 
         });
 
     graph.add_pass<pass_data>(
-        "SSGI Bilatral Denoise Pass: Vertical",
+        "SSGI bilateral Denoise Pass: Vertical",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
             data.src = pass.add_texture_srv(m_ssgi_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.dst = pass.add_texture_uav(parameter.indirect_diffuse, RHI_PIPELINE_STAGE_COMPUTE);
-            data.blur_factor = parameter.bilateral_blur_factor;
+            data.normal_buffer =
+                pass.add_texture_srv(parameter.normal_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
             auto& device = render_device::instance();
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<ssgi_bilatral_denoise_cs>(),
+                .compute_shader = device.get_shader<ssgi_bilateral_denoise_cs>(),
             });
 
             rhi_extent extent = data.dst.get_extent();
 
             command.set_constant(
-                ssgi_bilatral_denoise_cs::constant_data{
+                ssgi_bilateral_denoise_cs::constant_data{
                     .src = data.src.get_bindless(),
                     .dst = data.dst.get_bindless(),
                     .texel_size =
@@ -318,7 +326,7 @@ void ssgi_pass::add_bilatral_denoise_pass(render_graph& graph, const parameter& 
                             1.0f / static_cast<float>(extent.width),
                             1.0f / static_cast<float>(extent.height),
                         },
-                    .blur_factor = data.blur_factor,
+                    .normal_buffer = data.normal_buffer.get_bindless(),
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);

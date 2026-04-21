@@ -30,13 +30,18 @@ float3 octahedron_to_normal(float2 oct)
     return normalize(N);
 }
 
-float3 unpack_gbuffer_normal(uint gbuffer_normal, uint2 coord)
+float3 unpack_gbuffer_normal(Texture2D<uint> gbuffer_normal, uint2 coord)
 {
-    Texture2D<uint> buffer = ResourceDescriptorHeap[gbuffer_normal];
-    uint pack = buffer[coord];
+    uint pack = gbuffer_normal[coord];
 
     float2 oct = float2(float(pack >> 20) / 4095.0, float((pack & 0x000FFF00) >> 8) / 4095.0);
     return octahedron_to_normal(oct);
+}
+
+float3 unpack_gbuffer_normal(uint gbuffer_normal, uint2 coord)
+{
+    Texture2D<uint> buffer = ResourceDescriptorHeap[gbuffer_normal];
+    return unpack_gbuffer_normal(buffer, coord);
 }
 
 struct gbuffer

@@ -574,7 +574,7 @@ void deferred_renderer::add_ssgi_pass(render_graph& graph)
         .history = history,
         .history_valid = ssgi->is_history_valid(),
         .bilateral_denoise = ssgi->bilateral_denoise,
-        .bilateral_blur_factor = ssgi->bilateral_blur_factor,
+        .sample_count = ssgi->sample_count,
         .thickness = ssgi->thickness,
         .iteration_count = ssgi->iteration_count,
         .frame = get_frame(),

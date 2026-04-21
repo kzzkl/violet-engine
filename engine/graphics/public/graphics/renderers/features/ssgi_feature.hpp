@@ -7,11 +7,12 @@ namespace violet
 class ssgi_feature : public render_feature<ssgi_feature>
 {
 public:
+    std::uint32_t sample_count{1};
+
     float thickness{0.1f};
     std::uint32_t iteration_count{128};
 
     bool bilateral_denoise{true};
-    float bilateral_blur_factor{0.25f};
 
     rhi_texture* get_history()
     {
