@@ -389,7 +389,7 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
             command.set_constant(constant);
 
             auto extent = data.aerial_perspective_lut.get_extent();
-            command.dispatch_2d(extent.width, extent.height);
+            command.dispatch_3d(extent.width, extent.height, extent.depth, 8, 8, 1);
         });
 }
 
