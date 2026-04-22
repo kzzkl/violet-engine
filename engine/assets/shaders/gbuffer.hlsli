@@ -95,4 +95,27 @@ struct gbuffer
     }
 };
 
+struct fs_output
+{
+    float4 albedo : SV_TARGET0;
+    float2 material : SV_TARGET1;
+    uint normal : SV_TARGET2;
+    float3 emissive : SV_TARGET3;
+
+    static fs_output create(gbuffer gbuffer)
+    {
+        fs_output result;
+
+        result.albedo = float4(gbuffer.albedo, 1.0);
+        result.material = float2(gbuffer.roughness, gbuffer.metallic);
+
+        float2 oct = normal_to_octahedron(gbuffer.normal);
+        result.normal = (uint(oct.x * 4095.0) << 20) | (uint(oct.y * 4095.0) << 8) | gbuffer.shading_model;
+
+        result.emissive = gbuffer.emissive;
+
+        return result;
+    }
+};
+
 #endif
