@@ -1069,6 +1069,13 @@ render_context::render_context(
         m_irradiance_sh = camera_data.irradiance_sh.get();
         m_prefilter_map = camera_data.prefilter_map.get();
     }
+
+    m_material_path_mask = 0;
+    m_scene->m_batches.each(
+        [&](render_id id, const render_scene::gpu_batch& batch)
+        {
+            m_material_path_mask |= 1 << batch.material_path;
+        });
 }
 
 render_id render_context::get_camera_id() const noexcept

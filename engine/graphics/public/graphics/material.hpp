@@ -283,7 +283,7 @@ private:
         std::uint32_t shading_model,
         std::uint32_t resolve_pipeline) noexcept override
     {
-        m_wrapper.material_info.x = (shading_model << 8) | resolve_pipeline;
+        m_wrapper.material_info.x = (resolve_pipeline << 8) | shading_model;
         return {&m_wrapper, sizeof(wrapper)};
     }
 

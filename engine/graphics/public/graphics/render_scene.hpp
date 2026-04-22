@@ -435,6 +435,11 @@ public:
         return m_scene->m_scene_states & RENDER_SCENE_STATE_SKY_DIRTY;
     }
 
+    bool has_material_path(material_path path) const noexcept
+    {
+        return m_material_path_mask & (1 << path);
+    }
+
     template <typename Functor>
     void each_batch(surface_type surface_type, material_path material_path, Functor&& functor) const
     {
@@ -493,5 +498,7 @@ private:
     const render_scene* m_scene;
     const camera_component* m_camera;
     const camera_component_meta* m_camera_meta;
+
+    std::uint32_t m_material_path_mask{0};
 };
 } // namespace violet

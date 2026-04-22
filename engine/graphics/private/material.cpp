@@ -96,6 +96,18 @@ void material::update()
             defines.emplace_back(L"-DVIOLET_OPACITY_CUTOFF");
         }
 
+        switch (get_material_path())
+        {
+        case MATERIAL_PATH_FORWARD:
+            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH_FORWARD");
+            break;
+        case MATERIAL_PATH_DEFERRED:
+            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH_DEFERRED");
+            break;
+        default:
+            break;
+        }
+
         m_raster_pipeline.vertex_shader = get_vertex_shader(defines);
         m_raster_pipeline.geometry_shader = get_geometry_shader(defines);
         m_raster_pipeline.fragment_shader = get_fragment_shader(defines);
