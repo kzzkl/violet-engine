@@ -17,7 +17,19 @@ PushConstant(constant_data, constant);
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-void mark_directional_vsm_page(float3 position_ws, light_data light, uint vsm_id, uint2 coord)
+groupshared uint gs_virtual_page_indices[64];
+
+void mark_requested_page(uint virtual_page_index, uint group_index)
+{
+    gs_virtual_page_indices[group_index] = virtual_page_index;
+    GroupMemoryBarrierWithGroupSync();
+    
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+
+    InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_REQUEST);
+}
+
+uint get_directional_vsm_page_index(float3 position_ws, light_data light, uint vsm_id, uint2 coord)
 {
     uint cascade = get_directional_cascade(length(position_ws - camera.position));
 
@@ -29,13 +41,11 @@ void mark_directional_vsm_page(float3 position_ws, light_data light, uint vsm_id
 
     uint2 virtual_page_coord = floor((position_ls.xy * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE);
 
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
-    uint virtual_page_index = get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
-    InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_REQUEST);
+    return get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
 }
 
 [numthreads(8, 8, 1)]
-void cs_main(uint3 dtid : SV_DispatchThreadID)
+void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
     Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
 
@@ -43,15 +53,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint height;
     depth_buffer.GetDimensions(width, height);
 
-    if (dtid.x >= width || dtid.y >= height)
-    {
-        return;
-    }
+    bool valid = dtid.x < width && dtid.y < height;
 
     float depth = depth_buffer[dtid.xy];
     if (depth == 0.0)
     {
-        return;
+        valid = false;
     }
 
     StructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
@@ -59,6 +66,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
     float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
@@ -71,10 +80,37 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         light_data light = lights[light_id];
 
-        if (light.type == LIGHT_DIRECTIONAL)
+        uint virtual_page_index = 0xFFFFFFFF;
+
+        if (valid)
         {
-            uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
-            mark_directional_vsm_page(position_ws.xyz, light, vsm_id, dtid.xy);
+            if (light.type == LIGHT_DIRECTIONAL)
+            {
+                uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
+                virtual_page_index = get_directional_vsm_page_index(position_ws.xyz, light, vsm_id, dtid.xy);
+            }
+        }
+
+        gs_virtual_page_indices[group_index] = virtual_page_index;
+
+        GroupMemoryBarrierWithGroupSync();
+
+        if (valid)
+        {
+            bool is_first_thread = true;
+            for (int j = group_index - 1; j >= 0; --j)
+            {
+                if (gs_virtual_page_indices[j] == virtual_page_index)
+                {
+                    is_first_thread = false;
+                    break;
+                }
+            }
+
+            if (is_first_thread)
+            {
+                InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_REQUEST);
+            }
         }
     }
 }
