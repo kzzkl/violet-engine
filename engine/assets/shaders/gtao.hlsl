@@ -28,6 +28,7 @@ float2 spatio_temporal_noise(uint2 coord)
     return float2(frac(0.5 + index * float2(0.75487766624669276005, 0.5698402909980532659114)));
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

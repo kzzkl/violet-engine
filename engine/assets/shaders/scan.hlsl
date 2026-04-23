@@ -12,6 +12,7 @@ PushConstant(constant_data, constant);
 
 groupshared uint gs_data[GROUP_SIZE];
 
+[shader("compute")]
 [numthreads(GROUP_SIZE, 1, 1)]
 void scan(uint gi : SV_GroupIndex, uint3 gid : SV_GroupID)
 {
@@ -53,6 +54,7 @@ void scan(uint gi : SV_GroupIndex, uint3 gid : SV_GroupID)
 
 groupshared uint gs_offset;
 
+[shader("compute")]
 [numthreads(GROUP_SIZE, 1, 1)]
 void scan_offset(uint gi : SV_GroupIndex, uint3 gid : SV_GroupID)
 {

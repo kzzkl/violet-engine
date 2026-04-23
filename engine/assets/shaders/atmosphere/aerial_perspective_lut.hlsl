@@ -25,6 +25,7 @@ PushConstant(constant_data, constant);
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
@@ -46,7 +47,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
     float3 eye = camera.position + float3(0.0, atmosphere.planet_radius, 0.0);
-    eye.y = max(eye.y, atmosphere.planet_radius + 1.0);
+    eye.y = max(eye.y, atmosphere.planet_radius + 100.0);
 
     float2 uv = get_compute_texcoord(dtid.xy, width, height);
     float3 view = normalize(lerp(
@@ -78,42 +79,41 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];
 #endif
 
-    for (uint slice_id = 0; slice_id < depth; ++slice_id)
-    {
-        float slice = (float(slice_id) + 0.5) / depth;
-        slice *= slice;
-        slice *= depth;
+    uint slice_id = dtid.z;
 
-        float slice_end = min(distance, slice * constant.distance_per_slice);
-        if (slice_end <= 0.0)
-        {
-            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = 0.0;
-        }
-        else
-        {
-            float4 result = integrate_atmosphere(
-                atmosphere,
-                eye,
-                view,
-                constant.sun_direction,
-                slice_end,
-                constant.sample_count,
-                transmittance_lut
+    float slice = (float(slice_id) + 0.5) / depth;
+    slice *= slice;
+    slice *= depth;
+
+    float slice_end = min(distance, slice * constant.distance_per_slice);
+    if (slice_end <= 0.0)
+    {
+        aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = 0.0;
+    }
+    else
+    {
+        float4 result = integrate_atmosphere(
+            atmosphere,
+            eye,
+            view,
+            constant.sun_direction,
+            slice_end,
+            constant.sample_count,
+            transmittance_lut
 #ifdef USE_MULTI_SCATTERING
-                ,
-                multi_scattering_lut
+            ,
+            multi_scattering_lut
 #endif
 #ifdef USE_SHADOW
-                ,
-                constant.vsm_id,
-                vsms,
-                virtual_page_table,
-                physical_shadow_map
+            ,
+            constant.vsm_id,
+            vsms,
+            virtual_page_table,
+            physical_shadow_map
 #endif
-            );
+        );
 
-            result.xyz *= constant.sun_irradiance;
-            aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = result;
-        }
+        result.xyz *= constant.sun_irradiance;
+        aerial_perspective_lut[uint3(dtid.x, dtid.y, slice_id)] = result;
     }
 }

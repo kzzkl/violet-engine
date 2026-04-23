@@ -51,6 +51,7 @@ struct debug_data
     uint padding;
 };
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_info(uint3 dtid : SV_DispatchThreadID)
 {
@@ -120,6 +121,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     }
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_page(uint3 dtid : SV_DispatchThreadID)
 {
@@ -173,6 +175,7 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
     }
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
 {

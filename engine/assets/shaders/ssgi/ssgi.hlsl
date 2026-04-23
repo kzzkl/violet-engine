@@ -34,6 +34,7 @@ void build_basis(float3 N, out float3 T, out float3 B)
     B = float3(b, sign + N.y * N.y * a, -N.y);
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

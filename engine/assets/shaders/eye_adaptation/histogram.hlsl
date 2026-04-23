@@ -17,6 +17,7 @@ float get_histogram_bin_from_luminance(float luminance, float2 scale_offset)
     return saturate(log2(luminance) * scale_offset.x + scale_offset.y);
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID)
 {

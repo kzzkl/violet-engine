@@ -17,6 +17,7 @@ PushConstant(constant_data, constant);
 #define CULL_RECHECK 0
 #endif
 
+[shader("compute")]
 [numthreads(1, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

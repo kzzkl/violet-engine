@@ -7,6 +7,7 @@ struct constant_data
 };
 PushConstant(constant_data, constants);
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

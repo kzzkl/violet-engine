@@ -11,6 +11,7 @@ PushConstant(constant_data, constant);
 static const float weights[3] = {0.22702702, 0.31621621, 0.07027027};
 static const float offsets[3] = {0.0, 1.38461538, 3.23076923};
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void blur_horizontal(uint3 dtid : SV_DispatchThreadID)
 {
@@ -40,6 +41,7 @@ void blur_horizontal(uint3 dtid : SV_DispatchThreadID)
     dst[dtid.xy] = color;
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void blur_vertical(uint3 dtid : SV_DispatchThreadID)
 {

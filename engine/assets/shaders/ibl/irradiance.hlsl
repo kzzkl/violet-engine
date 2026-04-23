@@ -126,6 +126,7 @@ void reduce(uint thread_id, uint group_index, uint index)
     GroupMemoryBarrierWithGroupSync();
 }
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 gid : SV_GroupID)
 {

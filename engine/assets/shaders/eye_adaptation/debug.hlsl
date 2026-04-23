@@ -10,6 +10,7 @@ PushConstant(constant_data, constant);
 
 static const uint HISTOGRAM_BIN_COUNT = 64;
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

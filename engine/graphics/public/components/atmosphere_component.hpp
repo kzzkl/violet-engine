@@ -22,6 +22,7 @@ struct atmosphere_component
     float atmosphere_height{100000.0f};
 
     float sun_angular_radius{0.00465f};
+    vec3f ground_color{0.1f, 0.1f, 0.1f};
 
     std::uint32_t update_delay{10};
 };

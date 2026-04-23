@@ -28,6 +28,7 @@ float reduce_depth(float a, float b, float c, float d)
 #endif
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void hzb_reduce(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID)
 {
@@ -124,6 +125,7 @@ void hzb_reduce(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 
     }
 }
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void hzb_copy(uint3 dtid : SV_DispatchThreadID)
 {

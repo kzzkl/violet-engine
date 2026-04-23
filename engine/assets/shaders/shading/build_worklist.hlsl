@@ -16,6 +16,7 @@ groupshared uint gs_shading_model_flags[MAX_SHADING_MODEL_BATCH_COUNT];
 groupshared uint gs_shading_model_list[SHADING_TILE_SIZE * SHADING_TILE_SIZE];
 groupshared uint gs_shading_model_count;
 
+[shader("compute")]
 [numthreads(SHADING_TILE_SIZE, SHADING_TILE_SIZE, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {

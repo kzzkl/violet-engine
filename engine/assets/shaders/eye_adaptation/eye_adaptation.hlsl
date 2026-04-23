@@ -23,6 +23,7 @@ float get_luminance_from_histogram_bin(uint bin, float2 scale_offset)
     return exp2(log_luminance);
 }
 
+[shader("compute")]
 [numthreads(1, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

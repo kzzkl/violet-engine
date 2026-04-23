@@ -14,6 +14,7 @@ PushConstant(constant_data, constant);
 
 static const uint VSM_LRU_INVALID_MASK = 1 << 31;
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void mark_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 {
@@ -50,6 +51,7 @@ void mark_invalid_pages(uint3 dtid : SV_DispatchThreadID)
     }
 }
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void remove_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 {
@@ -82,6 +84,7 @@ void remove_invalid_pages(uint3 dtid : SV_DispatchThreadID)
     }
 }
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void append_unused_pages(uint3 dtid : SV_DispatchThreadID)
 {

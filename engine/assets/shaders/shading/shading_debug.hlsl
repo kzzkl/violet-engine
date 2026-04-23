@@ -7,6 +7,7 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_shadow_mask(uint3 dtid : SV_DispatchThreadID)
 {

@@ -24,6 +24,7 @@ groupshared uint gs_recheck_masks[2];
 #define CULL_MAIN_PASS 0
 #endif
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

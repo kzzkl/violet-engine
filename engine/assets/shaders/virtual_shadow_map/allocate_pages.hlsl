@@ -21,6 +21,7 @@ groupshared uint gs_allocate_page_count;
 groupshared uint gs_allocate_page_index[64];
 groupshared uint gs_clear_physical_page_list_offset;
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

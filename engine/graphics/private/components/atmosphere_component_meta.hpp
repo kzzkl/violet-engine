@@ -45,6 +45,7 @@ struct atmosphere_component_meta
         }
 
         atmosphere.sun_angular_radius = atmosphere_component.sun_angular_radius;
+        atmosphere.ground_color = atmosphere_component.ground_color;
 
         return dirty;
     }

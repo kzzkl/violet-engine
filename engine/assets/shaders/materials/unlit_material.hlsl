@@ -43,6 +43,8 @@ struct vs_output
     float4 position_cs : SV_POSITION;
     float3 normal_ws : NORMAL;
     uint material_address : MATERIAL_ADDRESS;
+
+    uint shading_model : SHADING_MODEL;
 };
 
 vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
@@ -58,21 +60,24 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     output.normal_ws = vertex.normal_ws;
     output.material_address = mesh.get_material_address();
 
+    material_info material_info = load_material_info(scene.material_buffer, output.material_address);
+    output.shading_model = material_info.shading_model;
+
     return output;
 }
 
 fs_output fs_main(vs_output input)
 {
-    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
     unlit_material material = load_material<unlit_material>(scene.material_buffer, input.material_address);
     gbuffer gbuffer = material.resolve(input.normal_ws);
-    gbuffer.shading_model = material_info.shading_model;
+    gbuffer.shading_model = input.shading_model;
 
     return fs_output::create(gbuffer);
 }
 #else
 #include "visibility/material_resolve.hlsli"
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
