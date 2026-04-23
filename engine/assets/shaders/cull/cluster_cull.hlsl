@@ -348,6 +348,7 @@ void cluster_cull(uint3 dtid, uint group_index)
     }
 }
 
+[shader("compute")]
 [numthreads(CLUSTER_CULL_GROUP_SIZE, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

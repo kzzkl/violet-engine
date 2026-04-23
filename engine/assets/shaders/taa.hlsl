@@ -98,6 +98,7 @@ float3 clip_color(float3 history_color, uint2 st)
     return clip_color;
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

@@ -44,6 +44,7 @@ uint get_directional_vsm_page_index(float3 position_ws, light_data light, uint v
     return get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

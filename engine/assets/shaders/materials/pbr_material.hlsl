@@ -149,6 +149,7 @@ fs_output fs_main(vs_output input)
 #else
 #include "visibility/material_resolve.hlsli"
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {

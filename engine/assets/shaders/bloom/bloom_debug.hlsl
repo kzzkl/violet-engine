@@ -8,6 +8,7 @@ struct constant_data
 };
 PushConstant(constant_data, constant);
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_prefilter(uint3 dtid : SV_DispatchThreadID)
 {
@@ -28,6 +29,7 @@ void debug_prefilter(uint3 dtid : SV_DispatchThreadID)
     debug_output[dtid.xy] = float4(prefilter.SampleLevel(get_linear_repeat_sampler(), texcoord, 0), 1.0);
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void debug_bloom(uint3 dtid : SV_DispatchThreadID)
 {

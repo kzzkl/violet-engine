@@ -36,6 +36,7 @@ static const float3 right_dir[6] = {
     float3(-1.0, 0.0, 0.0),
 };
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

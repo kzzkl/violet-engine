@@ -59,6 +59,7 @@ void clip_aabb(
     aabb_max = max(aabb_max, color);
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

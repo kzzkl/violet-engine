@@ -13,6 +13,7 @@ PushConstant(constant_data, constant);
 
 static const float NOISE_GRANULARITY = 0.5 / 255.0;
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

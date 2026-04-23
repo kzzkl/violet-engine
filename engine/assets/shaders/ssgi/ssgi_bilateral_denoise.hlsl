@@ -78,6 +78,7 @@ void bilateral_blur(
     }
 }
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

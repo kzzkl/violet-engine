@@ -23,6 +23,7 @@ PushConstant(constant_data, constant);
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 
+[shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

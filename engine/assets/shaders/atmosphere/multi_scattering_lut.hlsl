@@ -109,6 +109,7 @@ float3 integrate_multi_scattering(
     return g2 / (1.0 - fms);
 }
 
+[shader("compute")]
 [numthreads(16, 16, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {

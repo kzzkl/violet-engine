@@ -16,6 +16,7 @@ groupshared uint gs_visible_virtual_page[64];
 groupshared uint gs_visible_virtual_page_count;
 groupshared uint gs_visible_virtual_page_offset;
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {

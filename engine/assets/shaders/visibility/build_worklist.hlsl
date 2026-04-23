@@ -22,6 +22,7 @@ groupshared uint gs_material_list[TILE_SIZE * TILE_SIZE];
 groupshared uint gs_material_count;
 groupshared uint gs_worklist_offset;
 
+[shader("compute")]
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {

@@ -32,6 +32,7 @@ struct unlit_shading_model
     }
 };
 
+[shader("compute")]
 [numthreads(SHADING_TILE_SIZE, SHADING_TILE_SIZE, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {

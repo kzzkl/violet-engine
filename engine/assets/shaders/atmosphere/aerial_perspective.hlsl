@@ -11,6 +11,7 @@ PushConstant(constant_data, constant);
 
 ConstantBuffer<camera_data> camera : register(b0, space1);
 
+[shader("compute")]
 [numthreads(8, 8, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
