@@ -19,16 +19,6 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 
 groupshared uint gs_virtual_page_indices[64];
 
-void mark_requested_page(uint virtual_page_index, uint group_index)
-{
-    gs_virtual_page_indices[group_index] = virtual_page_index;
-    GroupMemoryBarrierWithGroupSync();
-    
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
-
-    InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_REQUEST);
-}
-
 uint get_directional_vsm_page_index(float3 position_ws, light_data light, uint vsm_id, uint2 coord)
 {
     uint cascade = get_directional_cascade(length(position_ws - camera.position));

@@ -22,6 +22,7 @@ struct atmosphere
     float atmosphere_height;
 
     float sun_angular_radius;
+    vec3f ground_color;
 };
 
 struct atmosphere_data

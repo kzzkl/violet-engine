@@ -47,7 +47,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
     float3 eye = camera.position + float3(0.0, atmosphere.planet_radius, 0.0);
-    eye.y = max(eye.y, atmosphere.planet_radius + 1.0);
+    eye.y = max(eye.y, atmosphere.planet_radius + 100.0);
 
     float2 uv = get_compute_texcoord(dtid.xy, width, height);
     float3 view = normalize(lerp(

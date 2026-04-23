@@ -1,3 +1,4 @@
+#include "components/atmosphere_component.hpp"
 #include "components/camera_component.hpp"
 #include "components/first_person_control_component.hpp"
 #include "components/light_component.hpp"
@@ -109,6 +110,13 @@ private:
     void tick() override
     {
         auto& world = get_world();
+
+        ImGui::Begin("Hello World");
+
+        static float smoothed_fps = 0.0f;
+        smoothed_fps = std::lerp(smoothed_fps, 1.0f / ImGui::GetIO().DeltaTime, 0.05f);
+
+        ImGui::Text("FPS: %.1f", smoothed_fps);
 
         if (ImGui::CollapsingHeader("Transform"))
         {
@@ -250,14 +258,16 @@ private:
                 transform.set_rotation(quaternion::from_euler(euler));
             }
 
-            auto& main_camera = world.get_component<camera_component>(get_camera());
-            auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
-
-            static bool use_multi_scattering = atmosphere->get_use_multi_scattering();
+            static bool use_multi_scattering = true;
             if (ImGui::Checkbox("Multi Scattering", &use_multi_scattering))
             {
+                auto& main_camera = world.get_component<camera_component>(get_camera());
+                auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
                 atmosphere->set_use_multi_scattering(use_multi_scattering);
             }
+
+            auto& atmosphere = world.get_component<atmosphere_component>(get_sky());
+            ImGui::ColorEdit3("Ground Color", &atmosphere.ground_color.x);
         }
 
         if (ImGui::CollapsingHeader("Shadow"))
@@ -521,6 +531,8 @@ private:
                     debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
             }
         }
+
+        ImGui::End();
     }
 
     entity m_root;

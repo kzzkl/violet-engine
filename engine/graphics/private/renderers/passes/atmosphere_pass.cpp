@@ -49,6 +49,7 @@ struct sky_view_lut_cs : public shader_cs
         std::uint32_t sky_view_lut;
         vec3f sun_irradiance;
         std::uint32_t sample_count;
+        vec3f ground_color;
         std::uint32_t transmittance_lut;
         std::uint32_t multi_scattering_lut;
     };
@@ -204,6 +205,7 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
         atmosphere_data atmosphere;
         vec3f sun_direction;
         vec3f sun_irradiance;
+        vec3f ground_color;
 
         rhi_texture_srv* transmittance_lut;
         rhi_texture_srv* multi_scattering_lut;
@@ -221,6 +223,7 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
             data.atmosphere = context.get_atmosphere();
             data.sun_direction = context.get_sun_direction();
             data.sun_irradiance = context.get_sun_irradiance();
+            data.ground_color = context.get_atmosphere().ground_color;
             data.transmittance_lut = context.get_transmittance_lut()->get_srv();
             data.multi_scattering_lut = parameter.use_multi_scattering ?
                                             context.get_multi_scattering_lut()->get_srv() :
@@ -238,6 +241,7 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
                 .sky_view_lut = data.sky_view_lut.get_bindless(),
                 .sun_irradiance = data.sun_irradiance,
                 .sample_count = 40,
+                .ground_color = data.ground_color,
                 .transmittance_lut = data.transmittance_lut->get_bindless(),
             };
 

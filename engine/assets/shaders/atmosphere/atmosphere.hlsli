@@ -200,6 +200,41 @@ float get_shadow(float3 camera, float3 position, uint vsm_id, StructuredBuffer<v
     return valid ? (shadow_depth > position_ls.z ? 0.0 : 1.0) : 1.0;
 }
 
+float3 get_atmosphere_extinction(atmosphere_data atmosphere, float h)
+{
+    float3 extinction = atmosphere.get_rayleigh_scattering(h);
+    extinction += atmosphere.get_mie_scattering(h) + atmosphere.get_mie_absorption(h);
+    extinction += atmosphere.get_ozone_absorption(h);
+    return extinction;
+}
+
+float3 integrate_transmittance(
+    atmosphere_data atmosphere,
+    float3 eye,
+    float3 view,
+    float distance,
+    uint sample_count)
+{
+    if (distance <= 0.0 || sample_count == 0)
+    {
+        return 1.0;
+    }
+
+    float dt = distance / sample_count;
+
+    float3 p = eye + view * dt * 0.5;
+    float3 optical_depth = 0.0;
+    for (uint i = 0; i < sample_count; ++i)
+    {
+        float h = length(p) - atmosphere.planet_radius;
+        optical_depth += get_atmosphere_extinction(atmosphere, h) * dt;
+
+        p += view * dt;
+    }
+
+    return exp(-optical_depth);
+}
+
 float4 integrate_atmosphere(
     atmosphere_data atmosphere,
     float3 eye,
@@ -243,10 +278,7 @@ float4 integrate_atmosphere(
         float3 rayleigh_scattering = atmosphere.get_rayleigh_scattering(h);
         float mie_scattering = atmosphere.get_mie_scattering(h);
 
-        float3 extinction = 0.0;
-        extinction += rayleigh_scattering;
-        extinction += mie_scattering + atmosphere.get_mie_absorption(h);
-        extinction += atmosphere.get_ozone_absorption(h);
+        float3 extinction = get_atmosphere_extinction(atmosphere, h);
         optical_depth += extinction * dt;
 
         float3 t1 = exp(-optical_depth);

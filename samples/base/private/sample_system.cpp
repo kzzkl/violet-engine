@@ -268,18 +268,8 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
 
 void sample_system::imgui_profiling(rdg_profiling* profiling)
 {
-    static float smoothed_fps = 0.0f;
-
-    float delta_time = ImGui::GetIO().DeltaTime;
-    float current_fps = 1.0f / delta_time;
-
-    const float smoothing = 0.1f;
-    smoothed_fps = smoothed_fps * (1.0f - smoothing) + current_fps * smoothing;
-
     if (ImGui::Begin("GPU Profiler"))
     {
-        ImGui::Text("FPS: %.1f", smoothed_fps);
-
         if (ImGui::BeginTable(
                 "ProfilerTable",
                 3,
