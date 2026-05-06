@@ -40,9 +40,11 @@ struct vsm_data
     uint padding1;
 };
 
-static const uint VIRTUAL_PAGE_FLAG_REQUEST = 1 << 0;
-static const uint VIRTUAL_PAGE_FLAG_CACHE_VALID = 1 << 1;
-static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 2;
+static const uint VIRTUAL_PAGE_FLAG_VISIBLE = 1 << 0;
+static const uint VIRTUAL_PAGE_FLAG_RESIDENT = 1 << 1;
+static const uint VIRTUAL_PAGE_FLAG_RENDERING = 1 << 2;
+static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 3;
+static const uint VIRTUAL_PAGE_FLAG_VALID = VIRTUAL_PAGE_FLAG_RESIDENT | VIRTUAL_PAGE_FLAG_RENDERING;
 
 struct vsm_info
 {
@@ -60,6 +62,7 @@ struct vsm_bounds
 struct vsm_virtual_page
 {
     uint2 physical_page_coord;
+    uint fallback_level;
     uint flags;
 
     static vsm_virtual_page unpack(uint packed_data)
@@ -67,7 +70,8 @@ struct vsm_virtual_page
         vsm_virtual_page virtual_page;
         virtual_page.physical_page_coord.x = (packed_data & 0xFF000000) >> 24;
         virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
-        virtual_page.flags = packed_data & 0x0000FFFF;
+        virtual_page.fallback_level = (packed_data & 0x0000F000) >> 12;
+        virtual_page.flags = packed_data & 0x00000FFF;
         return virtual_page;
     }
 
@@ -76,6 +80,7 @@ struct vsm_virtual_page
         uint packed_data = 0;
         packed_data |= (physical_page_coord.x << 24);
         packed_data |= (physical_page_coord.y << 16);
+        packed_data |= (fallback_level << 12);
         packed_data |= flags;
         return packed_data;
     }
@@ -83,6 +88,11 @@ struct vsm_virtual_page
     uint2 get_physical_texel(float2 virtual_page_local_uv)
     {
         return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_local_uv * PAGE_RESOLUTION);
+    }
+
+    bool valid()
+    {
+        return flags & VIRTUAL_PAGE_FLAG_VALID;
     }
 };
 
@@ -167,7 +177,14 @@ uint get_lru_offset(uint lru_index)
     return lru_index * PHYSICAL_PAGE_TABLE_PAGE_COUNT;
 }
 
-bool sample_shadow_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table, out float depth)
+struct vsm_sample_result
+{
+    bool valid;
+    float depth;
+    uint fallback_level;
+};
+
+vsm_sample_result vsm_sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
 {
     float2 virtual_page_coord_f = uv * VIRTUAL_PAGE_TABLE_SIZE;
     uint2 virtual_page_coord = floor(virtual_page_coord_f);
@@ -177,12 +194,14 @@ bool sample_shadow_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow
 
     vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-    bool valid = virtual_page.flags & (VIRTUAL_PAGE_FLAG_CACHE_VALID | VIRTUAL_PAGE_FLAG_REQUEST);
-
     uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
-    depth = asfloat(physical_shadow_map[physical_texel]);
 
-    return valid;
+    vsm_sample_result result;
+    result.valid = virtual_page.valid();
+    result.depth = asfloat(physical_shadow_map[physical_texel]);
+    result.fallback_level = virtual_page.fallback_level;
+
+    return result;
 }
 
 #endif

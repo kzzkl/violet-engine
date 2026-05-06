@@ -291,14 +291,14 @@ private:
                 shadow->sample_mode = static_cast<shadow_sample_mode>(sample_mode);
             }
 
-            ImGui::SliderFloat("Sample Radius", &shadow->sample_radius, 0.0f, 10.0f);
+            ImGui::SliderFloat("Sample Radius", &shadow->sample_radius, 0.0f, 1.0f);
             ImGui::SliderFloat(
                 "Slope Scale Depth Bias",
                 &shadow->slope_scale_depth_bias,
                 0.0f,
                 2.0f);
             ImGui::SliderFloat("Normal Bias", &shadow->normal_bias, 0.0f, 2.0f);
-            ImGui::SliderFloat("Constant Bias", &shadow->constant_bias, 0.0f, 2.0f);
+            ImGui::SliderFloat("Constant Bias", &shadow->constant_bias, 0.0f, 1.0f);
         }
 
         if (ImGui::CollapsingHeader("Dithering"))
@@ -523,12 +523,12 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text(
-                    "Static Drawcall: %d",
-                    debug_info.static_drawcall + debug_info.static_opacity_cutoff_drawcall);
-                ImGui::Text(
-                    "Dynamic Drawcall: %d",
-                    debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
+                // ImGui::Text(
+                //     "Static Drawcall: %d",
+                //     debug_info.static_drawcall + debug_info.static_opacity_cutoff_drawcall);
+                // ImGui::Text(
+                //     "Dynamic Drawcall: %d",
+                //     debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
             }
         }
 

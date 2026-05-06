@@ -49,12 +49,12 @@ bool vsm_cull(
         {
             vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[row_base + x]);
 
-            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
+            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
             {
                 continue;
             }
 
-            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) != 0)
+            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT) != 0)
             {
                 continue;
             }
@@ -103,20 +103,21 @@ bool vsm_cull(
     return false;
 }
 
-void get_draw_offset(uint4 draw_offset, bool static_mesh, bool opacity_cutoff, out uint command_offset, out uint count_offset)
+void get_shadow_draw_offset(bool is_static, uint shadow_batch, out uint command_offset, out uint count_offset)
 {
-    static const uint command_offsets[2][2] = {
-        {draw_offset.z, draw_offset.w},
-        {draw_offset.x, draw_offset.y},
-    };
+    static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
+    static const uint SHADOW_BATCH_COUNT = 6;
 
-    static const uint count_offsets[2][2] = {
-        {2, 3},
-        {0, 1},
-    };
+    static const uint STATIC_DRAW_COMMAND_OFFSET = 0;
+    static const uint STATIC_DRAW_COUNT_OFFSET = 0;
 
-    command_offset = command_offsets[static_mesh][opacity_cutoff];
-    count_offset = count_offsets[static_mesh][opacity_cutoff];
+    static const uint DYNAMIC_DRAW_COMMAND_OFFSET = MAX_SHADOW_DRAWS_PER_BATCH * SHADOW_BATCH_COUNT;
+    static const uint DYNAMIC_DRAW_COUNT_OFFSET = SHADOW_BATCH_COUNT;
+
+    command_offset = is_static ? STATIC_DRAW_COMMAND_OFFSET : DYNAMIC_DRAW_COMMAND_OFFSET;
+    command_offset += shadow_batch * MAX_SHADOW_DRAWS_PER_BATCH;
+    count_offset = is_static ? STATIC_DRAW_COUNT_OFFSET : DYNAMIC_DRAW_COUNT_OFFSET;
+    count_offset += shadow_batch;
 }
 
 #endif

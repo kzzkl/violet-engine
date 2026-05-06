@@ -76,6 +76,13 @@ public:
     }
 
 private:
+    enum batch_flag
+    {
+        BATCH_FLAG_NONE = 0,
+        BATCH_FLAG_OPACITY_CUTOFF = 1 << 0,
+    };
+    using batch_flags = std::uint32_t;
+
     struct gpu_batch
     {
         using gpu_type = std::uint32_t;
@@ -84,11 +91,10 @@ private:
         material_path material_path;
 
         rdg_raster_pipeline pipeline;
+        batch_flags flags{BATCH_FLAG_NONE};
 
         std::uint32_t draw_call_offset;
         std::uint32_t draw_call_count;
-
-        bool opacity_cutoff;
     };
 
     struct gpu_mesh
@@ -113,6 +119,17 @@ private:
 
         render_id mesh_id;
         render_id batch_id;
+
+        std::uint32_t get_draw_call_count() const
+        {
+            if (geometry == nullptr)
+            {
+                return 0;
+            }
+
+            const auto& submesh = geometry->get_submesh(submesh_index);
+            return submesh.has_cluster() ? static_cast<std::uint32_t>(submesh.clusters.size()) : 1;
+        }
     };
 
     struct gpu_light
@@ -135,10 +152,12 @@ private:
         surface_type surface_type;
         material_path material_path;
 
+        batch_flags flags;
+
         bool operator==(const batch_key& other) const noexcept
         {
             return pipeline == other.pipeline && surface_type == other.surface_type &&
-                   material_path == other.material_path;
+                   material_path == other.material_path && flags == other.flags;
         }
     };
 
@@ -151,8 +170,9 @@ private:
             std::uint64_t hash0 = hash::xx_hash(&desc, sizeof(rhi_raster_pipeline_desc));
             std::uint64_t hash1 = hash::xx_hash(&key.surface_type, sizeof(surface_type));
             std::uint64_t hash2 = hash::xx_hash(&key.material_path, sizeof(material_path));
+            std::uint64_t hash3 = hash::xx_hash(&key.flags, sizeof(batch_flags));
 
-            return hash::combine(hash::combine(hash0, hash1), hash2);
+            return hash::combine(hash::combine(hash::combine(hash0, hash1), hash2), hash3);
         }
     };
 
@@ -160,6 +180,8 @@ private:
     {
         std::uint32_t resolve_pipeline;
         std::uint32_t shading_model;
+
+        shadow_cull_mode shadow_cull_mode;
 
         std::vector<render_id> instances;
     };
@@ -266,9 +288,14 @@ private:
     std::unordered_map<render_id, vsm_data> m_vsms;
     gpu_dense_array<gpu_vsm_invalidation> m_vsm_invalidations;
 
-    std::uint32_t m_draw_call_capacity{1};
-    std::uint32_t m_draw_call_count{0};
-    std::uint32_t m_draw_call_count_opacity_cutoff{0};
+    struct draw_call_info
+    {
+        std::uint32_t capacity;
+        std::uint32_t total_count;
+
+        std::array<std::uint32_t, 6> shadow_batch_counts;
+    };
+    draw_call_info m_draw_call_info;
 
     render_scene_states m_scene_states{0};
     shader::scene_data m_scene_data{};
@@ -348,14 +375,22 @@ public:
 
     std::uint32_t get_draw_call_capacity() const noexcept
     {
-        return m_scene->m_draw_call_capacity;
+        return m_scene->m_draw_call_info.capacity;
     }
 
-    std::uint32_t get_draw_call_count(bool opacity_cutoff = false) const noexcept
+    std::uint32_t get_draw_call_count() const noexcept
     {
-        return opacity_cutoff ?
-                   m_scene->m_draw_call_count_opacity_cutoff :
-                   m_scene->m_draw_call_count - m_scene->m_draw_call_count_opacity_cutoff;
+        return m_scene->m_draw_call_info.total_count;
+    }
+
+    std::uint32_t get_shadow_batch_draw_call_count(
+        bool opacity_cutoff,
+        rhi_cull_mode shadow_cull_mode) const noexcept
+    {
+        std::uint32_t index = 0;
+        index |= opacity_cutoff ? 1 : 0;
+        index |= shadow_cull_mode << 1;
+        return m_scene->m_draw_call_info.shadow_batch_counts[index];
     }
 
     std::uint32_t get_batch_capacity() const noexcept

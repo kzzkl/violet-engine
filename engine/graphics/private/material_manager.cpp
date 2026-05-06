@@ -141,23 +141,23 @@ shading_model_base* material_manager::get_shading_model(render_id shading_model_
 
 void material_manager::update(gpu_buffer_uploader* uploader)
 {
-    m_pipeline_dirty_materials.clear();
-
     if (m_dirty_materials.empty())
     {
         return;
     }
 
-    for (render_id material_id : m_dirty_materials)
+    for (auto& [material_id, dirty_flags] : m_dirty_materials[0])
     {
-        auto& material_info = m_materials[material_id];
-        if (material_info.material != nullptr)
+        auto* material = m_materials[material_id].material;
+        if (material != nullptr)
         {
-            material_info.material->update();
+            dirty_flags = material->get_dirty_flags();
+            material->update();
         }
     }
 
-    m_dirty_materials.clear();
+    std::swap(m_dirty_materials[0], m_dirty_materials[1]);
+    m_dirty_materials[0].clear();
 
     m_material_buffer->upload(
         uploader,
@@ -184,14 +184,9 @@ void material_manager::update_constant(render_id material_id, const void* data, 
     m_material_buffer->copy(data, size, material_info.constant_allocation.offset);
 }
 
-void material_manager::update_pipeline(render_id material_id)
-{
-    m_pipeline_dirty_materials.push_back(material_id);
-}
-
 void material_manager::mark_dirty(render_id material_id)
 {
     std::scoped_lock lock(m_mutex);
-    m_dirty_materials.push_back(material_id);
+    m_dirty_materials[0].emplace_back(material_id, 0);
 }
 } // namespace violet

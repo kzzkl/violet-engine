@@ -59,7 +59,12 @@ private:
     void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
     void cluster_cull(render_graph& graph);
 
-    void render_shadow(render_graph& graph, bool opacity_cutoff);
+    void render_shadow(render_graph& graph);
+    void render_shadow(
+        render_graph& graph,
+        bool opacity_cutoff,
+        rhi_cull_mode cull_mode,
+        std::string_view pass_name);
     void merge_physical_pages(render_graph& graph);
 
     void build_hzb(render_graph& graph);
@@ -98,7 +103,6 @@ private:
 
     float m_slope_scale_depth_bias{0.0f};
 
-    vec4u m_draw_offset;
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};

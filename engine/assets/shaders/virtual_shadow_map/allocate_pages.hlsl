@@ -48,7 +48,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     }
     GroupMemoryBarrierWithGroupSync();
 
-    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
+    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT) == 0)
     {
         StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
@@ -61,7 +61,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
         if (lru_index >= lru_states[constant.lru_curr_index].tail)
         {
-            virtual_page.flags = VIRTUAL_PAGE_FLAG_REQUEST | VIRTUAL_PAGE_FLAG_UNMAPPED;
+            virtual_page.flags = VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_UNMAPPED;
             virtual_page_table[virtual_page_index] = virtual_page.pack();
         }
         else
@@ -69,7 +69,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             uint free_physical_page_index = lru_buffer[get_lru_offset(constant.lru_curr_index) + lru_index];
 
             virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
-            virtual_page.flags = VIRTUAL_PAGE_FLAG_REQUEST;
+            virtual_page.flags = VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_RENDERING;
             virtual_page_table[virtual_page_index] = virtual_page.pack();
 
             vsm_physical_page physical_page;
@@ -107,7 +107,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     InterlockedMax(vsm_bounds[vsm_id].required_bounds.z, virtual_page_coord.x);
     InterlockedMax(vsm_bounds[vsm_id].required_bounds.w, virtual_page_coord.y);
 
-    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
+    if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING)
     {
         InterlockedMin(vsm_bounds[vsm_id].invalidated_bounds.x, virtual_page_coord.x);
         InterlockedMin(vsm_bounds[vsm_id].invalidated_bounds.y, virtual_page_coord.y);

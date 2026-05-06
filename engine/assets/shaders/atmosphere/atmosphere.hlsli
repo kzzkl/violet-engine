@@ -195,9 +195,8 @@ float get_shadow(float3 camera, float3 position, uint vsm_id, StructuredBuffer<v
     position_ls /= position_ls.w;
     position_ls.xy = position_ls.xy * 0.5 + 0.5;
 
-    float shadow_depth;
-    bool valid = sample_shadow_depth(vsm_id + cascade, position_ls.xy, physical_shadow_map, virtual_page_table, shadow_depth);
-    return valid ? (shadow_depth > position_ls.z ? 0.0 : 1.0) : 1.0;
+    vsm_sample_result result = vsm_sample_depth(vsm_id + cascade, position_ls.xy, physical_shadow_map, virtual_page_table);
+    return result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
 }
 
 float3 get_atmosphere_extinction(atmosphere_data atmosphere, float h)

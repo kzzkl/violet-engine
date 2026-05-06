@@ -32,9 +32,26 @@ enum material_path : std::uint8_t
     MATERIAL_PATH_VISIBILITY,
 };
 
+enum shadow_cull_mode : std::uint8_t
+{
+    SHADOW_CULL_MODE_AUTO,
+    SHADOW_CULL_MODE_NONE,
+    SHADOW_CULL_MODE_BACK,
+    SHADOW_CULL_MODE_FRONT,
+};
+
 class material
 {
 public:
+    enum dirty_flag : std::uint8_t
+    {
+        DIRTY_FLAG_CONSTANT = 1 << 0,
+        DIRTY_FLAG_PIPELINE = 1 << 1,
+        DIRTY_FLAG_SHADOW_CULL_MODE = 1 << 2,
+        DIRTY_FLAG_ALL = 0xFF,
+    };
+    using dirty_flags = std::uint8_t;
+
     material() noexcept;
     material(const material& other) = delete;
 
@@ -78,17 +95,25 @@ public:
     void set_polygon_mode(rhi_polygon_mode polygon_mode);
     void set_primitive_topology(rhi_primitive_topology primitive_topology);
 
+    void set_shadow_cull_mode(shadow_cull_mode cull_mode);
+    shadow_cull_mode get_shadow_cull_mode() const noexcept
+    {
+        return m_shadow_cull_mode;
+    }
+
+    std::uint32_t get_shadow_batch() const noexcept
+    {
+        return m_shadow_batch;
+    }
+
     void update();
 
-protected:
-    enum dirty_flag : std::uint8_t
+    dirty_flags get_dirty_flags() const noexcept
     {
-        DIRTY_FLAG_CONSTANT = 1 << 0,
-        DIRTY_FLAG_PIPELINE = 1 << 1,
-        DIRTY_FLAG_ALL = 0xFF,
-    };
-    using dirty_flags = std::uint8_t;
+        return m_dirty_flags;
+    }
 
+protected:
     void set_surface_type(surface_type surface_type) noexcept
     {
         m_surface_type = surface_type;
@@ -108,7 +133,8 @@ protected:
 private:
     virtual std::pair<const void*, std::size_t> get_constant_data(
         std::uint32_t shading_model,
-        std::uint32_t resolve_pipeline) noexcept
+        std::uint32_t resolve_pipeline,
+        std::uint32_t shadow_batch) noexcept
     {
         return {};
     }
@@ -122,6 +148,9 @@ private:
 
     std::uint32_t m_resolve_pipeline_id{0};
     std::uint32_t m_shading_model{0};
+
+    shadow_cull_mode m_shadow_cull_mode{SHADOW_CULL_MODE_AUTO};
+    std::uint32_t m_shadow_batch{0};
 
     dirty_flags m_dirty_flags{0};
 };
@@ -281,9 +310,10 @@ private:
 
     std::pair<const void*, std::size_t> get_constant_data(
         std::uint32_t shading_model,
-        std::uint32_t resolve_pipeline) noexcept override
+        std::uint32_t resolve_pipeline,
+        std::uint32_t shadow_batch) noexcept override
     {
-        m_wrapper.material_info.x = (resolve_pipeline << 8) | shading_model;
+        m_wrapper.material_info.x = (resolve_pipeline << 16) | (shading_model << 8) | shadow_batch;
         return {&m_wrapper, sizeof(wrapper)};
     }
 

@@ -40,7 +40,6 @@ public:
 
     void update(gpu_buffer_uploader* uploader);
     void update_constant(render_id material_id, const void* data, std::size_t size);
-    void update_pipeline(render_id material_id);
 
     void mark_dirty(render_id material_id);
 
@@ -55,11 +54,11 @@ public:
     }
 
     template <typename Functor>
-    void each_pipeline_changed_material(Functor&& functor) const
+    void each_dirty_material(Functor&& functor) const
     {
-        for (render_id material_id : m_pipeline_dirty_materials)
+        for (const auto& [material_id, dirty_flags] : m_dirty_materials[1])
         {
-            functor(m_materials[material_id].material);
+            functor(m_materials[material_id].material, dirty_flags);
         }
     }
 
@@ -80,9 +79,7 @@ private:
 
     std::vector<material_info> m_materials;
     index_allocator m_material_allocator;
-    std::vector<render_id> m_dirty_materials;
-
-    std::vector<render_id> m_pipeline_dirty_materials;
+    std::array<std::vector<std::pair<render_id, material::dirty_flags>>, 2> m_dirty_materials;
 
     std::vector<pipeline_wrapper> m_material_resolve_pipelines;
     std::map<rhi_shader*, render_id> m_material_resolve_pipeline_ids;

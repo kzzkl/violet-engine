@@ -100,7 +100,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
             if (is_first_thread)
             {
-                InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_REQUEST);
+                InterlockedOr(virtual_page_table[virtual_page_index], VIRTUAL_PAGE_FLAG_VISIBLE);
             }
         }
     }
