@@ -66,6 +66,15 @@ void material::set_primitive_topology(rhi_primitive_topology primitive_topology)
     }
 }
 
+void material::set_shadow_cull_mode(shadow_cull_mode cull_mode)
+{
+    if (m_shadow_cull_mode != cull_mode)
+    {
+        m_shadow_cull_mode = cull_mode;
+        mark_dirty(DIRTY_FLAG_SHADOW_CULL_MODE);
+    }
+}
+
 void material::update()
 {
     auto* material_manager = render_device::instance().get_material_manager();
@@ -111,13 +120,36 @@ void material::update()
         m_raster_pipeline.vertex_shader = get_vertex_shader(defines);
         m_raster_pipeline.geometry_shader = get_geometry_shader(defines);
         m_raster_pipeline.fragment_shader = get_fragment_shader(defines);
+    }
 
-        material_manager->update_pipeline(m_material_id);
+    std::uint32_t shadow_batch = 0;
+    shadow_batch |= get_opacity_cutoff() ? 1 : 0;
+    switch (m_shadow_cull_mode)
+    {
+    case SHADOW_CULL_MODE_NONE:
+        shadow_batch |= RHI_CULL_MODE_NONE << 1;
+        break;
+    case SHADOW_CULL_MODE_BACK:
+        shadow_batch |= RHI_CULL_MODE_BACK << 1;
+        break;
+    case SHADOW_CULL_MODE_FRONT:
+        shadow_batch |= RHI_CULL_MODE_FRONT << 1;
+        break;
+    default:
+        shadow_batch |= m_raster_pipeline.rasterizer_state->cull_mode << 1;
+        break;
+    }
+
+    if (m_shadow_batch != shadow_batch)
+    {
+        m_shadow_batch = shadow_batch;
+        m_dirty_flags |= DIRTY_FLAG_CONSTANT;
     }
 
     if (m_dirty_flags & DIRTY_FLAG_CONSTANT)
     {
-        auto [data, size] = get_constant_data(m_shading_model, m_resolve_pipeline_id);
+        auto [data, size] =
+            get_constant_data(m_shading_model, m_resolve_pipeline_id, m_shadow_batch);
         material_manager->update_constant(m_material_id, data, size);
     }
 

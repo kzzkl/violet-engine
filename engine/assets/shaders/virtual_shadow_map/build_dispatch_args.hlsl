@@ -34,7 +34,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     uint virtual_page_index = get_virtual_page_index(vsm_id, dtid.xy);
     vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-    if (virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST)
+    if (virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE)
     {
         uint index;
         InterlockedAdd(gs_visible_virtual_page_count, 1, index);

@@ -80,7 +80,7 @@ void fs_main(vs_output input)
     float slope_scale_depth_bias = max(abs(ddx(position_ndc.z)), abs(ddy(position_ndc.z))) * constant.slope_scale_depth_bias;
     position_ndc.z -= slope_scale_depth_bias;
 
-    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
+    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
     {
         return;
     }

@@ -660,8 +660,8 @@ public:
 enum rhi_cull_mode : std::uint8_t
 {
     RHI_CULL_MODE_NONE,
+    RHI_CULL_MODE_BACK,
     RHI_CULL_MODE_FRONT,
-    RHI_CULL_MODE_BACK
 };
 
 enum rhi_polygon_mode : std::uint8_t

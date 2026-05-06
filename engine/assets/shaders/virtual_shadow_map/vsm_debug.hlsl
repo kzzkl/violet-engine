@@ -44,10 +44,10 @@ struct debug_data
     uint cache_hit;
     uint rendered;
     uint unmapped;
-    uint static_drawcall;
-    uint static_opacity_cutoff_drawcall;
-    uint dynamic_drawcall;
-    uint dynamic_opacity_cutoff_drawcall;
+    uint static_draw_call;
+    uint static_opacity_cutoff_draw_call;
+    uint dynamic_draw_call;
+    uint dynamic_opacity_cutoff_draw_call;
     uint padding;
 };
 
@@ -84,7 +84,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
             uint virtual_page_index = get_virtual_page_index(vsm_id + cascade, virtual_page_coord);
             vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
-            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) == 0)
+            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
             {
                 continue;
             }
@@ -95,7 +95,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
             }
             else
             {
-                if (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID)
+                if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT)
                 {
                     ++cache_hit;
                 }
@@ -114,10 +114,10 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     if (dtid.x == 0 && dtid.y == 0)
     {
         StructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
-        debug_infos[constant.debug_info_index].static_drawcall = draw_counts[0];
-        debug_infos[constant.debug_info_index].static_opacity_cutoff_drawcall = draw_counts[1];
-        debug_infos[constant.debug_info_index].dynamic_drawcall = draw_counts[2];
-        debug_infos[constant.debug_info_index].dynamic_opacity_cutoff_drawcall = draw_counts[3];
+        debug_infos[constant.debug_info_index].static_draw_call = draw_counts[0];
+        debug_infos[constant.debug_info_index].static_opacity_cutoff_draw_call = draw_counts[1];
+        debug_infos[constant.debug_info_index].dynamic_draw_call = draw_counts[2];
+        debug_infos[constant.debug_info_index].dynamic_opacity_cutoff_draw_call = draw_counts[3];
     }
 }
 
@@ -225,7 +225,7 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
 
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
-        if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_REQUEST) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_CACHE_VALID) == 0)
+        if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT) == 0)
         {
             debug_output[dtid.xy] = float4(1.0, 0.0, 0.0, 1.0);
         }

@@ -177,6 +177,7 @@ struct material_info
 {
     uint resolve_pipeline;
     uint shading_model;
+    uint shadow_batch;
     uint opacity_mask;
     uint opacity_cutoff;
 };
@@ -187,8 +188,9 @@ material_info load_material_info(uint material_buffer, uint material_address)
     uint2 pack = buffer.Load<uint2>(material_address);
 
     material_info info;
-    info.resolve_pipeline = (pack.x & 0xFFFFFF00) >> 8;
-    info.shading_model = pack.x & 0xFF;
+    info.resolve_pipeline = (pack.x & 0xFFFF0000) >> 16;
+    info.shading_model = (pack.x & 0xFF00 ) >> 8;
+    info.shadow_batch = pack.x & 0xFF;
     info.opacity_mask = (pack.y & 0xFFFFFF00) >> 8;
     info.opacity_cutoff = pack.y & 0xFF;
 

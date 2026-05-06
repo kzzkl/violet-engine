@@ -12,7 +12,6 @@ struct constant_data
     uint vsm_bounds_buffer;
     uint hzb;
     uint hzb_sampler;
-    uint4 draw_offset;
     uint draw_buffer;
     uint draw_count_buffer;
     uint draw_info_buffer;
@@ -115,11 +114,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
         RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
 
-        bool opacity_cutoff = load_material_info(scene.material_buffer, instance.material_address).opacity_cutoff != 0;
+        material_info material = load_material_info(scene.material_buffer, instance.material_address);
 
-        uint draw_offset;
+        uint command_offset;
         uint count_offset;
-        get_draw_offset(constant.draw_offset, static_mesh, opacity_cutoff, draw_offset, count_offset);
+        get_shadow_draw_offset(static_mesh, material.shadow_batch, command_offset, count_offset);
 
         uint draw_command_offset = 0;
         InterlockedAdd(draw_counts[count_offset], draw_queue_rear, draw_command_offset);
@@ -129,7 +128,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             return;
         }
 
-        draw_command_offset += draw_offset;
+        draw_command_offset += command_offset;
 
         for (uint i = 0; i < draw_queue_rear; ++i)
         {

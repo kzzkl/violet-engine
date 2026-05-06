@@ -31,9 +31,8 @@ static const uint PCF_SAMPLE_COUNT = 8;
 
 float sample_shadow(uint vsm_id, float3 position_ls, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
 {
-    float shadow_depth;
-    sample_shadow_depth(vsm_id, position_ls.xy, physical_shadow_map, virtual_page_table, shadow_depth);
-    return shadow_depth > position_ls.z ? 0.0 : 1.0;
+    vsm_sample_result result = vsm_sample_depth(vsm_id, position_ls.xy, physical_shadow_map, virtual_page_table);
+    return result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
 }
 
 float random(float2 uv)
@@ -63,21 +62,21 @@ float sample_shadow_pcf(uint vsm_id, float3 position_ls, float sample_radius, Te
     }
 
     float visibility = 0.0;
-    float valid_sample_count = 0.0;
+    float sample_count = 0.0;
     for(int i = 0; i < PCF_SAMPLE_COUNT; i++)
     {
         float2 offset = poisson_disk[i] * sample_radius;
         float2 sample_uv = position_ls.xy + offset;
 
-        float shadow_depth;
-        if (sample_shadow_depth(vsm_id, sample_uv, physical_shadow_map, virtual_page_table, shadow_depth))
+        vsm_sample_result result = vsm_sample_depth(vsm_id, sample_uv, physical_shadow_map, virtual_page_table);
+        if (result.valid)
         {
-            visibility += shadow_depth > position_ls.z ? 0.0 : 1.0;
-            ++valid_sample_count;
+            visibility += result.depth > position_ls.z ? 0.0 : 1.0;
+            ++sample_count;
         }
     }
 
-    visibility /= valid_sample_count;
+    visibility /= sample_count;
 
     return visibility;
 }
