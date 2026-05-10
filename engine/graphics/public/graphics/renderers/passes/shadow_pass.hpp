@@ -34,6 +34,7 @@ public:
         std::uint32_t lru_prev_index;
 
         float slope_scale_depth_bias;
+        std::uint32_t max_render_pages_per_frame{32};
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
         std::uint32_t debug_light_id{0};
@@ -51,6 +52,7 @@ private:
     void mark_resident_pages(render_graph& graph);
     void mark_cache_dirty_pages(render_graph& graph);
     void build_dispatch_args(render_graph& graph);
+    void mark_render_pages(render_graph& graph);
     void update_lru(render_graph& graph);
     void allocate_pages(render_graph& graph);
     void clear_physical_pages(render_graph& graph);
@@ -74,13 +76,17 @@ private:
     rdg_texture* m_depth_buffer{nullptr};
 
     rdg_buffer* m_virtual_pages_indirect_args{nullptr};
-    rdg_buffer* m_visible_virtual_pages_indirect_args{nullptr};
-    rdg_buffer* m_visible_virtual_page_texels_indirect_args{nullptr};
-    rdg_buffer* m_clear_physical_page_texels_indirect_args{nullptr};
 
-    rdg_buffer* m_clear_virtual_page_table_list{nullptr};
     rdg_buffer* m_visible_virtual_page_list{nullptr};
-    rdg_buffer* m_clear_physical_page_list{nullptr};
+    rdg_buffer* m_visible_virtual_page_indirect_args{nullptr};
+    rdg_buffer* m_visible_virtual_page_texels_indirect_args{nullptr};
+
+    rdg_buffer* m_render_physical_page_list{nullptr};
+    rdg_buffer* m_render_physical_page_texels_indirect_args{nullptr};
+
+    rdg_buffer* m_render_virtual_page_list{nullptr};
+    rdg_buffer* m_render_virtual_page_indirect_args{nullptr};
+    std::uint32_t m_max_render_pages_per_frame{0};
 
     rdg_buffer* m_vsm_info{nullptr};
     rdg_buffer* m_visible_light_list{nullptr};

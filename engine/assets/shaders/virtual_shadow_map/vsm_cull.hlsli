@@ -20,7 +20,7 @@ bool vsm_cull(
     )
 {
     float4 projected_aabb;
-    project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb);
+    project_sphere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb);
 
     projected_aabb = projected_aabb * 0.5 + 0.5;
 
@@ -49,7 +49,7 @@ bool vsm_cull(
         {
             vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[row_base + x]);
 
-            if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
+            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING) == 0)
             {
                 continue;
             }
@@ -88,9 +88,9 @@ bool vsm_cull(
             page_aabb.zw = page_aabb.zw - virtual_texel_offset + physical_texel_offset;
 
             float level = clamp(ceil(log2(max(width, height))), 0.0, 5.0);
-            bool visiable = hzb.SampleLevel(hzb_sampler, (page_aabb.xy + page_aabb.zw) * 0.5 / PHYSICAL_RESOLUTION, level) < depth;
+            bool visible = hzb.SampleLevel(hzb_sampler, (page_aabb.xy + page_aabb.zw) * 0.5 / PHYSICAL_RESOLUTION, level) < depth;
 
-            if (visiable)
+            if (visible)
             {
                 return true;
             }
@@ -105,15 +105,6 @@ bool vsm_cull(
 
 void get_shadow_draw_offset(bool is_static, uint shadow_batch, out uint command_offset, out uint count_offset)
 {
-    static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
-    static const uint SHADOW_BATCH_COUNT = 6;
-
-    static const uint STATIC_DRAW_COMMAND_OFFSET = 0;
-    static const uint STATIC_DRAW_COUNT_OFFSET = 0;
-
-    static const uint DYNAMIC_DRAW_COMMAND_OFFSET = MAX_SHADOW_DRAWS_PER_BATCH * SHADOW_BATCH_COUNT;
-    static const uint DYNAMIC_DRAW_COUNT_OFFSET = SHADOW_BATCH_COUNT;
-
     command_offset = is_static ? STATIC_DRAW_COMMAND_OFFSET : DYNAMIC_DRAW_COMMAND_OFFSET;
     command_offset += shadow_batch * MAX_SHADOW_DRAWS_PER_BATCH;
     count_offset = is_static ? STATIC_DRAW_COUNT_OFFSET : DYNAMIC_DRAW_COUNT_OFFSET;

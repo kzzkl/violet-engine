@@ -12,11 +12,8 @@ public:
         std::uint32_t cache_hit;
         std::uint32_t rendered;
         std::uint32_t unmapped;
-        std::uint32_t static_draw_call;
-        std::uint32_t static_opacity_cutoff_draw_call;
-        std::uint32_t dynamic_draw_call;
-        std::uint32_t dynamic_opacity_cutoff_draw_call;
         std::uint32_t padding;
+        std::array<std::uint32_t, 12> draw_calls;
     };
 
     vsm_feature();
@@ -49,6 +46,8 @@ public:
     {
         return m_debug_info.get();
     }
+
+    std::uint32_t max_render_pages_per_frame{32};
 
 private:
     void on_update(std::uint32_t width, std::uint32_t height) override

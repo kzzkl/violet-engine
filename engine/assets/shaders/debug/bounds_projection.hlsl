@@ -29,11 +29,11 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
     vs_output output;
     if (camera.type == CAMERA_ORTHOGRAPHIC)
     {
-        output.visible = project_shpere_orthographic(sphere_vs, camera.matrix_p[0][0], camera.matrix_p[1][1], camera.near, output.aabb);
+        output.visible = project_sphere_orthographic(sphere_vs, camera.matrix_p[0][0], camera.matrix_p[1][1], camera.near, output.aabb);
     }
     else
     {
-        output.visible = project_shpere_perspective(sphere_vs, camera.matrix_p[0][0], camera.matrix_p[1][1], camera.near, output.aabb);
+        output.visible = project_sphere_perspective(sphere_vs, camera.matrix_p[0][0], camera.matrix_p[1][1], camera.near, output.aabb);
     }
 
     return output;

@@ -2,7 +2,7 @@
 #define UTILS_HLSLI
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool project_shpere_perspective(float4 sphere_vs, float p00, float p11, float near, out float4 aabb)
+bool project_sphere_perspective(float4 sphere_vs, float p00, float p11, float near, out float4 aabb)
 {
     if (sphere_vs.z < sphere_vs.w + near)
     {
@@ -25,7 +25,7 @@ bool project_shpere_perspective(float4 sphere_vs, float p00, float p11, float ne
     return true;
 }
 
-bool project_shpere_orthographic(float4 sphere_vs, float p00, float p11, out float4 aabb)
+bool project_sphere_orthographic(float4 sphere_vs, float p00, float p11, out float4 aabb)
 {
     float left = sphere_vs.x - sphere_vs.w;
     float right = sphere_vs.x + sphere_vs.w;

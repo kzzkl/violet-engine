@@ -523,12 +523,18 @@ private:
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
                 ImGui::Text("Cache Miss: %d", debug_info.rendered);
                 ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                // ImGui::Text(
-                //     "Static Drawcall: %d",
-                //     debug_info.static_drawcall + debug_info.static_opacity_cutoff_drawcall);
-                // ImGui::Text(
-                //     "Dynamic Drawcall: %d",
-                //     debug_info.dynamic_drawcall + debug_info.dynamic_opacity_cutoff_drawcall);
+                ImGui::Text("Rendered: %d", debug_info.rendered);
+
+                std::uint32_t static_draw_call = 0;
+                std::uint32_t dynamic_draw_call = 0;
+                for (std::uint32_t i = 0; i < 6; ++i)
+                {
+                    static_draw_call += debug_info.draw_calls[i];
+                    dynamic_draw_call += debug_info.draw_calls[i + 6];
+                }
+
+                ImGui::Text("Static Drawcall: %d", static_draw_call);
+                ImGui::Text("Dynamic Drawcall: %d", dynamic_draw_call);
             }
         }
 

@@ -19,7 +19,7 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 
 groupshared uint gs_virtual_page_indices[64];
 
-uint get_directional_vsm_page_index(float3 position_ws, light_data light, uint vsm_id, uint2 coord)
+uint get_directional_vsm_page_index(float3 position_ws, uint vsm_id)
 {
     uint cascade = get_directional_cascade(length(position_ws - camera.position));
 
@@ -78,7 +78,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             if (light.type == LIGHT_DIRECTIONAL)
             {
                 uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
-                virtual_page_index = get_directional_vsm_page_index(position_ws.xyz, light, vsm_id, dtid.xy);
+                virtual_page_index = get_directional_vsm_page_index(position_ws.xyz, vsm_id);
             }
         }
 

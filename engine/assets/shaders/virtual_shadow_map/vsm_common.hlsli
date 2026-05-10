@@ -26,6 +26,15 @@ static const uint MAX_VSM_COUNT = 256;
 
 static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
 
+static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
+static const uint SHADOW_BATCH_COUNT = 6;
+
+static const uint STATIC_DRAW_COMMAND_OFFSET = 0;
+static const uint STATIC_DRAW_COUNT_OFFSET = 0;
+
+static const uint DYNAMIC_DRAW_COMMAND_OFFSET = MAX_SHADOW_DRAWS_PER_BATCH * SHADOW_BATCH_COUNT;
+static const uint DYNAMIC_DRAW_COUNT_OFFSET = SHADOW_BATCH_COUNT;
+
 struct vsm_data
 {
     int2 page_coord;
@@ -51,6 +60,7 @@ struct vsm_info
     uint visible_light_count;
     uint visible_vsm_count;
     uint visible_virtual_page_count;
+    uint render_virtual_page_count;
 };
 
 struct vsm_bounds
@@ -88,6 +98,11 @@ struct vsm_virtual_page
     uint2 get_physical_texel(float2 virtual_page_local_uv)
     {
         return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_local_uv * PAGE_RESOLUTION);
+    }
+
+    bool resident()
+    {
+        return (flags & VIRTUAL_PAGE_FLAG_RESIDENT) != 0;
     }
 
     bool valid()
@@ -131,6 +146,7 @@ struct vsm_draw_info
     uint vsm_id;
     uint instance_id;
     uint cluster_id;
+    uint padding;
 };
 
 struct vsm_lru_state

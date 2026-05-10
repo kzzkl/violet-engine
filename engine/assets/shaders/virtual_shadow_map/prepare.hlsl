@@ -5,9 +5,10 @@
 struct constant_data
 {
     uint virtual_pages_indirect_args;
-    uint visible_virtual_pages_indirect_args;
+    uint visible_virtual_page_indirect_args;
     uint visible_virtual_page_texels_indirect_args;
-    uint clear_physical_page_texels_indirect_args;
+    uint render_physical_page_texels_indirect_args;
+    uint render_virtual_page_indirect_args;
 
     uint vsm_info;
     uint lru_state;
@@ -29,11 +30,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     command.z = 0;
     virtual_pages_indirect_args[0] = command;
 
-    RWStructuredBuffer<dispatch_command> visible_virtual_pages_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_pages_indirect_args];
+    RWStructuredBuffer<dispatch_command> visible_virtual_page_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_indirect_args];
     command.x = 0;
     command.y = 1;
     command.z = 1;
-    visible_virtual_pages_indirect_args[0] = command;
+    visible_virtual_page_indirect_args[0] = command;
 
     RWStructuredBuffer<dispatch_command> visible_virtual_page_texels_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_texels_indirect_args];
     command.x = PAGE_RESOLUTION / 16;
@@ -41,26 +42,31 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     command.z = 0;
     visible_virtual_page_texels_indirect_args[0] = command;
 
-    RWStructuredBuffer<dispatch_command> clear_physical_page_texels_indirect_args = ResourceDescriptorHeap[constant.clear_physical_page_texels_indirect_args];
+    RWStructuredBuffer<dispatch_command> render_physical_page_texels_indirect_args = ResourceDescriptorHeap[constant.render_physical_page_texels_indirect_args];
     command.x = PAGE_RESOLUTION / 16;
     command.y = PAGE_RESOLUTION / 16;
     command.z = 0;
-    clear_physical_page_texels_indirect_args[0] = command;
+    render_physical_page_texels_indirect_args[0] = command;
 
-    RWStructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
-    vsm_info[0].visible_light_count = 0;
-    vsm_info[0].visible_vsm_count = 0;
-    vsm_info[0].visible_virtual_page_count = 0;
+    RWStructuredBuffer<dispatch_command> render_virtual_page_indirect_args = ResourceDescriptorHeap[constant.render_virtual_page_indirect_args];
+    command.x = 0;
+    command.y = 1;
+    command.z = 1;
+    render_virtual_page_indirect_args[0] = command;
+
+    RWStructuredBuffer<vsm_info> info = ResourceDescriptorHeap[constant.vsm_info];
+    info[0] = (vsm_info)0;
 
     RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
     lru_states[constant.lru_curr_index].head = 0;
     lru_states[constant.lru_curr_index].tail = 0;
 
+    // Reset static and dynamic draw counts.
     RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
-    draw_counts[0] = 0;
-    draw_counts[1] = 0;
-    draw_counts[2] = 0;
-    draw_counts[3] = 0;
+    for (uint i = 0; i < SHADOW_BATCH_COUNT * 2; i++)
+    {
+        draw_counts[i] = 0;
+    }
 
     RWStructuredBuffer<cluster_queue_state_data> cluster_queue_states = ResourceDescriptorHeap[constant.cluster_queue_state];
     cluster_queue_states[0] = (cluster_queue_state_data)0;

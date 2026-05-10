@@ -4,7 +4,7 @@
 struct constant_data
 {
     uint visible_virtual_page_list;
-    uint clear_physical_page_list;
+    uint render_physical_page_list;
     uint vsm_virtual_page_table;
     uint vsm_physical_shadow_map;
 };
@@ -23,8 +23,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     uint physical_page_index = get_physical_page_index(virtual_page.physical_page_coord);
 #else
-    StructuredBuffer<uint> clear_physical_page_list = ResourceDescriptorHeap[constant.clear_physical_page_list];
-    uint physical_page_index = clear_physical_page_list[dtid.z];
+    StructuredBuffer<uint> render_physical_page_list = ResourceDescriptorHeap[constant.render_physical_page_list];
+    uint physical_page_index = render_physical_page_list[dtid.z];
 #endif
 
     uint2 physical_texel = get_physical_page_coord(physical_page_index) * PAGE_RESOLUTION + dtid.xy;
