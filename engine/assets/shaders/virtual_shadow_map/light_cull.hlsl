@@ -6,7 +6,7 @@ struct constant_data
     uint vsm_info;
     uint visible_light_list;
     uint visible_vsm_list;
-    uint clear_virtual_page_table_indirect_args;
+    uint virtual_pages_indirect_args;
     uint camera_id;
     uint vsm_directional_buffer;
 };
@@ -38,7 +38,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<uint> visible_light_list = ResourceDescriptorHeap[constant.visible_light_list];
     RWStructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
 
-    RWStructuredBuffer<dispatch_command> clear_virtual_page_table_indirect_args = ResourceDescriptorHeap[constant.clear_virtual_page_table_indirect_args];
+    RWStructuredBuffer<dispatch_command> virtual_pages_indirect_args = ResourceDescriptorHeap[constant.virtual_pages_indirect_args];
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
@@ -58,6 +58,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             visible_vsm_list[vsm_index + i] = vsm_id + i;
         }
 
-        InterlockedAdd(clear_virtual_page_table_indirect_args[0].z, 16);
+        InterlockedAdd(virtual_pages_indirect_args[0].z, 16);
     }
 }

@@ -50,6 +50,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[page_index]);
         virtual_page.physical_page_coord = get_physical_page_coord(physical_page_index);
+        virtual_page.flags |= VIRTUAL_PAGE_FLAG_RESIDENT;
 
         if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
         {
@@ -58,7 +59,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         else
         {
             physical_page.flags |= PHYSICAL_PAGE_FLAG_REQUEST;
-            virtual_page.flags |= VIRTUAL_PAGE_FLAG_RESIDENT;
         }
 
         virtual_page_table[page_index] = virtual_page.pack();

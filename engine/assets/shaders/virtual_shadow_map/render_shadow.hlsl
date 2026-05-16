@@ -8,6 +8,7 @@ struct constant_data
     uint vsm_physical_shadow_map;
     uint draw_info_buffer;
     float slope_scale_depth_bias;
+    uint render_static_pages;
 };
 PushConstant(constant_data, constant);
 
@@ -80,7 +81,8 @@ void fs_main(vs_output input)
     float slope_scale_depth_bias = max(abs(ddx(position_ndc.z)), abs(ddy(position_ndc.z))) * constant.slope_scale_depth_bias;
     position_ndc.z -= slope_scale_depth_bias;
 
-    if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0)
+    if ((constant.render_static_pages != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING) == 0) ||
+        (constant.render_static_pages == 0 && !virtual_page.valid()))
     {
         return;
     }

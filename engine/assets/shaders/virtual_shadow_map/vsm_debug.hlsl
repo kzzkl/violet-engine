@@ -44,11 +44,8 @@ struct debug_data
     uint cache_hit;
     uint rendered;
     uint unmapped;
-    uint static_draw_call;
-    uint static_opacity_cutoff_draw_call;
-    uint dynamic_draw_call;
-    uint dynamic_opacity_cutoff_draw_call;
     uint padding;
+    uint draw_calls[SHADOW_BATCH_COUNT * 2];
 };
 
 [shader("compute")]
@@ -93,16 +90,13 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
             {
                 ++unmapped;
             }
-            else
+            else if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT)
             {
-                if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT)
-                {
-                    ++cache_hit;
-                }
-                else
-                {
-                    ++rendered;
-                }
+                ++cache_hit;
+            }
+            else if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING)
+            {
+                ++rendered;
             }
         }
 
@@ -114,10 +108,10 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     if (dtid.x == 0 && dtid.y == 0)
     {
         StructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
-        debug_infos[constant.debug_info_index].static_draw_call = draw_counts[0];
-        debug_infos[constant.debug_info_index].static_opacity_cutoff_draw_call = draw_counts[1];
-        debug_infos[constant.debug_info_index].dynamic_draw_call = draw_counts[2];
-        debug_infos[constant.debug_info_index].dynamic_opacity_cutoff_draw_call = draw_counts[3];
+        for (int i = 0; i < SHADOW_BATCH_COUNT * 2; ++i)
+        {
+            debug_infos[constant.debug_info_index].draw_calls[i] = draw_counts[i];
+        }
     }
 }
 
@@ -225,13 +219,13 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
 
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
-        if ((virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) != 0 && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT) == 0)
+        if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT)
         {
-            debug_output[dtid.xy] = float4(1.0, 0.0, 0.0, 1.0);
+            debug_output[dtid.xy] = float4(0.0, 1.0, 0.0, 1.0);
         }
         else
         {
-            debug_output[dtid.xy] = float4(0.0, 1.0, 0.0, 1.0);
+            debug_output[dtid.xy] = float4(1.0, 0.0, 0.0, 1.0);
         }
     }
 }

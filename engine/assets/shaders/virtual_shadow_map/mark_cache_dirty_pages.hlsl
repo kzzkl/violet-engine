@@ -62,7 +62,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                 sphere_vs.w = sphere_ws.w;
 
                 float4 projected_aabb;
-                project_shpere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb);
+                project_sphere_orthographic(sphere_vs, vsm.matrix_p[0][0], vsm.matrix_p[1][1], projected_aabb);
 
                 float4 local_page_bounds = (projected_aabb * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE;
 

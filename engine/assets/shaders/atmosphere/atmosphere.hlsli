@@ -196,6 +196,21 @@ float get_shadow(float3 camera, float3 position, uint vsm_id, StructuredBuffer<v
     position_ls.xy = position_ls.xy * 0.5 + 0.5;
 
     vsm_sample_result result = vsm_sample_depth(vsm_id + cascade, position_ls.xy, physical_shadow_map, virtual_page_table);
+    if (result.valid)
+    {
+        return result.depth > position_ls.z ? 0.0 : 1.0;
+    }
+
+    if (vsm.cascade_index < 12)
+    {
+        vsm = vsms[vsm_id + cascade + 4];
+        position_ls = mul(vsm.matrix_vp, float4(position, 1.0));
+        position_ls /= position_ls.w;
+        position_ls.xy = position_ls.xy * 0.5 + 0.5;
+
+        result = vsm_sample_depth(vsm_id + cascade + 4, position_ls.xy, physical_shadow_map, virtual_page_table);
+    }
+
     return result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
 }
 

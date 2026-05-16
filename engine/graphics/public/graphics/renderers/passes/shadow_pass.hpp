@@ -48,6 +48,7 @@ private:
     void light_cull(render_graph& graph);
     void clear_page_table(render_graph& graph);
     void mark_visible_pages(render_graph& graph);
+    void mark_fallback_pages(render_graph& graph);
     void mark_resident_pages(render_graph& graph);
     void mark_cache_dirty_pages(render_graph& graph);
     void build_dispatch_args(render_graph& graph);
@@ -73,14 +74,14 @@ private:
 
     rdg_texture* m_depth_buffer{nullptr};
 
-    rdg_buffer* m_virtual_pages_indirect_args{nullptr};
-    rdg_buffer* m_visible_virtual_pages_indirect_args{nullptr};
-    rdg_buffer* m_visible_virtual_page_texels_indirect_args{nullptr};
-    rdg_buffer* m_clear_physical_page_texels_indirect_args{nullptr};
+    rdg_buffer* m_virtual_page_indirect_args{nullptr};
 
-    rdg_buffer* m_clear_virtual_page_table_list{nullptr};
     rdg_buffer* m_visible_virtual_page_list{nullptr};
-    rdg_buffer* m_clear_physical_page_list{nullptr};
+    rdg_buffer* m_visible_virtual_page_indirect_args{nullptr};
+    rdg_buffer* m_visible_virtual_page_texels_indirect_args{nullptr};
+
+    rdg_buffer* m_render_physical_page_list{nullptr};
+    rdg_buffer* m_render_physical_page_texels_indirect_args{nullptr};
 
     rdg_buffer* m_vsm_info{nullptr};
     rdg_buffer* m_visible_light_list{nullptr};

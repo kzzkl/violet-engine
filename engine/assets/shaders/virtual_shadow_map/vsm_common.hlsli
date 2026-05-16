@@ -26,6 +26,15 @@ static const uint MAX_VSM_COUNT = 256;
 
 static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
 
+static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
+static const uint SHADOW_BATCH_COUNT = 6;
+
+static const uint STATIC_DRAW_COMMAND_OFFSET = 0;
+static const uint STATIC_DRAW_COUNT_OFFSET = 0;
+
+static const uint DYNAMIC_DRAW_COMMAND_OFFSET = MAX_SHADOW_DRAWS_PER_BATCH * SHADOW_BATCH_COUNT;
+static const uint DYNAMIC_DRAW_COUNT_OFFSET = SHADOW_BATCH_COUNT;
+
 struct vsm_data
 {
     int2 page_coord;
@@ -36,8 +45,8 @@ struct vsm_data
     float4x4 matrix_vp;
     float texel_size;
     float texel_size_inv;
-    uint padding0;
-    uint padding1;
+    uint cascade_index;
+    uint cascade_count;
 };
 
 static const uint VIRTUAL_PAGE_FLAG_VISIBLE = 1 << 0;
@@ -51,6 +60,7 @@ struct vsm_info
     uint visible_light_count;
     uint visible_vsm_count;
     uint visible_virtual_page_count;
+    uint render_virtual_page_count;
 };
 
 struct vsm_bounds
@@ -62,7 +72,6 @@ struct vsm_bounds
 struct vsm_virtual_page
 {
     uint2 physical_page_coord;
-    uint fallback_level;
     uint flags;
 
     static vsm_virtual_page unpack(uint packed_data)
@@ -70,8 +79,7 @@ struct vsm_virtual_page
         vsm_virtual_page virtual_page;
         virtual_page.physical_page_coord.x = (packed_data & 0xFF000000) >> 24;
         virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
-        virtual_page.fallback_level = (packed_data & 0x0000F000) >> 12;
-        virtual_page.flags = packed_data & 0x00000FFF;
+        virtual_page.flags = packed_data & 0x0000FFFF;
         return virtual_page;
     }
 
@@ -80,7 +88,6 @@ struct vsm_virtual_page
         uint packed_data = 0;
         packed_data |= (physical_page_coord.x << 24);
         packed_data |= (physical_page_coord.y << 16);
-        packed_data |= (fallback_level << 12);
         packed_data |= flags;
         return packed_data;
     }
@@ -88,6 +95,11 @@ struct vsm_virtual_page
     uint2 get_physical_texel(float2 virtual_page_local_uv)
     {
         return physical_page_coord * PAGE_RESOLUTION + uint2(virtual_page_local_uv * PAGE_RESOLUTION);
+    }
+
+    bool resident()
+    {
+        return (flags & VIRTUAL_PAGE_FLAG_RESIDENT) != 0;
     }
 
     bool valid()
@@ -131,6 +143,7 @@ struct vsm_draw_info
     uint vsm_id;
     uint instance_id;
     uint cluster_id;
+    uint padding;
 };
 
 struct vsm_lru_state
@@ -181,10 +194,13 @@ struct vsm_sample_result
 {
     bool valid;
     float depth;
-    uint fallback_level;
 };
 
-vsm_sample_result vsm_sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
+vsm_sample_result vsm_sample_depth(
+    uint vsm_id,
+    float2 uv,
+    Texture2D<uint> physical_shadow_map,
+    StructuredBuffer<uint> virtual_page_table)
 {
     float2 virtual_page_coord_f = uv * VIRTUAL_PAGE_TABLE_SIZE;
     uint2 virtual_page_coord = floor(virtual_page_coord_f);
@@ -199,7 +215,6 @@ vsm_sample_result vsm_sample_depth(uint vsm_id, float2 uv, Texture2D<uint> physi
     vsm_sample_result result;
     result.valid = virtual_page.valid();
     result.depth = asfloat(physical_shadow_map[physical_texel]);
-    result.fallback_level = virtual_page.fallback_level;
 
     return result;
 }

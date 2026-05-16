@@ -45,14 +45,14 @@ bool occlusion_cull(
 
     if (camera_type == CAMERA_ORTHOGRAPHIC)
     {
-        if (!project_shpere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], aabb))
+        if (!project_sphere_orthographic(sphere_vs, matrix_p[0][0], matrix_p[1][1], aabb))
         {
             return true;
         }
     }
     else
     {
-        if (!project_shpere_perspective(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
+        if (!project_sphere_perspective(sphere_vs, matrix_p[0][0], matrix_p[1][1], near, aabb))
         {
             return true;
         }
