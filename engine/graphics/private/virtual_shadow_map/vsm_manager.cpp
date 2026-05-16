@@ -176,6 +176,8 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
         cascade_vsm.page_coord = page_coord;
         cascade_vsm.view_z_radius = view_z_radius;
         cascade_vsm.texel_size = cascade_radius * 2.0f / static_cast<float>(VSM_VIRTUAL_RESOLUTION);
+        cascade_vsm.cascade_index = cascade;
+        cascade_vsm.cascade_count = cascade_count;
 
         m_vsms.mark_dirty(vsm_id + cascade);
     }
@@ -213,6 +215,8 @@ void vsm_manager::update(gpu_buffer_uploader* uploader)
                 .matrix_vp = matrix::mul(vsm.matrix_v, vsm.matrix_p),
                 .texel_size = vsm.texel_size,
                 .texel_size_inv = 1.0f / vsm.texel_size,
+                .cascade_index = vsm.cascade_index,
+                .cascade_count = vsm.cascade_count,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

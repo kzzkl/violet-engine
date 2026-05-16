@@ -49,12 +49,8 @@ bool vsm_cull(
         {
             vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[row_base + x]);
 
-            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING) == 0)
-            {
-                continue;
-            }
-
-            if (is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT) != 0)
+            if ((is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING) == 0) ||
+                (!is_static && (virtual_page.flags & VIRTUAL_PAGE_FLAG_VISIBLE) == 0))
             {
                 continue;
             }

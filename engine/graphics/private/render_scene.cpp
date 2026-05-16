@@ -1185,6 +1185,11 @@ rhi_texture* render_context::get_vsm_hzb() const noexcept
     return m_scene->m_vsm_manager->get_vsm_hzb();
 }
 
+std::uint32_t render_context::get_vsm_count() const
+{
+    return m_scene->m_vsm_manager->get_vsm_count();
+}
+
 render_id render_context::get_vsm_id(render_id light_index) const
 {
     const auto& light = m_scene->m_shadow_casting_lights[light_index];

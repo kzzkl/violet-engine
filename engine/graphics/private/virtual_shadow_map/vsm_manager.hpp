@@ -60,6 +60,11 @@ public:
         return m_hzb.get();
     }
 
+    std::uint32_t get_vsm_count() const
+    {
+        return m_vsms.get_size();
+    }
+
 private:
     struct gpu_vsm
     {
@@ -73,8 +78,8 @@ private:
             mat4f matrix_vp;
             float texel_size;
             float texel_size_inv;
-            std::uint32_t padding0;
-            std::uint32_t padding1;
+            std::uint32_t cascade_index;
+            std::uint32_t cascade_count;
         };
 
         light_type light_type;
@@ -89,6 +94,9 @@ private:
         float view_z_radius;
 
         float texel_size;
+
+        std::uint32_t cascade_index;
+        std::uint32_t cascade_count;
     };
 
     static constexpr std::uint32_t get_vsm_count(light_type light_type);

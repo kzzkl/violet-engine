@@ -418,6 +418,8 @@ public:
         return m_scene->m_vsm_invalidations.get_size();
     }
 
+    std::uint32_t get_vsm_count() const;
+
     render_id get_vsm_id(render_id light_index) const;
 
     rhi_parameter* get_camera_parameter() const noexcept;

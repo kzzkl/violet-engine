@@ -29,6 +29,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     bool valid = dtid.x < vsm_info[0].visible_virtual_page_count;
 
+    if (group_index == 0)
+    {
+        gs_allocate_page_count = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
     StructuredBuffer<uint> visible_virtual_page_list = ResourceDescriptorHeap[constant.visible_virtual_page_list];
     RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
@@ -42,46 +48,41 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         virtual_page_index = visible_virtual_page_list[dtid.x];
         get_virtual_page_coord(virtual_page_index, vsm_id, virtual_page_coord);
         virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
-    }
 
-    if (group_index == 0)
-    {
-        gs_allocate_page_count = 0;
-    }
-    GroupMemoryBarrierWithGroupSync();
-
-    if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RENDERING)
-    {
-        StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-
-        RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
-        RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
-        StructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
-
-        uint lru_index = 0;
-        InterlockedAdd(lru_states[constant.lru_curr_index].head, 1, lru_index);
-
-        if (lru_index >= lru_states[constant.lru_curr_index].tail)
+        if (!virtual_page.resident())
         {
-            virtual_page.flags = VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_UNMAPPED;
-            virtual_page_table[virtual_page_index] = virtual_page.pack();
-        }
-        else
-        {
-            uint free_physical_page_index = lru_buffer[get_lru_offset(constant.lru_curr_index) + lru_index];
+            StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
-            virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
-            virtual_page_table[virtual_page_index] = virtual_page.pack();
+            RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+            RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
+            StructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 
-            vsm_physical_page physical_page;
-            physical_page.virtual_page_coord = virtual_page_coord + vsms[vsm_id].page_coord;
-            physical_page.vsm_id = vsm_id;
-            physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_HZB_DIRTY;
-            physical_page_table[free_physical_page_index] = physical_page.pack();
+            uint lru_index = 0;
+            InterlockedAdd(lru_states[constant.lru_curr_index].head, 1, lru_index);
 
-            uint allocate_page_index = 0;
-            InterlockedAdd(gs_allocate_page_count, 1, allocate_page_index);
-            gs_allocate_page_index[allocate_page_index] = free_physical_page_index;
+            if (lru_index >= lru_states[constant.lru_curr_index].tail)
+            {
+                virtual_page.flags = VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_UNMAPPED;
+                virtual_page_table[virtual_page_index] = virtual_page.pack();
+            }
+            else
+            {
+                uint free_physical_page_index = lru_buffer[get_lru_offset(constant.lru_curr_index) + lru_index];
+
+                virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
+                virtual_page.flags |= VIRTUAL_PAGE_FLAG_RENDERING;
+                virtual_page_table[virtual_page_index] = virtual_page.pack();
+
+                vsm_physical_page physical_page;
+                physical_page.virtual_page_coord = virtual_page_coord + vsms[vsm_id].page_coord;
+                physical_page.vsm_id = vsm_id;
+                physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_HZB_DIRTY;
+                physical_page_table[free_physical_page_index] = physical_page.pack();
+
+                uint allocate_page_index = 0;
+                InterlockedAdd(gs_allocate_page_count, 1, allocate_page_index);
+                gs_allocate_page_index[allocate_page_index] = free_physical_page_index;
+            }
         }
     }
 

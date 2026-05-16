@@ -205,10 +205,8 @@ struct mesh
             result.texcoord.x = interpolate_x.x;
             result.texcoord.y = interpolate_y.x;
 
-            ddx.x = interpolate_x.y;
-            ddx.y = interpolate_x.y;
-            ddy.x = interpolate_y.y;
-            ddy.y = interpolate_y.y;
+            ddx = float2(interpolate_x.y, interpolate_y.y);
+            ddy = float2(interpolate_x.z, interpolate_y.z);
         }
 
         return result;

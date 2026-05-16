@@ -8,7 +8,6 @@ struct constant_data
     uint visible_virtual_page_indirect_args;
     uint visible_virtual_page_texels_indirect_args;
     uint render_physical_page_texels_indirect_args;
-    uint render_virtual_page_indirect_args;
 
     uint vsm_info;
     uint lru_state;
@@ -47,12 +46,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     command.y = PAGE_RESOLUTION / 16;
     command.z = 0;
     render_physical_page_texels_indirect_args[0] = command;
-
-    RWStructuredBuffer<dispatch_command> render_virtual_page_indirect_args = ResourceDescriptorHeap[constant.render_virtual_page_indirect_args];
-    command.x = 0;
-    command.y = 1;
-    command.z = 1;
-    render_virtual_page_indirect_args[0] = command;
 
     RWStructuredBuffer<vsm_info> info = ResourceDescriptorHeap[constant.vsm_info];
     info[0] = (vsm_info)0;
