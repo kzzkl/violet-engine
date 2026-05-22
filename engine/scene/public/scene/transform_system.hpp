@@ -19,14 +19,15 @@ public:
     mat4f get_local_matrix(entity e);
     mat4f get_world_matrix(entity e);
 
+    void destroy_recursive(entity e);
+
 private:
+    void update_hierarchy();
+
     void update_local(bool force = false);
     void update_world(bool force = false);
 
-    void update_world_recursive(
-        entity e,
-        const transform_world_component& parent_world_transform,
-        bool parent_dirty);
+    void update_world_recursive(entity e, const transform_world_component* parent_world_transform);
 
     std::uint32_t m_system_version{0};
 };

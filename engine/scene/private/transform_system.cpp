@@ -1,7 +1,9 @@
-#include "scene/transform_system.hpp"
+#include <algorithm>
+
 #include "components/hierarchy_component.hpp"
+#include "components/hierarchy_component_meta.hpp"
 #include "math/matrix.hpp"
-#include "scene/hierarchy_system.hpp"
+#include "scene/transform_system.hpp"
 
 namespace violet
 {
@@ -10,28 +12,31 @@ transform_system::transform_system()
 {
 }
 
-void transform_system::install(application& app)
-{
-    app.install<hierarchy_system>();
-}
+void transform_system::install(application& app) {}
 
 bool transform_system::initialize(const dictionary& config)
 {
-    get_world().register_component<transform_component>();
-    get_world().register_component<transform_local_component>();
-    get_world().register_component<transform_world_component>();
+    auto& world = get_world();
+    world.register_component<parent_component>();
+    world.register_component<parent_component_meta>();
+    world.register_component<child_component>();
+    world.register_component<transform_component>();
+    world.register_component<transform_local_component>();
+    world.register_component<transform_world_component>();
 
     task_graph& task_graph = get_task_graph();
-    task_group& transform_group = task_graph.get_group("Transform");
-    task& update_hierarchy_task = task_graph.get_task("Update Hierarchy");
+    task_group& post_update_group = task_graph.get_group("PostUpdate");
+    task_group& transform_group =
+        task_graph.add_group().set_name("Transform").set_group(post_update_group);
 
     task_graph.add_task()
         .set_name("Update Transform")
         .set_group(transform_group)
-        .add_dependency(update_hierarchy_task)
+        .set_options(TASK_OPTION_MAIN_THREAD)
         .set_execute(
             [this]()
             {
+                update_hierarchy();
                 update_local();
                 update_world();
                 m_system_version = get_world().get_version();
@@ -91,7 +96,7 @@ mat4f transform_system::get_world_matrix(entity e)
             continue;
         }
 
-        mat4f parent_matrix;
+        mat4f parent_matrix{1.0f};
         if (world.has_component<parent_component>(back))
         {
             entity parent = world.get_component<const parent_component>(back).parent;
@@ -118,6 +123,116 @@ mat4f transform_system::get_world_matrix(entity e)
     return world.get_component<const transform_world_component>(e).matrix;
 }
 
+void transform_system::destroy_recursive(entity e)
+{
+    auto& world = get_world();
+
+    std::queue<entity> queue;
+    queue.push(e);
+
+    if (world.has_component<parent_component>(e))
+    {
+        auto& parent = world.get_component<parent_component>(e);
+        auto& children = world.get_component<child_component>(parent.parent).children;
+
+        auto iter = std::ranges::find(children, e);
+        std::swap(*iter, children.back());
+        children.pop_back();
+    }
+
+    while (!queue.empty())
+    {
+        entity current = queue.front();
+        queue.pop();
+
+        if (world.has_component<child_component>(current))
+        {
+            auto& children = world.get_component<child_component>(current).children;
+            for (auto& child : children)
+            {
+                queue.push(child);
+            }
+        }
+
+        world.destroy(current);
+    }
+}
+
+void transform_system::update_hierarchy()
+{
+    auto& world = get_world();
+
+    std::vector<std::pair<entity, entity>> add_child_entities;
+    std::vector<std::pair<entity, entity>> remove_child_entities;
+
+    std::vector<entity> remove_parent_entities;
+
+    world.get_view().read<entity>().read<parent_component>().write<parent_component_meta>().each(
+        [&](const entity& e, const parent_component& parent, parent_component_meta& parent_meta)
+        {
+            if (parent.parent == parent_meta.previous_parent)
+            {
+                return;
+            }
+
+            if (parent.parent != INVALID_ENTITY)
+            {
+                if (!world.has_component<child_component>(parent.parent))
+                {
+                    add_child_entities.emplace_back(parent.parent, e);
+                }
+                else
+                {
+                    world.get_component<child_component>(parent.parent).children.push_back(e);
+                }
+            }
+            else
+            {
+                remove_parent_entities.push_back(e);
+            }
+
+            if (parent_meta.previous_parent != INVALID_ENTITY)
+            {
+                remove_child_entities.emplace_back(parent_meta.previous_parent, e);
+            }
+
+            if (world.has_component<transform_component>(e))
+            {
+                world.get_component<transform_component>(e).set_world_dirty();
+            }
+
+            parent_meta.previous_parent = parent.parent;
+        },
+        [this](auto& view)
+        {
+            return view.template is_updated<parent_component>(m_system_version);
+        });
+
+    for (auto& [parent, child] : add_child_entities)
+    {
+        world.add_component<child_component>(parent);
+        world.get_component<child_component>(parent).children.push_back(child);
+    }
+
+    for (auto& [parent, child] : remove_child_entities)
+    {
+        auto& children = world.get_component<child_component>(parent).children;
+        auto iter = std::ranges::find(children, child);
+        std::swap(*iter, children.back());
+        children.pop_back();
+
+        if (children.empty())
+        {
+            world.remove_component<child_component>(parent);
+        }
+    }
+
+    for (auto& e : remove_parent_entities)
+    {
+        world.remove_component<parent_component>(e);
+    }
+}
+
 void transform_system::update_local(bool force)
 {
     auto& world = get_world();
@@ -134,6 +249,7 @@ void transform_system::update_local(bool force)
                 math::store(local_matrix, local.matrix);
 
                 transform.clear_local_dirty();
+                transform.set_world_dirty();
             }
         },
         [this, force](auto& view)
@@ -165,71 +281,94 @@ void transform_system::update_world(bool force)
                        view.template is_updated<transform_local_component>(m_system_version);
             });
 
-    std::vector<entity> root_entities;
+    std::vector<std::pair<entity, const transform_world_component*>> dirty_entities;
 
-    world.get_view().read<entity>().with<transform_component>().without<parent_component>().each(
-        [&root_entities](const entity& e)
+    world.get_view().read<entity>().read<transform_component>().each(
+        [&](const entity& e, const transform_component& transform)
         {
-            root_entities.push_back(e);
+            if (!transform.is_world_dirty())
+            {
+                return;
+            }
+
+            if (!world.has_component<parent_component>(e))
+            {
+                dirty_entities.emplace_back(e, nullptr);
+            }
+            else
+            {
+                bool parent_dirty = false;
+                entity parent = world.get_component<const parent_component>(e).parent;
+                entity current = parent;
+                while (world.has_component<transform_component>(current))
+                {
+                    if (world.get_component<const transform_component>(current).is_world_dirty())
+                    {
+                        parent_dirty = true;
+                        break;
+                    }
+
+                    if (!world.has_component<parent_component>(current))
+                    {
+                        break;
+                    }
+
+                    current = world.get_component<const parent_component>(current).parent;
+                }
+
+                if (!parent_dirty)
+                {
+                    const auto& parent_world_transform =
+                        world.get_component<const transform_world_component>(parent);
+                    dirty_entities.emplace_back(e, &parent_world_transform);
+                }
+            }
+        },
+        [this, force](auto& view)
+        {
+            return force || view.template is_updated<transform_component>(m_system_version);
         });
 
-    for (auto& root : root_entities)
+    for (auto& [entity, parent_world_transform] : dirty_entities)
     {
-        if (world.has_component<child_component>(root))
-        {
-            bool root_dirty =
-                force || world.is_updated<transform_local_component>(root, m_system_version);
-
-            const auto& root_transform = world.get_component<const transform_world_component>(root);
-            for (const auto& child : world.get_component<const child_component>(root).children)
-            {
-                update_world_recursive(child, root_transform, root_dirty);
-            }
-        }
+        update_world_recursive(entity, parent_world_transform);
     }
 }
 
 void transform_system::update_world_recursive(
     entity e,
-    const transform_world_component& parent_world_transform,
-    bool parent_dirty)
+    const transform_world_component* parent_world_transform)
 {
     auto& world = get_world();
 
     const auto& transform = world.get_component<const transform_component>(e);
 
-    bool need_update = parent_dirty || transform.is_world_dirty() ||
-                       world.is_updated<parent_component>(e, m_system_version);
+    transform.clear_world_dirty();
 
-    if (need_update)
+    auto& world_transform = world.get_component<transform_world_component>(e);
+    const auto& local_transform = world.get_component<const transform_local_component>(e);
+
+    if (parent_world_transform != nullptr)
     {
-        auto& world_transform = world.get_component<transform_world_component>(e);
-        world_transform.scale = vector::mul(parent_world_transform.scale, transform.get_scale());
-
-        mat4f_simd local_matrix =
-            math::load(world.get_component<const transform_local_component>(e).matrix);
-        mat4f_simd parent_matrix = math::load(parent_world_transform.matrix);
+        mat4f_simd local_matrix = math::load(local_transform.matrix);
+        mat4f_simd parent_matrix = math::load(parent_world_transform->matrix);
         math::store(matrix::mul(local_matrix, parent_matrix), world_transform.matrix);
 
-        transform.clear_world_dirty();
-
-        if (world.has_component<child_component>(e))
-        {
-            for (const auto& child : world.get_component<const child_component>(e).children)
-            {
-                update_world_recursive(child, world_transform, true);
-            }
-        }
+        vec4f rotation;
+        vec3f translation;
+        matrix::decompose(world_transform.matrix, world_transform.scale, rotation, translation);
     }
     else
     {
-        if (world.has_component<child_component>(e))
+        world_transform.matrix = local_transform.matrix;
+        world_transform.scale = transform.get_scale();
+    }
+
+    if (world.has_component<child_component>(e))
+    {
+        for (const auto& child : world.get_component<const child_component>(e).children)
         {
-            const auto& world_transform = world.get_component<const transform_world_component>(e);
-            for (const auto& child : world.get_component<const child_component>(e).children)
-            {
-                update_world_recursive(child, world_transform, false);
-            }
+            update_world_recursive(child, &world_transform);
         }
     }
 }

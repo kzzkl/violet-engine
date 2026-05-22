@@ -5,11 +5,6 @@
 
 namespace violet
 {
-struct previous_parent_component
-{
-    entity parent;
-};
-
 struct parent_component
 {
     entity parent;

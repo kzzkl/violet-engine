@@ -43,7 +43,7 @@ TEST_CASE("Create entities", "[benchmark]")
     {
         entities.push_back(world.create());
     }
-    std::cout << "Create entities: " << timer.elapse() << "s" << std::endl;
+    std::cout << "Create entities: " << timer.elapse() << "s\n";
 
     timer.start();
     for (std::size_t i = 0; i < entity_count; ++i)
@@ -60,11 +60,11 @@ TEST_CASE("Create entities", "[benchmark]")
             world.add_component<rotation>(entities[i]);
         }
     }
-    std::cout << "Add components: " << timer.elapse() << "s" << std::endl;
+    std::cout << "Add components: " << timer.elapse() << "s\n";
 
     timer.start();
     world.get_view().write<mesh>().each([](mesh& mesh) {});
-    std::cout << "Write components: " << timer.elapse() << "s" << std::endl;
+    std::cout << "Write components: " << timer.elapse() << "s\n";
 
     struct render_instance
     {
@@ -99,7 +99,7 @@ TEST_CASE("Create entities", "[benchmark]")
                 }
             });
         render_instances.clear();
-        std::cout << "Frame " << i << ": " << timer.elapse() << "s" << std::endl;
+        std::cout << "Frame " << i << ": " << timer.elapse() << "s\n";
     }
 }
 

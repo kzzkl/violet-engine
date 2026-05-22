@@ -24,8 +24,13 @@ struct rotation
     int angle;
 };
 
-class geometry;
-class material;
+class geometry
+{
+};
+
+class material
+{
+};
 
 struct mesh
 {
@@ -64,7 +69,7 @@ public:
         return *this;
     }
 
-    life_counter& operator=(life_counter&& other)
+    life_counter& operator=(life_counter&& other) noexcept
     {
         ++m_move_assignment;
         return *this;

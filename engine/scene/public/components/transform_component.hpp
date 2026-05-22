@@ -78,6 +78,8 @@ public:
 
         mat4f_simd rotation_matrix = {x_axis, y_axis, z_axis, vector::set(0.0f, 0.0f, 0.0f, 1.0f)};
         math::store(quaternion::from_matrix(rotation_matrix), m_rotation);
+
+        m_dirty = TRANSFORM_DIRTY_ALL;
     }
 
 private:
