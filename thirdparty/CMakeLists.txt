@@ -38,6 +38,9 @@ add_subdirectory(spdlog)
 # nlohmann/json
 add_subdirectory(json)
 
+# meshoptimizer
+add_subdirectory(meshoptimizer)
+
 # METIS
 add_library(metis STATIC IMPORTED GLOBAL)
 target_include_directories(metis INTERFACE ${VIOLET_THIRDPARTY_DIR}/metis/include)

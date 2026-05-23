@@ -21,6 +21,7 @@ public:
 
         rdg_buffer* cluster_queue;
         rdg_buffer* cluster_queue_state;
+        float cluster_threshold;
 
         rdg_buffer* draw_buffer;
         rdg_buffer* draw_count_buffer;
@@ -41,7 +42,7 @@ private:
     void add_prepare_pass(render_graph& graph);
 
     void add_instance_cull_pass(render_graph& graph);
-    void add_cluster_cull_pass(render_graph& graph);
+    void add_cluster_cull_pass(render_graph& graph, const parameter& parameter);
 
     rdg_texture* m_hzb{nullptr};
     rhi_sampler* m_hzb_sampler{nullptr};

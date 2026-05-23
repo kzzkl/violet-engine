@@ -9,7 +9,7 @@ namespace violet
 {
 namespace
 {
-constexpr std::uint32_t MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
+constexpr std::uint32_t MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 100;
 constexpr std::uint32_t SHADOW_BATCH_COUNT = 6;
 constexpr std::uint32_t SHADOW_DRAW_COMMAND_OFFSET_STATIC = 0;
 constexpr std::uint32_t SHADOW_DRAW_COMMAND_OFFSET_DYNAMIC =

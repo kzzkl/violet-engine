@@ -566,13 +566,12 @@ bool mesh_loader::load(
     static constexpr std::string_view cache_dir = "assets/meshes";
     fs::create_directories(cache_dir);
 
-    std::string cache_path = std::format(
-        "{}/{}.mesh_{}{}{}",
-        cache_dir,
-        file.filename().string(),
-        generate_clusters ? 1 : 0,
-        generate_mipmaps ? 1 : 0,
-        compress_textures ? 1 : 0);
+    std::uint32_t options = 0;
+    options |= generate_clusters ? (1 << 0) : 0;
+    options |= generate_mipmaps ? (1 << 1) : 0;
+    options |= compress_textures ? (1 << 2) : 0;
+    std::string cache_path =
+        std::format("{}/{}.{}.mesh", cache_dir, file.filename().string(), options);
 
     if (fs::exists(cache_path))
     {

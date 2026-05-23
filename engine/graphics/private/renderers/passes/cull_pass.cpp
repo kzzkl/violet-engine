@@ -108,7 +108,7 @@ void cull_pass::add(render_graph& graph, const parameter& parameter)
     if (parameter.cluster_queue != nullptr && parameter.cluster_queue_state != nullptr)
     {
         rdg_scope cluster_scope(graph, "Cluster Cull");
-        add_cluster_cull_pass(graph);
+        add_cluster_cull_pass(graph, parameter);
     }
 }
 
@@ -321,7 +321,7 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
         });
 }
 
-void cull_pass::add_cluster_cull_pass(render_graph& graph)
+void cull_pass::add_cluster_cull_pass(render_graph& graph, const parameter& parameter)
 {
     rdg_buffer* dispatch_buffer = graph.add_buffer(
         "Dispatch Buffer",
@@ -341,6 +341,8 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
         rdg_buffer_uav draw_info_buffer;
 
         rdg_buffer_ref dispatch_buffer;
+
+        float threshold;
     };
 
     std::uint32_t cluster_node_depth =
@@ -378,6 +380,8 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                     data.draw_info_buffer =
                         pass.add_buffer_uav(m_draw_info_buffer, RHI_PIPELINE_STAGE_COMPUTE);
                 }
+
+                data.threshold = parameter.cluster_threshold;
             },
             [=, stage = m_stage](const pass_data& data, rdg_command& command)
             {
@@ -407,7 +411,7 @@ void cull_pass::add_cluster_cull_pass(render_graph& graph)
                 cluster_cull_cs::constant_data constant = {
                     .hzb = data.hzb.get_bindless(),
                     .hzb_sampler = data.hzb_sampler->get_bindless(),
-                    .threshold = 1.0f,
+                    .threshold = data.threshold,
                     .cluster_queue = data.cluster_queue.get_bindless(),
                     .cluster_queue_state = data.cluster_queue_state.get_bindless(),
                     .max_cluster_count = graphics_config::get_max_cluster_count(),

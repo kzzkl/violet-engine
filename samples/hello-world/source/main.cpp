@@ -11,6 +11,7 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/cluster_feature.hpp"
 #include "graphics/renderers/features/dithering_feature.hpp"
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
@@ -461,6 +462,14 @@ private:
                 ImGui::SliderFloat("Knee##Bloom", &bloom->knee, 0.0f, 1.0f);
                 ImGui::SliderFloat("Radius##Bloom", &bloom->radius, 0.2f, 1.0f);
             }
+        }
+
+        if (ImGui::CollapsingHeader("Cluster"))
+        {
+            auto& main_camera = world.get_component<camera_component>(get_camera());
+            auto* cluster = main_camera.renderer->get_feature<cluster_feature>();
+
+            ImGui::SliderFloat("Cluster Threshold", &cluster->threshold, 0.0f, 10.0f);
         }
 
         if (ImGui::CollapsingHeader("Profiling"))
