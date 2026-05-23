@@ -26,7 +26,7 @@ static const uint MAX_VSM_COUNT = 256;
 
 static const uint MAX_SHADOW_DRAWS_PER_FRAME = 1024 * 100;
 
-static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 20;
+static const uint MAX_SHADOW_DRAWS_PER_BATCH = 1024 * 100;
 static const uint SHADOW_BATCH_COUNT = 6;
 
 static const uint STATIC_DRAW_COMMAND_OFFSET = 0;

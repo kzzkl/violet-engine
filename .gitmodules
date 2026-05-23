@@ -40,3 +40,6 @@
 [submodule "thirdparty/compressonator"]
 	path = thirdparty/compressonator
 	url = https://github.com/GPUOpen-Tools/compressonator.git
+[submodule "thirdparty/meshoptimizer"]
+	path = thirdparty/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git

@@ -510,26 +510,32 @@ LRESULT window_win32::handle_message(HWND hwnd, UINT message, WPARAM wparam, LPA
         break;
     }
     case WM_LBUTTONDOWN: {
+        SetCapture(hwnd);
         on_mouse_key(MOUSE_KEY_LEFT, true);
         break;
     }
     case WM_LBUTTONUP: {
+        ReleaseCapture();
         on_mouse_key(MOUSE_KEY_LEFT, false);
         break;
     }
     case WM_RBUTTONDOWN: {
+        SetCapture(hwnd);
         on_mouse_key(MOUSE_KEY_RIGHT, true);
         break;
     }
     case WM_RBUTTONUP: {
+        ReleaseCapture();
         on_mouse_key(MOUSE_KEY_RIGHT, false);
         break;
     }
     case WM_MBUTTONDOWN: {
+        SetCapture(hwnd);
         on_mouse_key(MOUSE_KEY_MIDDLE, true);
         break;
     }
     case WM_MBUTTONUP: {
+        ReleaseCapture();
         on_mouse_key(MOUSE_KEY_MIDDLE, false);
         break;
     }

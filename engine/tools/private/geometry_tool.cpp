@@ -1,11 +1,20 @@
 #include "tools/geometry_tool.hpp"
 #include "algorithm/hash.hpp"
-#include "cluster/cluster_builder.hpp"
 #include "math/vector.hpp"
 #include "mesh_simplifier/mesh_simplifier.hpp"
 #include "mikktspace.h"
 #include <queue>
 #include <unordered_map>
+
+#ifndef VIOLET_USE_MESH_OPTIMIZER
+#define VIOLET_USE_MESH_OPTIMIZER 1
+#endif
+
+#if VIOLET_USE_MESH_OPTIMIZER
+#include "cluster/cluster_builder_meshopt.hpp"
+#else
+#include "cluster/cluster_builder.hpp"
+#endif
 
 namespace violet
 {
@@ -547,7 +556,12 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             indexes.push_back(vertex_index);
         }
 
+#ifdef VIOLET_USE_MESH_OPTIMIZER
+        cluster_builder_meshopt builder;
+#else
         cluster_builder builder;
+#endif
+
         builder.set_positions(positions);
         builder.set_indexes(indexes);
 

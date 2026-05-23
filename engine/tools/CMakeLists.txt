@@ -1,5 +1,6 @@
 add_library(violet-tools STATIC
     private/cluster/cluster_builder.cpp
+    private/cluster/cluster_builder_meshopt.cpp
     private/cluster/graph_partitioner.cpp
     private/mesh_simplifier/mesh_simplifier.cpp
     private/mesh_simplifier/quadric.cpp
@@ -20,7 +21,8 @@ target_link_libraries(violet-tools
         metis
         MikkTSpace
         stb
-        CMP_Compressonator)
+        CMP_Compressonator
+        meshoptimizer)
 
 install(TARGETS violet-tools
     RUNTIME DESTINATION bin

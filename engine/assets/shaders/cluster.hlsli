@@ -37,7 +37,7 @@ struct cluster_data
         float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(lod_bounds.xyz, 1.0))).xyz;
         float radius = lod_bounds.w * mesh.scale.w;
 
-        float near = center.z - radius;
+        float near = length(center) - radius;
     
         // if camera inside lod sphere, use lod 0.
         if (near < camera.near)
@@ -68,8 +68,10 @@ struct cluster_node_data
         float3 center = mul(camera.matrix_v, mul(mesh.matrix_m, float4(lod_bounds.xyz, 1.0))).xyz;
         float radius = lod_bounds.w * mesh.scale.w;
 
-        float near = center.z - radius;
-        float far = center.z + radius;
+        float d = length(center);
+
+        float near = d - radius;
+        float far = d + radius;
 
         if (near < camera.near)
         {

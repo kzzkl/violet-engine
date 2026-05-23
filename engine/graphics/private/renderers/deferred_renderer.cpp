@@ -2,6 +2,7 @@
 #include "graphics/graphics_config.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
+#include "graphics/renderers/features/cluster_feature.hpp"
 #include "graphics/renderers/features/dithering_feature.hpp"
 #include "graphics/renderers/features/eye_adaptation_feature.hpp"
 #include "graphics/renderers/features/gtao_feature.hpp"
@@ -54,6 +55,7 @@ deferred_renderer::deferred_renderer()
     add_feature<bloom_feature>();
     add_feature<atmosphere_feature>();
     add_feature<dithering_feature>();
+    add_feature<cluster_feature>();
 }
 
 void deferred_renderer::on_render(render_graph& graph)
@@ -359,11 +361,14 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
 
 void deferred_renderer::add_cull_pass(render_graph& graph, bool main_pass)
 {
+    auto* cluster = get_feature<cluster_feature>(true);
+
     graph.add_pass<cull_pass>({
         .stage = main_pass ? CULL_STAGE_MAIN_PASS : CULL_STAGE_POST_PASS,
         .hzb = m_culling_hzb,
         .cluster_queue = m_cluster_queue,
         .cluster_queue_state = m_cluster_queue_state,
+        .cluster_threshold = cluster->threshold,
         .draw_buffer = m_draw_buffer,
         .draw_count_buffer = m_draw_count_buffer,
         .draw_info_buffer = m_draw_info_buffer,
