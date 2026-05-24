@@ -16,6 +16,7 @@ public:
     struct parameter
     {
         rdg_texture* scene_color;
+        bool scene_color_valid;
         rdg_texture* motion_vector;
         rdg_texture* normal_buffer;
         rdg_texture* hzb;

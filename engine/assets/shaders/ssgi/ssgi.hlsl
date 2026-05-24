@@ -19,6 +19,7 @@ struct constant_data
     uint indirect_diffuse;
     float thickness;
     uint iteration_count;
+    uint scene_color_valid;
 };
 PushConstant(constant_data, constant);
 
@@ -106,11 +107,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             constant.hzb_end_level,
             camera.near);
 
-        float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, hit.xy, 0.0).xy;
-
         float3 sky = sh.evaluate(sample_direction);
-        float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.xy + velocity, 0.0).rgb;
-        float3 trace_color = lerp(sky, scene, hit.w);
+        float3 trace_color = sky;
+
+        if (constant.scene_color_valid != 0)
+        {
+            float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, hit.xy, 0.0).xy;
+            float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.xy + velocity, 0.0).rgb;
+            trace_color = lerp(sky, scene, hit.w);
+        }
 
         color += trace_color;
     }

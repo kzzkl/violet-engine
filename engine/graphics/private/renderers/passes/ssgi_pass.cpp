@@ -25,6 +25,7 @@ struct ssgi_cs : public shader_cs
         std::uint32_t indirect_diffuse;
         float thickness;
         std::uint32_t iteration_count;
+        std::uint32_t scene_color_valid;
     };
 
     static constexpr parameter_layout parameters = {
@@ -104,6 +105,7 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
         float thickness;
         std::uint32_t iteration_count;
         std::uint32_t frame;
+        bool scene_color_valid;
     };
 
     graph.add_pass<pass_data>(
@@ -126,6 +128,7 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
             data.thickness = parameter.thickness;
             data.iteration_count = parameter.iteration_count;
             data.frame = parameter.frame;
+            data.scene_color_valid = parameter.scene_color_valid;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -168,6 +171,7 @@ void ssgi_pass::add_ssgi_pass(render_graph& graph, const parameter& parameter)
                     .indirect_diffuse = data.indirect_diffuse.get_bindless(),
                     .thickness = data.thickness,
                     .iteration_count = data.iteration_count,
+                    .scene_color_valid = data.scene_color_valid ? 1u : 0u,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);

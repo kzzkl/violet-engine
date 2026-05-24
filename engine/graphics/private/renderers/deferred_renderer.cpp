@@ -115,6 +115,20 @@ void deferred_renderer::on_render(render_graph& graph)
         {
             add_taa_pass(graph);
         }
+        else if (get_feature<ssgi_feature>(true) && m_prev_scene_color != nullptr)
+        {
+            rhi_texture_region region = {
+                .extent = m_render_target->get_extent(),
+                .layer_count = 1,
+            };
+
+            graph.add_pass<blit_pass>({
+                .src = m_render_target,
+                .src_region = region,
+                .dst = m_prev_scene_color,
+                .dst_region = region,
+            });
+        }
 
         add_eye_adaptation_pass(graph);
         add_bloom_pass(graph);
@@ -576,6 +590,7 @@ void deferred_renderer::add_ssgi_pass(render_graph& graph)
 
     graph.add_pass<ssgi_pass>({
         .scene_color = m_prev_scene_color,
+        .scene_color_valid = m_prev_scene_color_valid,
         .motion_vector = m_motion_vectors,
         .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
         .hzb = m_tracing_hzb,
