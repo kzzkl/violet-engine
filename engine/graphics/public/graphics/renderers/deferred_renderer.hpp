@@ -94,6 +94,7 @@ private:
     rdg_buffer* m_cluster_queue;
     rdg_buffer* m_cluster_queue_state;
     rdg_buffer* m_recheck_instances;
+    rdg_buffer* m_recheck_count;
 
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};

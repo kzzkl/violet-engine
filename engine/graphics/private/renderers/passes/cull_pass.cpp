@@ -4,6 +4,21 @@
 
 namespace violet
 {
+struct prepare_instance_cull_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/cull/prepare_instance_cull.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t recheck_count;
+        std::uint32_t dispatch_buffer;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+    };
+};
+
 struct prepare_cluster_cull_cs : public shader_cs
 {
     static constexpr std::string_view path = "assets/shaders/cull/prepare_cluster_cull.hlsl";
@@ -34,6 +49,7 @@ struct instance_cull_cs : public shader_cs
         std::uint32_t cluster_queue_state;
         std::uint32_t max_draw_command_count;
         std::uint32_t recheck_instances;
+        std::uint32_t recheck_count;
     };
 
     static constexpr parameter_layout parameters = {
@@ -98,6 +114,7 @@ void cull_pass::add(render_graph& graph, const parameter& parameter)
     m_draw_info_buffer = parameter.draw_info_buffer;
 
     m_recheck_instances = parameter.recheck_instances;
+    m_recheck_count = parameter.recheck_count;
 
     m_stage = parameter.stage;
 
@@ -110,6 +127,48 @@ void cull_pass::add(render_graph& graph, const parameter& parameter)
         rdg_scope cluster_scope(graph, "Cluster Cull");
         add_cluster_cull_pass(graph, parameter);
     }
+}
+
+void cull_pass::prepare_instance_cull(render_graph& graph, rdg_buffer* dispatch_buffer)
+{
+    if (m_stage == CULL_STAGE_MAIN_PASS)
+    {
+        return;
+    }
+
+    struct pass_data
+    {
+        rdg_buffer_srv recheck_count;
+        rdg_buffer_uav dispatch_buffer;
+    };
+
+    graph.add_pass<pass_data>(
+        "Prepare Instance Cull",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.recheck_count = pass.add_buffer_srv(m_recheck_count, RHI_PIPELINE_STAGE_COMPUTE);
+            data.dispatch_buffer = pass.add_buffer_uav(dispatch_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            std::vector<std::wstring> defines;
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<prepare_instance_cull_cs>(defines),
+            });
+
+            command.set_constant(
+                prepare_instance_cull_cs::constant_data{
+                    .recheck_count = data.recheck_count.get_bindless(),
+                    .dispatch_buffer = data.dispatch_buffer.get_bindless(),
+                });
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            command.dispatch_1d(1, 1);
+        });
 }
 
 void cull_pass::prepare_cluster_cull(
@@ -170,6 +229,7 @@ void cull_pass::add_prepare_pass(render_graph& graph)
     {
         rdg_buffer_ref count_buffer;
         rdg_buffer_ref cluster_queue_state;
+        rdg_buffer_ref recheck_count;
     };
 
     graph.add_pass<pass_data>(
@@ -193,6 +253,18 @@ void cull_pass::add_prepare_pass(render_graph& graph)
             {
                 data.cluster_queue_state.reset();
             }
+
+            if (m_stage == CULL_STAGE_MAIN_PASS)
+            {
+                data.recheck_count = pass.add_buffer(
+                    m_recheck_count,
+                    RHI_PIPELINE_STAGE_TRANSFER,
+                    RHI_ACCESS_TRANSFER_WRITE);
+            }
+            else
+            {
+                data.recheck_count.reset();
+            }
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -214,11 +286,34 @@ void cull_pass::add_prepare_pass(render_graph& graph)
                     },
                     0);
             }
+
+            if (data.recheck_count)
+            {
+                command.fill_buffer(
+                    data.recheck_count.get_rhi(),
+                    {
+                        .offset = 0,
+                        .size = data.recheck_count.get_size(),
+                    },
+                    0);
+            }
         });
 }
 
 void cull_pass::add_instance_cull_pass(render_graph& graph)
 {
+    rdg_buffer* instance_cull_indirect_args = nullptr;
+
+    if (m_stage == CULL_STAGE_POST_PASS)
+    {
+        instance_cull_indirect_args = graph.add_buffer(
+            "Instance Cull Indirect Args",
+            3 * sizeof(std::uint32_t),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
+
+        prepare_instance_cull(graph, instance_cull_indirect_args);
+    }
+
     struct pass_data
     {
         rdg_texture_srv hzb;
@@ -232,9 +327,13 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
         rdg_buffer_uav cluster_queue_state;
 
         rdg_buffer_uav recheck_instances_uav;
+        rdg_buffer_uav recheck_count_uav;
+
         rdg_buffer_srv recheck_instances_srv;
+        rdg_buffer_srv recheck_count_srv;
 
         std::uint32_t instance_count;
+        rdg_buffer_ref dispatch_buffer;
     };
 
     graph.add_pass<pass_data>(
@@ -268,13 +367,26 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
             {
                 data.recheck_instances_uav =
                     pass.add_buffer_uav(m_recheck_instances, RHI_PIPELINE_STAGE_COMPUTE);
+                data.recheck_count_uav =
+                    pass.add_buffer_uav(m_recheck_count, RHI_PIPELINE_STAGE_COMPUTE);
+
                 data.recheck_instances_srv.reset();
+                data.recheck_count_srv.reset();
             }
             else
             {
-                data.recheck_instances_uav.reset();
                 data.recheck_instances_srv =
                     pass.add_buffer_srv(m_recheck_instances, RHI_PIPELINE_STAGE_COMPUTE);
+                data.recheck_count_srv =
+                    pass.add_buffer_srv(m_recheck_count, RHI_PIPELINE_STAGE_COMPUTE);
+
+                data.recheck_instances_uav.reset();
+                data.recheck_count_uav.reset();
+
+                data.dispatch_buffer = pass.add_buffer(
+                    instance_cull_indirect_args,
+                    RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+                    RHI_ACCESS_INDIRECT_COMMAND_READ);
             }
 
             data.instance_count = graph.get_context().get_instance_count();
@@ -312,12 +424,22 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                     .recheck_instances = stage == CULL_STAGE_MAIN_PASS ?
                                              data.recheck_instances_uav.get_bindless() :
                                              data.recheck_instances_srv.get_bindless(),
+                    .recheck_count = stage == CULL_STAGE_MAIN_PASS ?
+                                         data.recheck_count_uav.get_bindless() :
+                                         data.recheck_count_srv.get_bindless(),
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
-            command.dispatch_1d(data.instance_count);
+            if (stage == CULL_STAGE_MAIN_PASS)
+            {
+                command.dispatch_1d(data.instance_count);
+            }
+            else
+            {
+                command.dispatch_indirect(data.dispatch_buffer.get_rhi());
+            }
         });
 }
 

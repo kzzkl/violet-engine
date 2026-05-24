@@ -249,6 +249,10 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
         "Recheck Instances",
         math::next_power_of_two((context.get_instance_count() + 31) / 32 * sizeof(std::uint32_t)),
         RHI_BUFFER_STORAGE);
+    m_recheck_count = graph.add_buffer(
+        "Recheck Count",
+        sizeof(std::uint32_t),
+        RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 
     m_gbuffers.resize(4);
     m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
@@ -373,6 +377,7 @@ void deferred_renderer::add_cull_pass(render_graph& graph, bool main_pass)
         .draw_count_buffer = m_draw_count_buffer,
         .draw_info_buffer = m_draw_info_buffer,
         .recheck_instances = m_recheck_instances,
+        .recheck_count = m_recheck_count,
     });
 }
 

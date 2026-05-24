@@ -28,11 +28,13 @@ public:
         rdg_buffer* draw_info_buffer;
 
         rdg_buffer* recheck_instances;
+        rdg_buffer* recheck_count;
     };
 
     void add(render_graph& graph, const parameter& parameter);
 
 private:
+    void prepare_instance_cull(render_graph& graph, rdg_buffer* dispatch_buffer);
     void prepare_cluster_cull(
         render_graph& graph,
         rdg_buffer* dispatch_buffer,
@@ -55,6 +57,7 @@ private:
     rdg_buffer* m_cluster_queue_state{nullptr};
 
     rdg_buffer* m_recheck_instances{nullptr};
+    rdg_buffer* m_recheck_count{nullptr};
 
     cull_stage m_stage;
 };

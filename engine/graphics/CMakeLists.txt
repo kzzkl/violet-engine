@@ -77,7 +77,6 @@ target_link_libraries(violet-graphics
     PUBLIC
         violet::algorithm
         violet::task
-        violet::window
         violet::math
         violet::scene
     PRIVATE

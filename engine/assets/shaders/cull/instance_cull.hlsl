@@ -15,62 +15,88 @@ struct constant_data
     uint cluster_queue_state;
     uint max_draw_command_count;
     uint recheck_instances;
+    uint recheck_count;
 };
 PushConstant(constant_data, constant);
 
-groupshared uint gs_recheck_masks[2];
+groupshared uint gs_recheck_offset;
+groupshared uint gs_recheck_count;
+
+groupshared uint gs_visible_cluster_offset;
+groupshared uint gs_visible_cluster_count;
 
 #ifndef CULL_MAIN_PASS
 #define CULL_MAIN_PASS 0
 #endif
 
+uint get_instance_id(uint3 dtid)
+{
+#if CULL_MAIN_PASS
+    if (dtid.x < scene.instance_count)
+    {
+        return dtid.x;
+    }
+#else
+    StructuredBuffer<uint> recheck_instances = ResourceDescriptorHeap[constant.recheck_instances];
+    StructuredBuffer<uint> recheck_count = ResourceDescriptorHeap[constant.recheck_count];
+
+    if (dtid.x < recheck_count[0])
+    {
+        return recheck_instances[dtid.x];
+    }
+#endif
+
+    return 0xFFFFFFFF;
+}
+
 [shader("compute")]
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
-    uint instance_id = dtid.x;
-    if (instance_id >= scene.instance_count)
-    {
-        return;
-    }
-
     StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-    instance_data instance = instances[instance_id];
+    instance_data instance;
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-    geometry_data geometry = geometries[instance.geometry_index];
+    geometry_data geometry;
 
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh_data mesh;
 
     Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
     SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
-    bool visible = true;
-
-#if CULL_MAIN_PASS
-    uint recheck_mask_index = group_index / 32;
-
-    if (group_index % 32 == 0)
+    uint instance_id = get_instance_id(dtid);
+    if (instance_id != 0xFFFFFFFF)
     {
-        gs_recheck_masks[recheck_mask_index] = 0;
+        instance = instances[instance_id];
+        geometry = geometries[instance.geometry_index];
+        mesh = meshes[instance.mesh_index];
     }
 
+    bool visible = instance_id != 0xFFFFFFFF;
+
+    if (group_index == 0)
+    {
+        gs_recheck_count = 0;
+        gs_visible_cluster_count = 0;
+    }
+
+#if CULL_MAIN_PASS
     GroupMemoryBarrierWithGroupSync();
 
-    float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
-    sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
-
-    if ((mesh.flags & MESH_SKIP_FRUSTUM_CULL) == 0)
+    if (visible && (mesh.flags & MESH_SKIP_FRUSTUM_CULL) == 0)
     {
+        float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
+        sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
         visible = sphere_vs.w > 0.0;
         visible = visible && frustum_cull(sphere_vs, camera);
     }
 
+    uint recheck_offset = 0xFFFFFFFF;
     if (visible && (mesh.flags & MESH_SKIP_OCCLUSION_CULL) == 0)
     {
         float4 prev_sphere_vs = mul(camera.prev_matrix_v, mul(mesh.prev_matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
-        prev_sphere_vs.w = sphere_vs.w;
+        prev_sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;
         if (!occlusion_cull(
                 prev_sphere_vs,
                 hzb,
@@ -80,22 +106,26 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                 camera.type))
         {
             visible = false;
-            InterlockedOr(gs_recheck_masks[recheck_mask_index], 1u << (instance_id % 32));
+            InterlockedAdd(gs_recheck_count, 1, recheck_offset);
         }
     }
 
     GroupMemoryBarrierWithGroupSync();
 
-    if (group_index % 32 == 0)
+    if (group_index == 0)
+    {
+        RWStructuredBuffer<uint> recheck_count = ResourceDescriptorHeap[constant.recheck_count];
+        InterlockedAdd(recheck_count[0], gs_recheck_count, gs_recheck_offset);
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    if (recheck_offset != 0xFFFFFFFF)
     {
         RWStructuredBuffer<uint> recheck_instances = ResourceDescriptorHeap[constant.recheck_instances];
-        recheck_instances[instance_id / 32] = gs_recheck_masks[recheck_mask_index];
+        recheck_instances[gs_recheck_offset + recheck_offset] = instance_id;
     }
 #else
-    StructuredBuffer<uint> recheck_instances = ResourceDescriptorHeap[constant.recheck_instances];
-    uint recheck_mask = recheck_instances[instance_id / 32];
-
-    visible = (recheck_mask & (1u << (instance_id % 32))) != 0;
     if (visible)
     {
         float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
@@ -110,6 +140,24 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     }
 #endif
 
+#ifdef GENERATE_CLUSTER_LIST
+    uint visible_cluster_offset = 0xFFFFFFFF;
+    if (visible && geometry.cluster_root != 0xFFFFFFFF)
+    {
+        InterlockedAdd(gs_visible_cluster_count, 1, visible_cluster_offset);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (group_index == 0 && gs_visible_cluster_count != 0)
+    {
+        RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
+        InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, gs_visible_cluster_count, gs_visible_cluster_offset);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+#endif
+
     if (!visible)
     {
         return;
@@ -119,11 +167,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     if (geometry.cluster_root != 0xFFFFFFFF)
     {
         RWStructuredBuffer<uint2> cluster_queue = ResourceDescriptorHeap[constant.cluster_queue];
-        RWStructuredBuffer<cluster_queue_state_data> cluster_queue_state = ResourceDescriptorHeap[constant.cluster_queue_state];
-
-        uint cluster_node_queue_rear = 0;
-        InterlockedAdd(cluster_queue_state[0].cluster_node_queue_rear, 1, cluster_node_queue_rear);
-        cluster_queue[cluster_node_queue_rear] = uint2(geometry.cluster_root, instance_id);
+        cluster_queue[gs_visible_cluster_offset + visible_cluster_offset] = uint2(geometry.cluster_root, instance_id);
     }
     else
     {

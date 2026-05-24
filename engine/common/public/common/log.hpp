@@ -1,13 +1,15 @@
 #pragma once
 
-#include "spdlog/logger.h"
 #include <memory>
+#include <spdlog/logger.h>
 
 namespace violet
 {
 class log
 {
 public:
+    static void initialize(std::string_view file_path);
+
     template <typename... Args>
     static void error(spdlog::format_string_t<Args...> fmt, Args&&... args)
     {

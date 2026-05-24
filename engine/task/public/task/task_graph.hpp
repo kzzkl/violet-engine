@@ -64,6 +64,16 @@ public:
         throw std::runtime_error("Task not found");
     }
 
+    bool has_task(std::string_view name) const
+    {
+        return std::ranges::any_of(
+            m_tasks,
+            [name](const auto& t)
+            {
+                return t->get_name() == name;
+            });
+    }
+
     task_group& get_group(std::string_view name) const
     {
         for (const auto& t : m_groups)
@@ -74,7 +84,17 @@ public:
             }
         }
 
-        throw std::runtime_error("Task not found");
+        throw std::runtime_error("Task group not found");
+    }
+
+    bool has_group(std::string_view name) const
+    {
+        return std::ranges::any_of(
+            m_groups,
+            [name](const auto& t)
+            {
+                return t->get_name() == name;
+            });
     }
 
     std::uint32_t get_task_count() const noexcept

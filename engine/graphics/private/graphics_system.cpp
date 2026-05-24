@@ -72,17 +72,21 @@ bool graphics_system::initialize(const dictionary& config)
 
     auto& task_graph = get_task_graph();
     auto& pre_update_group = task_graph.get_group("PreUpdate");
-    auto& update_window_task = task_graph.get_task("Update Window");
 
-    task_graph.add_task()
-        .set_name("Frame Begin")
-        .set_group(pre_update_group)
-        .add_dependency(update_window_task)
-        .set_execute(
-            [this]()
-            {
-                begin_frame();
-            });
+    auto& frame_begin_task = task_graph.add_task()
+                                 .set_name("Frame Begin")
+                                 .set_group(pre_update_group)
+                                 .set_execute(
+                                     [this]()
+                                     {
+                                         begin_frame();
+                                     });
+
+    if (task_graph.has_task("Update Window"))
+    {
+        auto& update_window_task = task_graph.get_task("Update Window");
+        frame_begin_task.add_dependency(update_window_task);
+    }
 
     auto& post_update_group = task_graph.get_group("PostUpdate");
     auto& transform_group = task_graph.get_group("Transform");
