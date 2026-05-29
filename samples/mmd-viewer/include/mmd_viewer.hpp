@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core/engine.hpp"
-#include "graphics/skybox.hpp"
 #include "mmd_loader.hpp"
 #include "mmd_renderer.hpp"
+#include "sample/deferred_renderer_imgui.hpp"
 
 namespace violet
 {
@@ -33,7 +33,7 @@ private:
     void update_sdf();
     void draw_imgui();
 
-    std::unique_ptr<mmd_renderer> m_renderer;
+    std::unique_ptr<deferred_renderer_imgui> m_renderer;
     rhi_ptr<rhi_swapchain> m_swapchain;
 
     entity m_camera;
@@ -44,7 +44,7 @@ private:
     entity m_face;
     std::function<void(const vec3f&, const vec3f&)> m_sdf_callback;
 
-    std::unique_ptr<skybox> m_skybox;
+    // std::unique_ptr<skybox> m_skybox;
 
     std::vector<std::unique_ptr<texture_2d>> m_internal_toons;
 

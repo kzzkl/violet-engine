@@ -70,21 +70,15 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     return output;
 }
 
-struct fs_output
-{
-    float4 albedo : SV_TARGET0;
-    float2 material : SV_TARGET1;
-    uint normal : SV_TARGET2;
-    float4 emissive : SV_TARGET3;
-};
-
 fs_output fs_main(vs_output input)
 {
-    fs_output output;
-    output.albedo = float4(input.color, 1.0);
-    output.material = 0.0;
-    output.normal = pack_gbuffer_normal(float3(0.0, 0.0, 0.0), input.shading_model);
-    output.emissive = 0.0;
+    gbuffer gbuffer;
+    gbuffer.albedo = input.color;
+    gbuffer.roughness = 0.0;
+    gbuffer.metallic = 0.0;
+    gbuffer.normal = 0.0;
+    gbuffer.emissive = 0.0;
+    gbuffer.shading_model = input.shading_model;
 
-    return output;
+    return fs_output::create(gbuffer);
 }

@@ -95,6 +95,8 @@ public:
     void set_polygon_mode(rhi_polygon_mode polygon_mode);
     void set_primitive_topology(rhi_primitive_topology primitive_topology);
 
+    void set_blend_state(const rhi_blend_state* blend_state);
+
     void set_shadow_cull_mode(shadow_cull_mode cull_mode);
     shadow_cull_mode get_shadow_cull_mode() const noexcept
     {

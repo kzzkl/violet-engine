@@ -14,6 +14,12 @@ struct cluster_builder_meshopt_options
     std::uint32_t min_triangles{128 / 3};
     std::uint32_t max_triangles{128};
 
+    bool partition_sort{false};
+    bool partition_spatial{true};
+    std::uint32_t partition_size{16};
+
+    float simplify_ratio{0.5f};
+
     bool cluster_spatial{false};
     float cluster_split_factor{2.0f};
     float cluster_fill_weight{0.0f};

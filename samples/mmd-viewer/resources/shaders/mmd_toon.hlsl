@@ -10,28 +10,38 @@ PushConstant(constant_data, constant);
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
 
-[numthreads(TILE_SIZE, TILE_SIZE, 1)]
+struct toon_shading_model
+{
+    float3 color;
+    uint2 coord;
+
+    static toon_shading_model create(gbuffer gbuffer, uint2 coord)
+    {
+        toon_shading_model shading_model;
+        shading_model.color = gbuffer.emissive;
+        shading_model.coord = coord;
+        return shading_model;
+    }
+
+    float3 evaluate_direct_lighting(light_data light, float shadow)
+    {
+        return 0.0;
+    }
+
+    float3 evaluate_indirect_lighting(float3 irradiance)
+    {
+        float3 albedo = color;
+#ifdef USE_AO_BUFFER
+        Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[0]];
+        albedo *= ao_buffer[coord];
+#endif
+        return albedo;
+    }
+};
+
+[shader("compute")]
+[numthreads(SHADING_TILE_SIZE, SHADING_TILE_SIZE, 1)]
 void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    uint2 coord;
-    if (!get_shading_coord(constant.common, gtid, gid, coord))
-    {
-        return;
-    }
-
-    float3 N;
-    if (!unpack_gbuffer_normal(constant.common, coord, N))
-    {
-        return;
-    }
-
-    float3 albedo = unpack_gbuffer_albedo(constant.common, coord);
-
-#ifdef USE_AO_BUFFER
-    Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[0]];
-    albedo *= ao_buffer[coord];
-#endif
-
-    RWTexture2D<float4> render_target = ResourceDescriptorHeap[constant.common.render_target];
-    render_target[coord] = float4(albedo, 1.0);
+    evaluate_lighting<toon_shading_model>(constant.common, scene, camera, gtid, gid);
 }

@@ -112,6 +112,7 @@ bool graphics_system::initialize(const dictionary& config)
 
                 get_system<mesh_system>().update(*m_scene_manager);
                 get_system<skinning_system>().update();
+                device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
                 get_system<light_system>().update(*m_scene_manager);
                 get_system<environment_system>().update(*m_scene_manager);
                 get_system<camera_system>().update(*m_scene_manager);

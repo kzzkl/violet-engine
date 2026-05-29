@@ -66,6 +66,15 @@ void material::set_primitive_topology(rhi_primitive_topology primitive_topology)
     }
 }
 
+void material::set_blend_state(const rhi_blend_state* blend_state)
+{
+    if (m_raster_pipeline.blend_state != blend_state)
+    {
+        m_raster_pipeline.blend_state = blend_state;
+        mark_dirty(DIRTY_FLAG_PIPELINE);
+    }
+}
+
 void material::set_shadow_cull_mode(shadow_cull_mode cull_mode)
 {
     if (m_shadow_cull_mode != cull_mode)

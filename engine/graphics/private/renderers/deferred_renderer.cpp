@@ -261,7 +261,7 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
 
     m_recheck_instances = graph.add_buffer(
         "Recheck Instances",
-        math::next_power_of_two((context.get_instance_count() + 31) / 32 * sizeof(std::uint32_t)),
+        math::next_power_of_two(context.get_instance_count()) * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE);
     m_recheck_count = graph.add_buffer(
         "Recheck Count",

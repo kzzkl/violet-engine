@@ -14,10 +14,8 @@ namespace violet
 {
 namespace
 {
-constexpr std::uint32_t PARTITION_SIZE = 16;
 constexpr std::uint32_t MAX_BVH_CHILD_COUNT = 8;
 constexpr std::uint32_t MAX_BVH_CHILD_BIT_COUNT = 3;
-constexpr float SIMPLIFY_RATIO = 0.5f;
 constexpr float SIMPLIFY_ERROR_FACTOR_SLOPPY = 2.0f;
 
 struct sloppy_vertex
@@ -160,9 +158,10 @@ void cluster_builder_meshopt::build(const cluster_builder_meshopt_options& optio
 
         lock_boundaries(locks, groups, clusters, remap);
 
-        for (const std::vector<int>& group : groups)
+        for (const auto& group : groups)
         {
             std::vector<std::uint32_t> merged;
+            merged.reserve(group.size() * m_options.max_triangles * 3);
             for (int cluster_index : group)
             {
                 const meshopt_cluster& cluster = clusters[cluster_index];
@@ -171,7 +170,8 @@ void cluster_builder_meshopt::build(const cluster_builder_meshopt_options& optio
 
             std::size_t target_index_count = merged.size() / 3;
             target_index_count =
-                static_cast<std::size_t>(static_cast<float>(target_index_count) * SIMPLIFY_RATIO) *
+                static_cast<std::size_t>(
+                    static_cast<float>(target_index_count) * m_options.simplify_ratio) *
                 3;
             target_index_count = std::max<std::size_t>(target_index_count, 3);
 
@@ -385,7 +385,7 @@ std::vector<std::vector<int>> cluster_builder_meshopt::partition(
     const std::vector<int>& pending,
     const std::vector<std::uint32_t>& remap)
 {
-    if (pending.size() <= PARTITION_SIZE)
+    if (pending.size() <= m_options.partition_size)
     {
         return {pending};
     }
@@ -418,40 +418,46 @@ std::vector<std::vector<int>> cluster_builder_meshopt::partition(
         cluster_indices.size(),
         cluster_counts.data(),
         cluster_counts.size(),
-        &m_positions[0].x,
+        m_options.partition_spatial ? &m_positions[0].x : nullptr,
         remap.size(),
         sizeof(vec3f),
-        PARTITION_SIZE);
+        m_options.partition_size);
 
-    std::vector<float> partition_points(partition_count * 3);
-    for (std::size_t i = 0; i < pending.size(); ++i)
-    {
-        const vec3f center = clusters[pending[i]].bounding_sphere.center;
-        float* point = &partition_points[cluster_part[i] * 3ull];
-        point[0] = center.x;
-        point[1] = center.y;
-        point[2] = center.z;
-    }
-
-    std::vector<std::uint32_t> partition_remap(partition_count);
-    meshopt_spatialSortRemap(
-        partition_remap.data(),
-        partition_points.data(),
-        partition_count,
-        sizeof(float) * 3);
-
-    std::vector<std::vector<int>> result(partition_count);
+    std::vector<std::vector<int>> partitions(partition_count);
     for (std::size_t i = 0; i < partition_count; ++i)
     {
-        result[i].reserve(PARTITION_SIZE + (PARTITION_SIZE / 3));
+        partitions[i].reserve(m_options.partition_size + (m_options.partition_size / 3));
+    }
+
+    std::vector<std::uint32_t> partition_remap;
+    if (m_options.partition_sort)
+    {
+        std::vector<float> partition_points(partition_count * 3);
+        for (std::size_t i = 0; i < pending.size(); ++i)
+        {
+            const vec3f center = clusters[pending[i]].bounding_sphere.center;
+            float* point = &partition_points[cluster_part[i] * 3ull];
+            point[0] = center.x;
+            point[1] = center.y;
+            point[2] = center.z;
+        }
+
+        partition_remap.resize(partition_count);
+        meshopt_spatialSortRemap(
+            partition_remap.data(),
+            partition_points.data(),
+            partition_count,
+            sizeof(float) * 3);
     }
 
     for (std::size_t i = 0; i < pending.size(); ++i)
     {
-        result[partition_remap[cluster_part[i]]].push_back(pending[i]);
+        std::uint32_t partition_index =
+            partition_remap.empty() ? cluster_part[i] : partition_remap[cluster_part[i]];
+        partitions[partition_index].push_back(pending[i]);
     }
 
-    return result;
+    return partitions;
 }
 
 void cluster_builder_meshopt::lock_boundaries(
@@ -465,7 +471,7 @@ void cluster_builder_meshopt::lock_boundaries(
         lock &= ~((1u << 0) | (1u << 7));
     }
 
-    for (const std::vector<int>& group : groups)
+    for (const auto& group : groups)
     {
         for (int cluster_index : group)
         {
@@ -529,25 +535,32 @@ cluster_builder_meshopt::simplify_result cluster_builder_meshopt::simplify(
             vertex_remap.emplace(index, static_cast<std::uint32_t>(positions.size()));
         if (inserted)
         {
-            const vec3f& position = m_positions[index];
-            const vec3f& normal = m_normals[index];
-            const vec4f& tangent = m_tangents[index];
-            const vec2f& texcoord = m_texcoords[index];
+            positions.push_back(m_positions[index]);
 
-            positions.push_back(position);
-            attributes.insert(
-                attributes.end(),
-                {
-                    normal.x,
-                    normal.y,
-                    normal.z,
-                    tangent.x,
-                    tangent.y,
-                    tangent.z,
-                    tangent.w,
-                    texcoord.x,
-                    texcoord.y,
-                });
+            if (!m_normals.empty())
+            {
+                const vec3f& normal = m_normals[index];
+                attributes.push_back(normal.x);
+                attributes.push_back(normal.y);
+                attributes.push_back(normal.z);
+            }
+
+            if (!m_tangents.empty())
+            {
+                const vec4f& tangent = m_tangents[index];
+                attributes.push_back(tangent.x);
+                attributes.push_back(tangent.y);
+                attributes.push_back(tangent.z);
+                attributes.push_back(tangent.w);
+            }
+
+            if (!m_texcoords.empty())
+            {
+                const vec2f& texcoord = m_texcoords[index];
+                attributes.push_back(texcoord.x);
+                attributes.push_back(texcoord.y);
+            }
+
             local_locks.push_back(locks[index]);
         }
 
@@ -649,7 +662,7 @@ cluster_builder_meshopt::simplify_result cluster_builder_meshopt::simplify(
     std::vector<std::uint32_t> result;
     result.reserve(lod.size());
 
-    for (std::uint32_t& index : lod)
+    for (std::uint32_t index : lod)
     {
         std::uint32_t& compact_index = compact_remap[index];
         if (compact_index == std::numeric_limits<std::uint32_t>::max())

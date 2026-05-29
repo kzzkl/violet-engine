@@ -50,14 +50,6 @@ struct mmd_material
     uint ramp_texture;
 };
 
-struct fs_output
-{
-    float4 albedo : SV_TARGET0;
-    float2 material : SV_TARGET1;
-    uint normal : SV_TARGET2;
-    float4 emissive : SV_TARGET3;
-};
-
 float3 multiply_rgb(float3 a, float3 b, float factor)
 {
     return (1.0 - factor) * a + factor * a * b;
@@ -104,9 +96,9 @@ fs_output fs_main(vs_output input)
     float3 N = normalize(input.normal_ws);
 
     float3 toon = 0.0;
-    if (scene.light_count > 0)
+    if (scene.shadow_casting_light_count > 0)
     {
-        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
         light_data light = lights[0];
 
         float3 L = -light.direction;
@@ -135,11 +127,13 @@ fs_output fs_main(vs_output input)
 
     material_info material_info = load_material_info(scene.material_buffer, input.material_address);
 
-    fs_output output;
-    output.albedo = color;
-    output.material = 0.0;
-    output.normal = pack_gbuffer_normal(N, material_info.shading_model);
-    output.emissive = 0.0;
+    gbuffer gbuffer;
+    gbuffer.albedo = color.rgb;
+    gbuffer.roughness = 0.0;
+    gbuffer.metallic = 0.0;
+    gbuffer.emissive = 0.0;
+    gbuffer.normal = N;
+    gbuffer.shading_model = material_info.shading_model;
 
-    return output;
+    return fs_output::create(gbuffer);
 }

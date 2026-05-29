@@ -12,10 +12,11 @@
 #include "components/skinned_component.hpp"
 #include "components/transform_component.hpp"
 #include "graphics/resources/ramp_texture.hpp"
-#include "graphics/tools/geometry_tool.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include "mmd_material.hpp"
+#include "tools/geometry_tool.hpp"
+#include "tools/texture_tool.hpp"
 #include "vmd.hpp"
 #include <algorithm>
 #include <map>
@@ -159,9 +160,20 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
 
     for (const auto& texture : m_pmx.textures)
     {
-        scene.textures.push_back(std::make_unique<texture_2d>(
-            texture,
-            TEXTURE_OPTION_GENERATE_MIPMAPS | TEXTURE_OPTION_SRGB));
+        texture_data data;
+        data.format = RHI_FORMAT_R8G8B8A8_SRGB;
+        texture_tool::load(texture, data);
+
+        if (data.pixels.empty())
+        {
+            scene.textures.push_back(nullptr);
+        }
+        else
+        {
+            texture_data data_mipmap;
+            texture_tool::generate_mipmaps(data, data_mipmap);
+            scene.textures.push_back(std::make_unique<texture_2d>(data_mipmap));
+        }
     }
 
     for (const auto& pmx_material : m_pmx.materials)
@@ -174,7 +186,8 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
         material->set_ambient(pmx_material.ambient);
         material->set_ramp(scene.ramp_texture.get());
 
-        if (pmx_material.texture_index != -1 && *scene.textures[pmx_material.texture_index])
+        if (pmx_material.texture_index != -1 &&
+            scene.textures[pmx_material.texture_index] != nullptr)
         {
             material->set_diffuse(scene.textures[pmx_material.texture_index].get());
         }
@@ -191,7 +204,8 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
             }
         }
 
-        if (pmx_material.environment_index != -1 && *scene.textures[pmx_material.environment_index])
+        if (pmx_material.environment_index != -1 &&
+            scene.textures[pmx_material.environment_index] != nullptr)
         {
             material->set_environment(scene.textures[pmx_material.environment_index].get());
         }

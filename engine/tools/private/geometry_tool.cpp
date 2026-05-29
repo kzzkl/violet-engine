@@ -556,7 +556,7 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             indexes.push_back(vertex_index);
         }
 
-#ifdef VIOLET_USE_MESH_OPTIMIZER
+#if VIOLET_USE_MESH_OPTIMIZER
         cluster_builder_meshopt builder;
 #else
         cluster_builder builder;

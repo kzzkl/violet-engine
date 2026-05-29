@@ -299,6 +299,7 @@ void sample_system::initialize_render()
     });
 
     auto default_material = std::make_unique<pbr_material>();
+    default_material->set_cull_mode(RHI_CULL_MODE_NONE);
     default_material->set_albedo({1.0f, 1.0f, 1.0f});
     default_material->set_roughness(0.8f);
     default_material->set_metallic(0.2f);

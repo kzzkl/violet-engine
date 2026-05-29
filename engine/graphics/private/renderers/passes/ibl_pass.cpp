@@ -78,7 +78,8 @@ void prefilter_pass::add(render_graph& graph, const parameter& parameter)
                     prefilter_cs::constant_data{
                         .environment_map = data.environment_map.get_bindless(),
                         .prefilter_map = data.prefilter_map.get_bindless(),
-                        .roughness = static_cast<float>(level) / static_cast<float>(level_count),
+                        .roughness =
+                            static_cast<float>(level) / static_cast<float>(level_count - 1),
                         .resolution = data.environment_map.get_texture()->get_extent().width,
                         .width = extent.width,
                         .height = extent.height,

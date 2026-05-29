@@ -1,7 +1,7 @@
 #include "mesh.hlsli"
 #include "brdf.hlsli"
 #include "color.hlsli"
-#include "shadow.hlsli"
+#include "virtual_shadow_map/vsm_common.hlsli"
 
 ConstantBuffer<scene_data> scene : register(b0, space1);
 ConstantBuffer<camera_data> camera : register(b0, space2);
@@ -16,14 +16,6 @@ struct vs_output
     float2 texcoord : TEXCOORD;
     float4 texcoord2 : TEXCOORD2;
     uint material_address : MATERIAL_ADDRESS;
-};
-
-struct fs_output
-{
-    float4 albedo : SV_TARGET0;
-    float2 material : SV_TARGET1;
-    uint normal : SV_TARGET2;
-    float4 emissive : SV_TARGET3;
 };
 
 float3 get_normal(vs_output input, float3 packed_normal)
@@ -43,13 +35,13 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
     Texture2D<float4> ramp = ResourceDescriptorHeap[ramp_texture];
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
 
     float NdotV = saturate(dot(N, V));
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 direct_lighting = 0.0;
-    if (scene.light_count > 0)
+    if (scene.shadow_casting_light_count > 0)
     {
         light_data light = lights[0];
 
@@ -74,8 +66,8 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
         float shadow_factor = 1.0;
         if (light.vsm_address != 0xFFFFFFFF)
         {
-            shadow_context shadow = shadow_context::create(scene, camera);
-            shadow_factor = shadow.get_shadow(light, position_ws);
+            // shadow_context shadow = shadow_context::create(scene, camera);
+            // shadow_factor = shadow.get_shadow(light, position_ws);
         }
 
         direct_lighting += (specular * specular_ramp + diffuse * diffuse_ramp) * NdotL * light.color * shadow_factor;
@@ -86,25 +78,26 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
 
 float3 indirect_light(float3 N, float3 V, float3 albedo, float roughness, float metallic, uint brdf_lut_address)
 {
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
+    return 0.0;
+    // SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float NdotV = saturate(dot(N, V));
-    float3 F0 = lerp(0.04, albedo, metallic);
+    // float NdotV = saturate(dot(N, V));
+    // float3 F0 = lerp(0.04, albedo, metallic);
 
-    float3 R = reflect(-V, N);
-    float3 f = f_schlick_roughness(NdotV, F0, roughness);
-    float3 kd = lerp(1.0 - f, 0.0, metallic);
+    // float3 R = reflect(-V, N);
+    // float3 f = f_schlick_roughness(NdotV, F0, roughness);
+    // float3 kd = lerp(1.0 - f, 0.0, metallic);
 
-    TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
-    float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
+    // TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
+    // float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
 
-    Texture2D<float2> brdf_lut = ResourceDescriptorHeap[brdf_lut_address];
-    float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
-    float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
+    // Texture2D<float2> brdf_lut = ResourceDescriptorHeap[brdf_lut_address];
+    // float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
+    // float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
 
-    TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
-    float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
-    float3 diffuse = albedo * irradiance * kd / PI;
+    // TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
+    // float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
+    // float3 diffuse = albedo * irradiance * kd / PI;
 
-    return specular + diffuse;
+    // return specular + diffuse;
 }

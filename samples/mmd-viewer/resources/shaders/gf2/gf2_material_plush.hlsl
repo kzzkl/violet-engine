@@ -32,11 +32,13 @@ fs_output fs_main(vs_output input)
 
     material_info material_info = load_material_info(scene.material_buffer, input.material_address);
 
-    fs_output output;
-    output.albedo = float4(direct_lighting + indirect_lighting, 1.0);
-    output.material = 0.0;
-    output.normal = pack_gbuffer_normal(float3(0.0, 0.0, 0.0), material_info.shading_model);
-    output.emissive = 0.0;
+    gbuffer gbuffer;
+    gbuffer.albedo = 0.0;
+    gbuffer.roughness = 0.0;
+    gbuffer.metallic = 0.0;
+    gbuffer.emissive = direct_lighting + indirect_lighting;
+    gbuffer.normal = 0.0;
+    gbuffer.shading_model = material_info.shading_model;
 
-    return output;
+    return fs_output::create(gbuffer);
 }

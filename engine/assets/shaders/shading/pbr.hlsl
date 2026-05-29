@@ -87,22 +87,30 @@ struct pbr_shading_model
         SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
         TextureCube<float3> prefilter_map = ResourceDescriptorHeap[constant.common.prefilter_map];
-        float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
+
+        uint prefilter_width;
+        uint prefilter_height;
+        uint level_count;
+        prefilter_map.GetDimensions(0, prefilter_width, prefilter_height, level_count);
+
+        float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * (level_count - 1));
 
         Texture2D<float2> brdf_lut = ResourceDescriptorHeap[constant.brdf_lut];
         float2 brdf = brdf_lut.SampleLevel(linear_clamp_sampler, float2(NdotV, roughness), 0.0);
-        float3 specular = F0 * brdf.x + brdf.y;
 
-        float3 diffuse = albedo * kd;
-
-        float3 lighting = specular * prefilter + diffuse * irradiance;
+        float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
+        float3 diffuse = albedo * kd * irradiance;
 
 #ifdef USE_AO_BUFFER
         Texture2D<float> ao_buffer = ResourceDescriptorHeap[constant.common.auxiliary_buffers[1]];
-        lighting *= gtao_multi_bounce(ao_buffer[coord], albedo);
+        float diffuse_ao = ao_buffer[coord];
+        diffuse *= gtao_multi_bounce(diffuse_ao, albedo);
+
+        float specular_ao = saturate(pow(NdotV + diffuse_ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + diffuse_ao);
+        specular *= specular_ao;
 #endif
 
-        return lighting + emissive;
+        return specular + diffuse + emissive;
     }
 };
 

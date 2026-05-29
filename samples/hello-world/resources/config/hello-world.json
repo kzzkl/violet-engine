@@ -6,10 +6,12 @@
     },
     "hello_world": {
         "skybox_bak": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
-        "model": "D:/Workspace/assets/models/gltf/Bistro.glb",
-        "model1": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "model1": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
         "model2": "D:/Workspace/assets/models/gltf/CornellBox.glb",
         "model3": "D:/Workspace/assets/models/obj/terrain.obj",
-        "model4": "D:/Workspace/assets/models/gltf/SanMiguel.glb"
+        "model4": "D:/Workspace/assets/models/gltf/SanMiguel.glb",
+        "model5": "D:/Workspace/assets/models/obj/stanford-bunny.obj",
+        "model6": "D:/Workspace/assets/models/gltf/Sponza.glb"
     }
 }

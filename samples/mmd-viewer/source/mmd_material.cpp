@@ -30,15 +30,9 @@ struct toon_cs : public shading_model_cs
 
 mmd_material::mmd_material()
 {
-    auto& device = render_device::instance();
-
-    set_pipeline<toon_shading_model>({
-        .vertex_shader = device.get_shader<mmd_material_vs>(),
-        .fragment_shader = device.get_shader<mmd_material_fs>(),
-        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_BACK),
-        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
-    });
+    set_cull_mode(RHI_CULL_MODE_BACK);
     set_surface_type(SURFACE_TYPE_OPAQUE);
+    set_shading_model<toon_shading_model>();
 }
 
 void mmd_material::set_diffuse(const vec4f& diffuse)
@@ -83,17 +77,21 @@ void mmd_material::set_ramp(const texture_2d* texture)
     get_constant().ramp_texture = texture->get_srv()->get_bindless();
 }
 
+rhi_shader* mmd_material::get_vertex_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<mmd_material_vs>(defines);
+}
+
+rhi_shader* mmd_material::get_fragment_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<mmd_material_fs>(defines);
+}
+
 mmd_outline_material::mmd_outline_material()
 {
-    auto& device = render_device::instance();
-
-    set_pipeline<unlit_shading_model>({
-        .vertex_shader = device.get_shader<mmd_outline_vs>(),
-        .fragment_shader = device.get_shader<mmd_outline_fs>(),
-        .rasterizer_state = device.get_rasterizer_state(RHI_CULL_MODE_FRONT),
-        .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
-    });
+    set_cull_mode(RHI_CULL_MODE_FRONT);
     set_surface_type(SURFACE_TYPE_OPAQUE);
+    set_shading_model<unlit_shading_model>();
 
     get_constant() = {
         .color = {1.0f, 1.0f, 1.0f},
@@ -129,10 +127,20 @@ void mmd_outline_material::set_strength(float strength)
     constant.strength = strength;
 }
 
+rhi_shader* mmd_outline_material::get_vertex_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<mmd_outline_vs>(defines);
+}
+
+rhi_shader* mmd_outline_material::get_fragment_shader(std::span<std::wstring> defines) const
+{
+    return render_device::instance().get_shader<mmd_outline_fs>(defines);
+}
+
 toon_shading_model::toon_shading_model()
     : shading_model(
           "Toon",
-          {SHADING_GBUFFER_ALBEDO, SHADING_GBUFFER_NORMAL},
+          {SHADING_GBUFFER_ALBEDO, SHADING_GBUFFER_NORMAL, SHADING_GBUFFER_EMISSIVE},
           {SHADING_AUXILIARY_BUFFER_AO})
 {
 }

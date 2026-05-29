@@ -1,13 +1,13 @@
 #include "mmd_viewer.hpp"
 #include "common/utility.hpp"
+#include "components/atmosphere_component.hpp"
 #include "components/camera_component.hpp"
+#include "components/first_person_control_component.hpp"
 #include "components/light_component.hpp"
 #include "components/mesh_component.hpp"
 #include "components/mmd_skeleton_component.hpp"
 #include "components/morph_component.hpp"
-#include "components/orbit_control_component.hpp"
 #include "components/scene_component.hpp"
-#include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
 #include "gf2/gf2_material.hpp"
@@ -20,8 +20,10 @@
 #include "physics/physics_system.hpp"
 #include "sample/imgui_system.hpp"
 #include "scene/transform_system.hpp"
+#include "tools/texture_tool.hpp"
 #include "window/window_system.hpp"
 #include <imgui.h>
+
 
 namespace violet
 {
@@ -84,8 +86,6 @@ bool mmd_viewer::initialize(const dictionary& config)
         config.find("skybox") == config.end() ? L"" : string_to_wstring(config["skybox"]);
     initialize_scene(pmx_path, vmd_path, skybox_path);
 
-    std::wstring s = string_to_wstring(config["pmx"]);
-
     std::filesystem::path name = pmx_path.filename().replace_extension();
     if (config.find(name) != config.end())
     {
@@ -104,16 +104,15 @@ void mmd_viewer::initialize_render()
         .window_handle = get_system<window_system>().get_handle(),
     });
 
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon01.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon02.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon03.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon04.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon05.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon06.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon07.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon08.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon09.bmp"));
-    m_internal_toons.push_back(std::make_unique<texture_2d>("assets/mmd/toon10.bmp"));
+    for (std::uint32_t i = 1; i <= 10; ++i)
+    {
+        texture_data data = {
+            .format = RHI_FORMAT_R8G8B8A8_SRGB,
+        };
+
+        texture_tool::load(std::format("assets/mmd/toon{:02}.bmp", i), data);
+        m_internal_toons.push_back(std::make_unique<texture_2d>(data));
+    }
 }
 
 void mmd_viewer::initialize_scene(
@@ -123,36 +122,35 @@ void mmd_viewer::initialize_scene(
 {
     auto& world = get_world();
 
-    if (!skybox_path.empty())
-    {
-        m_skybox = std::make_unique<skybox>(skybox_path.string());
+    // if (!skybox_path.empty())
+    // {
+    //     m_skybox = std::make_unique<skybox>(skybox_path.string());
 
-        entity scene_skybox = world.create();
-        world.add_component<transform_component, skybox_component, scene_component>(scene_skybox);
-        auto& skybox = world.get_component<skybox_component>(scene_skybox);
-        skybox.skybox = m_skybox.get();
-    }
+    //     entity scene_skybox = world.create();
+    //     world.add_component<transform_component, skybox_component,
+    //     scene_component>(scene_skybox); auto& skybox =
+    //     world.get_component<skybox_component>(scene_skybox); skybox.skybox = m_skybox.get();
+    // }
 
     m_camera = world.create();
     world.add_component<
         transform_component,
         camera_component,
-        orbit_control_component,
+        first_person_control_component,
         scene_component>(m_camera);
 
     auto& camera_transform = world.get_component<transform_component>(m_camera);
     camera_transform.set_position({0.0f, 0.0f, -40.0f});
 
-    auto& camera_control = world.get_component<orbit_control_component>(m_camera);
-    camera_control.target = {0.0f, 13.0f, 0.0f};
-    camera_control.radius = 40.0f;
-
     auto& camera = world.get_component<camera_component>(m_camera);
     camera.render_target = m_swapchain.get();
-    camera.renderer = std::make_unique<mmd_renderer>();
+    camera.renderer = std::make_unique<deferred_renderer_imgui>();
+    camera.background = BACKGROUND_TYPE_ATMOSPHERE;
 
     m_light = world.create();
-    world.add_component<light_component, transform_component, scene_component>(m_light);
+    world
+        .add_component<light_component, transform_component, scene_component, atmosphere_component>(
+            m_light);
 
     auto& light_transform = world.get_component<transform_component>(m_light);
     light_transform.lookat({-1.0f, -1.0f, 1.0f});
@@ -160,6 +158,7 @@ void mmd_viewer::initialize_scene(
     auto& light = world.get_component<light_component>(m_light);
     light.type = LIGHT_DIRECTIONAL;
     light.color = {3.0f, 3.0f, 3.0f};
+    light.cast_shadow = true;
 
     std::vector<texture_2d*> internal_toons(m_internal_toons.size());
     std::transform(
@@ -239,10 +238,12 @@ void mmd_viewer::load_gf2_material(const dictionary& info, const std::filesystem
     auto load_texture = [&](const std::string& texture, bool srgb) -> texture_2d*
     {
         auto path = root_path / texture;
-        m_model.textures.push_back(
-            std::make_unique<texture_2d>(
-                path.string(),
-                srgb ? TEXTURE_OPTION_SRGB : TEXTURE_OPTION_NONE));
+
+        texture_data data;
+        data.format = srgb ? RHI_FORMAT_R8G8B8A8_SRGB : RHI_FORMAT_R8G8B8A8_UNORM;
+        texture_tool::load(path.string(), data);
+
+        m_model.textures.push_back(std::make_unique<texture_2d>(data));
         return m_model.textures.back().get();
     };
 
@@ -439,34 +440,29 @@ void mmd_viewer::draw_imgui()
 
     if (ImGui::CollapsingHeader("GTAO"))
     {
-        auto& main_camera = get_world().get_component<camera_component>(m_camera);
+        auto& main_camera = world.get_component<camera_component>(m_camera);
         auto* gtao = main_camera.renderer->get_feature<gtao_feature>();
 
         static bool enable_gtao = gtao->is_enable();
-        static int slice_count = static_cast<int>(gtao->get_slice_count());
-        static int step_count = static_cast<int>(gtao->get_step_count());
-        static float radius = gtao->get_radius();
-        static float falloff = gtao->get_falloff();
-
-        ImGui::Checkbox("Enable##GTAO", &enable_gtao);
-        ImGui::SliderInt("Slice Count", &slice_count, 1, 5);
-        ImGui::SliderInt("Step Count", &step_count, 1, 5);
-        ImGui::SliderFloat("Radius", &radius, 0.0f, 10.0f);
-        ImGui::SliderFloat("Falloff", &falloff, 0.1f, 1.0f);
+        if (ImGui::Checkbox("Enable##GTAO", &enable_gtao))
+        {
+            if (enable_gtao)
+            {
+                gtao->enable();
+            }
+            else
+            {
+                gtao->disable();
+            }
+        }
 
         if (enable_gtao)
         {
-            gtao->enable();
+            ImGui::SliderInt("Slice Count", reinterpret_cast<int*>(&gtao->slice_count), 1, 5);
+            ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&gtao->step_count), 1, 5);
+            ImGui::SliderFloat("Radius", &gtao->radius, 0.0f, 10.0f);
+            ImGui::SliderFloat("Falloff", &gtao->falloff, 0.1f, 1.0f);
         }
-        else
-        {
-            gtao->disable();
-        }
-
-        gtao->set_slice_count(slice_count);
-        gtao->set_step_count(step_count);
-        gtao->set_radius(radius);
-        gtao->set_falloff(falloff);
     }
 }
 

@@ -91,9 +91,9 @@ void control_system::update_orbit_control()
     world.get_view().write<orbit_control_component>().write<transform_component>().each(
         [&](orbit_control_component& orbit_control, transform_component& transform)
         {
-            orbit_control.theta += orbit_control.theta_speed * m_mouse_position_delta[1];
+            orbit_control.theta -= orbit_control.theta_speed * m_mouse_position_delta[1];
             orbit_control.theta = std::clamp(orbit_control.theta, EPSILON, math::PI - EPSILON);
-            orbit_control.phi += orbit_control.phi_speed * -m_mouse_position_delta[0];
+            orbit_control.phi -= orbit_control.phi_speed * -m_mouse_position_delta[0];
             orbit_control.radius += static_cast<float>(-m_mouse_wheel) * orbit_control.radius_speed;
             orbit_control.radius = std::max(orbit_control.min_radius, orbit_control.radius);
 
