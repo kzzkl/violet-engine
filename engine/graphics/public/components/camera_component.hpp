@@ -33,7 +33,7 @@ public:
 
     struct
     {
-        float fov{math::to_radians(60.0f)};
+        float fov{math::to_radians(50.0f)};
     } perspective;
 
     float near{0.1f};

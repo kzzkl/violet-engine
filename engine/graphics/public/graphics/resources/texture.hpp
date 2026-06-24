@@ -79,6 +79,22 @@ public:
     texture_2d(const texture_data& data);
 };
 
+class texture_3d : public raw_texture
+{
+public:
+    texture_3d() = default;
+    texture_3d(
+        rhi_extent extent,
+        rhi_format format,
+        rhi_texture_flags flags,
+        std::uint32_t level_count = 1,
+        std::uint32_t layer_count = 1,
+        rhi_sample_count samples = RHI_SAMPLE_COUNT_1,
+        rhi_texture_layout layout = RHI_TEXTURE_LAYOUT_UNDEFINED);
+
+    texture_3d(const texture_data& data);
+};
+
 class texture_cube : public raw_texture
 {
 public:

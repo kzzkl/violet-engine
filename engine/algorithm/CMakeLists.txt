@@ -7,6 +7,8 @@ target_include_directories(violet-algorithm
         public)
 
 target_link_libraries(violet-algorithm
+    PUBLIC
+        violet::math
     PRIVATE
         xxHash)
 

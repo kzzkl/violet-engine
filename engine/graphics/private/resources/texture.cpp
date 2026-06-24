@@ -38,6 +38,31 @@ texture_2d::texture_2d(const texture_data& data)
     set_texture(texture_loader::load(data));
 }
 
+texture_3d::texture_3d(
+    rhi_extent extent,
+    rhi_format format,
+    rhi_texture_flags flags,
+    std::uint32_t level_count,
+    std::uint32_t layer_count,
+    rhi_sample_count samples,
+    rhi_texture_layout layout)
+{
+    set_texture({
+        .extent = extent,
+        .format = format,
+        .flags = flags,
+        .level_count = level_count,
+        .layer_count = layer_count,
+        .samples = samples,
+        .layout = layout,
+    });
+}
+
+texture_3d::texture_3d(const texture_data& data)
+{
+    set_texture(texture_loader::load(data));
+}
+
 texture_cube::texture_cube(
     rhi_extent extent,
     rhi_format format,

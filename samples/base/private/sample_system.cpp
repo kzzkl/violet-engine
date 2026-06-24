@@ -128,7 +128,8 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         scene_data,
         options & LOAD_OPTION_GENERATE_CLUSTERS,
         options & LOAD_OPTION_GENERATE_MIPMAPS,
-        options & LOAD_OPTION_COMPRESS_TEXTURES);
+        options & LOAD_OPTION_COMPRESS_TEXTURES,
+        options & LOAD_OPTION_GENERATE_DISTANCE_FIELD);
 
     if (!result)
     {
@@ -165,6 +166,12 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
             {
                 model_geometry->add_submesh(submesh_data.clusters, submesh_data.cluster_nodes);
             }
+        }
+
+        if (geometry_data.distance_field != -1)
+        {
+            auto& distance_field = scene_data.distance_fields[geometry_data.distance_field];
+            model_geometry->set_distance_field(std::make_unique<texture_3d>(distance_field));
         }
 
         m_geometries.push_back(std::move(model_geometry));

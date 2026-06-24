@@ -4,6 +4,7 @@
 #include "graphics/cluster.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
+#include "graphics/resources/texture.hpp"
 #include <array>
 
 namespace violet
@@ -113,6 +114,11 @@ public:
         return m_submeshes;
     }
 
+    void set_distance_field(std::unique_ptr<texture_3d>&& distance_field)
+    {
+        m_distance_field = std::move(distance_field);
+    }
+
     void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
 
     std::size_t get_morph_target_count() const noexcept
@@ -207,6 +213,8 @@ private:
 
     std::vector<submesh> m_submeshes;
     std::vector<render_id> m_submesh_ids;
+
+    std::unique_ptr<texture_3d> m_distance_field;
 
     string_map<std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;

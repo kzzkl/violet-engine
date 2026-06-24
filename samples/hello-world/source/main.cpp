@@ -46,6 +46,7 @@ public:
             options |= LOAD_OPTION_GENERATE_CLUSTERS;
             options |= LOAD_OPTION_GENERATE_MIPMAPS;
             options |= LOAD_OPTION_COMPRESS_TEXTURES;
+            // options |= LOAD_OPTION_GENERATE_DISTANCE_FIELD;
 
             m_root = load_model(config["model"], options);
         }

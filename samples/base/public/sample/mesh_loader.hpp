@@ -63,6 +63,8 @@ public:
         std::vector<std::uint32_t> indexes;
 
         std::vector<submesh_data> submeshes;
+
+        std::int32_t distance_field{-1};
     };
 
     struct scene_data
@@ -70,6 +72,7 @@ public:
         std::vector<texture_data> textures;
         std::vector<material_data> materials;
         std::vector<geometry_data> geometries;
+        std::vector<texture_data> distance_fields;
 
         std::vector<mesh_data> meshes;
         std::vector<node_data> nodes;
@@ -80,7 +83,8 @@ public:
         scene_data& scene_data,
         bool generate_clusters,
         bool generate_mipmaps,
-        bool compress_textures);
+        bool compress_textures,
+        bool generate_distance_field);
 
     static bool load(std::string_view path, scene_data& scene_data);
     static bool save(std::string_view path, const scene_data& scene_data);
