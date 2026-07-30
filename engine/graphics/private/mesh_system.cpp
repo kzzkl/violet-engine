@@ -1,5 +1,4 @@
 #include "mesh_system.hpp"
-#include "components/mesh_component.hpp"
 #include "components/mesh_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
@@ -36,24 +35,30 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 mesh_component_meta& mesh_meta)
             {
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
+
                 if (mesh_meta.scene != render_scene)
                 {
                     if (mesh_meta.scene != nullptr)
                     {
                         for (render_id instance : mesh_meta.instances)
                         {
-                            mesh_meta.scene->remove_instance(instance);
+                            mesh_meta.scene->get_module<render_scene_mesh>().remove_instance(
+                                instance);
                         }
 
-                        mesh_meta.scene->remove_mesh(mesh_meta.mesh);
+                        mesh_meta.scene->get_module<render_scene_mesh>().remove_mesh(
+                            mesh_meta.mesh);
                     }
 
-                    mesh_meta.mesh = render_scene->add_mesh();
+                    mesh_meta.mesh = render_scene->get_module<render_scene_mesh>().add_mesh();
                     mesh_meta.instances.clear();
                     mesh_meta.scene = render_scene;
                 }
 
-                render_scene->set_mesh_matrix(mesh_meta.mesh, transform.matrix, transform.scale);
+                render_scene->get_module<render_scene_mesh>().set_mesh_matrix(
+                    mesh_meta.mesh,
+                    transform.matrix,
+                    transform.scale);
             },
             [this](auto& view)
             {
@@ -69,37 +74,36 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 return;
             }
 
-            mesh_meta.scene->set_mesh_flags(mesh_meta.mesh, mesh.flags);
+            auto& mesh_module = mesh_meta.scene->get_module<render_scene_mesh>();
+
+            mesh_module.set_mesh_flags(mesh_meta.mesh, mesh.flags);
 
             std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;
             std::size_t instance_count = std::min(submesh_count, mesh_meta.instances.size());
 
             for (std::size_t i = 0; i < instance_count; ++i)
             {
-                mesh_meta.scene->set_instance_geometry(
+                mesh_module.set_instance_geometry(
                     mesh_meta.instances[i],
                     mesh.geometry,
                     mesh.submeshes[i].index);
 
-                mesh_meta.scene->set_instance_material(
+                mesh_module.set_instance_material(
                     mesh_meta.instances[i],
                     mesh.submeshes[i].material);
             }
 
             for (std::size_t i = instance_count; i < submesh_count; ++i)
             {
-                render_id instance = mesh_meta.scene->add_instance(mesh_meta.mesh);
-                mesh_meta.scene->set_instance_geometry(
-                    instance,
-                    mesh.geometry,
-                    mesh.submeshes[i].index);
-                mesh_meta.scene->set_instance_material(instance, mesh.submeshes[i].material);
+                render_id instance = mesh_module.add_instance(mesh_meta.mesh);
+                mesh_module.set_instance_geometry(instance, mesh.geometry, mesh.submeshes[i].index);
+                mesh_module.set_instance_material(instance, mesh.submeshes[i].material);
                 mesh_meta.instances.push_back(instance);
             }
 
             while (mesh_meta.instances.size() > submesh_count)
             {
-                mesh_meta.scene->remove_instance(mesh_meta.instances.back());
+                mesh_module.remove_instance(mesh_meta.instances.back());
                 mesh_meta.instances.pop_back();
             }
         },

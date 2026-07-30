@@ -20,6 +20,8 @@ public:
     {
         rdg_texture* depth_buffer;
 
+        rdg_buffer* shadow_light_buffer;
+
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_buffer* vsm_physical_page_table{nullptr};
@@ -61,11 +63,7 @@ private:
     void cluster_cull(render_graph& graph);
 
     void render_shadow(render_graph& graph);
-    void render_shadow(
-        render_graph& graph,
-        bool opacity_cutoff,
-        rhi_cull_mode cull_mode,
-        std::string_view pass_name);
+    void render_shadow(render_graph& graph, bool opacity_cutoff, rhi_cull_mode cull_mode);
     void merge_physical_pages(render_graph& graph);
 
     void build_hzb(render_graph& graph);
@@ -73,6 +71,8 @@ private:
     void add_debug_pass(render_graph& graph);
 
     rdg_texture* m_depth_buffer{nullptr};
+
+    rdg_buffer* m_shadow_light_buffer{nullptr};
 
     rdg_buffer* m_virtual_page_indirect_args{nullptr};
 

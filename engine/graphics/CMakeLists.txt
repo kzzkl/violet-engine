@@ -8,6 +8,13 @@ add_library(violet-graphics STATIC
     private/render_graph/rdg_pass.cpp
     private/render_graph/rdg_profiling.cpp
     private/render_graph/render_graph.cpp
+    private/render_scene/render_scene_camera.cpp
+    private/render_scene/render_scene_environment.cpp
+    private/render_scene/render_scene_light.cpp
+    private/render_scene/render_scene_manager.cpp
+    private/render_scene/render_scene_mesh.cpp
+    private/render_scene/render_scene_shadow.cpp
+    private/render_scene/render_scene.cpp
     private/renderers/features/vsm_feature.cpp
     private/renderers/passes/atmosphere_pass.cpp
     private/renderers/passes/blit_pass.cpp
@@ -57,8 +64,6 @@ add_library(violet-graphics STATIC
     private/mesh_system.cpp
     private/morph_target.cpp
     private/render_device.cpp
-    private/render_scene_manager.cpp
-    private/render_scene.cpp
     private/renderer.cpp
     private/rhi_plugin.cpp
     private/shader_compiler.cpp

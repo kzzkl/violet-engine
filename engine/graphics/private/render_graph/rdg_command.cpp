@@ -1,6 +1,6 @@
 #include "graphics/render_graph/rdg_command.hpp"
 #include "graphics/geometry_manager.hpp"
-#include "graphics/render_scene.hpp"
+#include "graphics/render_scene/render_scene.hpp"
 #include <cassert>
 
 namespace violet
@@ -14,8 +14,8 @@ rdg_command::rdg_command(rhi_command* command, const render_context* context)
 
     if (m_context != nullptr)
     {
-        m_built_in_parameters[RDG_PARAMETER_SCENE] = m_context->get_scene_parameter();
-        m_built_in_parameters[RDG_PARAMETER_CAMERA] = m_context->get_camera_parameter();
+        m_built_in_parameters[RDG_PARAMETER_SCENE] = m_context->get_scene().parameter;
+        m_built_in_parameters[RDG_PARAMETER_CAMERA] = m_context->get_camera().parameter;
     }
 }
 

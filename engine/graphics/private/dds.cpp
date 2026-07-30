@@ -353,7 +353,7 @@ bool dds::save(std::string_view path, const texture_data& data)
         header.dwFlags |= DDSD_MIPMAPCOUNT;
     }
 
-    rhi_format_size format_size = rhi_get_format_size(data.format);
+    rhi_format_block_size format_size = rhi_get_format_block_size(data.format);
     if (is_compressed_format(data.format))
     {
         header.dwPitchOrLinearSize =

@@ -39,6 +39,11 @@ public:
         {
             return !clusters.empty() && !cluster_nodes.empty();
         }
+
+        std::uint32_t get_draw_call_count() const noexcept
+        {
+            return has_cluster() ? static_cast<std::uint32_t>(clusters.size()) : 1;
+        }
     };
 
     static constexpr std::size_t max_custom_attribute = 4;
@@ -151,9 +156,9 @@ public:
 
     raw_buffer* get_additional_buffer(std::string_view name) const;
 
-    render_id get_id() const noexcept
+    render_id get_geometry_id() const noexcept
     {
-        return m_id;
+        return m_geometry_id;
     }
 
     render_id get_submesh_id(std::uint32_t submesh_index) const
@@ -219,7 +224,7 @@ private:
     string_map<std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
-    render_id m_id{INVALID_RENDER_ID};
+    render_id m_geometry_id{INVALID_RENDER_ID};
 
     bool m_dirty{false};
 };

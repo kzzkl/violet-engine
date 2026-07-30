@@ -3,7 +3,7 @@
 #include "graphics/render_graph/rdg_allocator.hpp"
 #include "graphics/render_graph/rdg_pass.hpp"
 #include "graphics/render_graph/rdg_resource.hpp"
-#include "graphics/render_scene.hpp"
+#include "graphics/render_scene/render_scene.hpp"
 
 namespace violet
 {

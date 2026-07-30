@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/engine.hpp"
-#include "render_scene_manager.hpp"
+#include "render_scene/render_scene_manager.hpp"
 
 namespace violet
 {

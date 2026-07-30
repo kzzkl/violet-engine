@@ -11,7 +11,7 @@
 #include "graphics/renderer.hpp"
 #include "light_system.hpp"
 #include "mesh_system.hpp"
-#include "render_scene_manager.hpp"
+#include "render_scene/render_scene_manager.hpp"
 #include "rhi_plugin.hpp"
 #include "scene/scene_system.hpp"
 #include "skinning_system.hpp"
@@ -104,7 +104,6 @@ bool graphics_system::initialize(const dictionary& config)
 #ifndef NDEBUG
                 m_debug_drawer->tick();
 #endif
-                m_scene_manager->clear_states();
 
                 auto& device = render_device::instance();
                 device.get_material_manager()->update(m_gpu_buffer_uploader.get());
@@ -126,6 +125,7 @@ bool graphics_system::initialize(const dictionary& config)
             [this]()
             {
                 end_frame();
+                m_scene_manager->reset_states();
                 m_system_version = get_world().get_version();
             });
 

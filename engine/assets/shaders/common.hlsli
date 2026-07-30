@@ -82,9 +82,9 @@ struct light_data
     float3 position;
     uint type;
     float3 direction;
-    uint vsm_address;
+    uint cast_shadow;
     float3 color;
-    uint padding0;
+    uint padding;
 };
 
 struct scene_data
@@ -93,10 +93,8 @@ struct scene_data
     uint mesh_count;
     uint instance_buffer;
     uint instance_count;
-    uint shadow_casting_light_buffer;
-    uint shadow_casting_light_count;
-    uint non_shadow_casting_light_buffer;
-    uint non_shadow_casting_light_count;
+    uint light_buffer;
+    uint light_count;
     uint batch_buffer;
     uint material_buffer;
     uint geometry_buffer;

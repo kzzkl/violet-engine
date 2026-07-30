@@ -188,6 +188,20 @@ public:
         }
     }
 
+    template <typename Pred>
+    render_id find(Pred&& pred) const
+    {
+        for (render_id id : m_index_to_id)
+        {
+            if (pred(m_objects[id].cpu_data))
+            {
+                return id;
+            }
+        }
+
+        return INVALID_RENDER_ID;
+    }
+
     void set_name(std::string_view name)
     {
         m_name = name;
@@ -403,6 +417,13 @@ public:
     {
         m_name = name;
         m_object_buffer->get_rhi()->set_name(m_name.c_str());
+    }
+
+    void clear()
+    {
+        m_objects.clear();
+        m_dirty_objects.clear();
+        m_allocator.reset();
     }
 
 private:

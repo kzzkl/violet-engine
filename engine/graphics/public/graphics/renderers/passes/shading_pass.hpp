@@ -19,6 +19,8 @@ public:
         std::span<rdg_texture*> auxiliary_buffers;
         rdg_texture* render_target;
 
+        rdg_buffer* shadow_light_buffer{nullptr};
+
         rdg_buffer* vsm_buffer{nullptr};
         rdg_buffer* vsm_virtual_page_table{nullptr};
         rdg_texture* vsm_physical_shadow_map{nullptr};
@@ -57,12 +59,12 @@ private:
         render_graph& graph,
         const parameter& parameter,
         lighting_stage stage,
-        std::uint32_t light_index = 0) const;
+        std::uint32_t shadow_light_index = 0) const;
 
     void add_shadow_mask_pass(
         render_graph& graph,
         const parameter& parameter,
-        std::uint32_t light_index);
+        std::uint32_t shadow_light_index);
 
     void add_debug_pass(render_graph& graph, const parameter& parameter);
 
@@ -75,6 +77,5 @@ private:
     rdg_texture* m_shadow_mask{nullptr};
 
     std::uint32_t m_sun_index;
-    bool m_sun_cast_shadow{false};
 };
 } // namespace violet

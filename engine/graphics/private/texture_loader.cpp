@@ -96,7 +96,7 @@ void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_
 
     std::vector<rhi_buffer_texture_copy> copy_regions;
 
-    rhi_format_size format_size = rhi_get_format_size(data.format);
+    rhi_format_block_size format_size = rhi_get_format_block_size(data.format);
     std::size_t buffer_offset = 0;
 
     for (std::uint32_t layer = 0; layer < data.layer_count; ++layer)

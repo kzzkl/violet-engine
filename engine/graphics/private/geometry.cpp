@@ -6,7 +6,7 @@ namespace violet
 geometry::geometry()
 {
     auto* geometry_manager = render_device::instance().get_geometry_manager();
-    m_id = geometry_manager->add_geometry(this);
+    m_geometry_id = geometry_manager->add_geometry(this);
 }
 
 geometry::~geometry()
@@ -14,7 +14,7 @@ geometry::~geometry()
     clear_submeshes();
 
     auto* geometry_manager = render_device::instance().get_geometry_manager();
-    geometry_manager->remove_geometry(m_id);
+    geometry_manager->remove_geometry(m_geometry_id);
 }
 
 void geometry::set_positions(std::span<const vec3f> positions)
@@ -267,13 +267,15 @@ void geometry::update_submesh()
         {
             if (submesh.has_cluster())
             {
-                submesh_id =
-                    geometry_manager->add_submesh(m_id, submesh.clusters, submesh.cluster_nodes);
+                submesh_id = geometry_manager->add_submesh(
+                    m_geometry_id,
+                    submesh.clusters,
+                    submesh.cluster_nodes);
             }
             else
             {
                 submesh_id = geometry_manager->add_submesh(
-                    m_id,
+                    m_geometry_id,
                     submesh.vertex_offset,
                     submesh.index_offset,
                     submesh.index_count);
@@ -300,7 +302,7 @@ void geometry::update_buffer()
         if (geometry_buffer.src_geometry == nullptr)
         {
             geometry_manager->set_buffer(
-                m_id,
+                m_geometry_id,
                 type,
                 geometry_buffer.buffer.data(),
                 geometry_buffer.buffer.size(),
@@ -308,7 +310,10 @@ void geometry::update_buffer()
         }
         else
         {
-            geometry_manager->set_shared_buffer(m_id, geometry_buffer.src_geometry->m_id, type);
+            geometry_manager->set_shared_buffer(
+                m_geometry_id,
+                geometry_buffer.src_geometry->m_geometry_id,
+                type);
         }
     }
 }
@@ -322,6 +327,6 @@ void geometry::mark_dirty()
 
     m_dirty = true;
 
-    render_device::instance().get_geometry_manager()->mark_dirty(m_id);
+    render_device::instance().get_geometry_manager()->mark_dirty(m_geometry_id);
 }
 } // namespace violet

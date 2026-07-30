@@ -3,6 +3,8 @@
 #include "components/light_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/render_scene/render_scene_light.hpp"
+#include "graphics/render_scene/render_scene_shadow.hpp"
 
 namespace violet
 {
@@ -37,23 +39,54 @@ void light_system::update(render_scene_manager& scene_manager)
             {
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
 
+                auto& light_module = render_scene->get_module<render_scene_light>();
+                auto& shadow_module = render_scene->get_module<render_scene_shadow>();
+
                 if (light_meta.scene != render_scene)
                 {
                     if (light_meta.scene != nullptr)
                     {
-                        light_meta.scene->remove_light(light_meta.id);
+                        if (light_meta.cast_shadow)
+                        {
+                            light_meta.scene->get_module<render_scene_shadow>().remove_shadow(
+                                light_meta.id);
+                        }
+                        light_meta.scene->get_module<render_scene_light>().remove_light(
+                            light_meta.id);
                     }
 
-                    light_meta.id = render_scene->add_light(light.type);
+                    light_meta.id = light_module.add_light(light.type);
                     light_meta.scene = render_scene;
+
+                    if (light.cast_shadow)
+                    {
+                        shadow_module.add_shadow(light_meta.id);
+                    }
+                    light_module.set_light_shadow(light_meta.id, light.cast_shadow);
+                    light_meta.cast_shadow = light.cast_shadow;
                 }
 
-                render_scene->set_light_data(
+                light_module.set_light_data(
                     light_meta.id,
                     light.color,
                     transform.get_position(),
                     transform.get_forward());
-                render_scene->set_light_shadow(light_meta.id, light.cast_shadow);
+
+                if (light.cast_shadow != light_meta.cast_shadow)
+                {
+                    if (light.cast_shadow)
+                    {
+                        shadow_module.add_shadow(light_meta.id);
+                    }
+                    else
+                    {
+                        shadow_module.remove_shadow(light_meta.id);
+                    }
+
+                    light_module.set_light_shadow(light_meta.id, light.cast_shadow);
+
+                    light_meta.cast_shadow = light.cast_shadow;
+                }
             },
             [this](auto& view)
             {

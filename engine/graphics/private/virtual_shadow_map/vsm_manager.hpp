@@ -8,7 +8,6 @@ namespace violet
 {
 struct vsm_directional_light_data
 {
-    vec3f light_position;
     vec3f light_direction;
     vec3f camera_position;
 };

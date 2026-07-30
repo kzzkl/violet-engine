@@ -39,6 +39,8 @@ struct atmosphere_data
     float planet_radius;
     float atmosphere_radius;
     float sun_angular_radius;
+    vec3f ground_color;
+    float padding;
 
     atmosphere_data& operator=(const atmosphere& other)
     {
@@ -54,6 +56,7 @@ struct atmosphere_data
         planet_radius = other.planet_radius;
         atmosphere_radius = other.planet_radius + other.atmosphere_height;
         sun_angular_radius = other.sun_angular_radius;
+        ground_color = other.ground_color;
         return *this;
     }
 };

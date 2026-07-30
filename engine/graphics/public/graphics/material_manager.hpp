@@ -4,7 +4,6 @@
 #include "graphics/material.hpp"
 #include "graphics/resources/persistent_buffer.hpp"
 #include "graphics/shading_model.hpp"
-#include <map>
 #include <mutex>
 
 namespace violet
@@ -19,13 +18,22 @@ public:
     render_id add_material(material* material);
     void remove_material(render_id material_id);
 
-    render_id add_material_resolve_pipeline(const rdg_compute_pipeline& pipeline);
-    void remove_material_resolve_pipeline(render_id pipeline_id);
-    const rdg_compute_pipeline& get_material_resolve_pipeline(render_id pipeline_id) const;
+    render_id add_raster_pipeline(const rdg_raster_pipeline& pipeline);
+    void remove_raster_pipeline(render_id pipeline_id);
+    const rdg_raster_pipeline& get_raster_pipeline(render_id pipeline_id) const;
 
-    render_id get_max_material_resolve_pipeline_id() const noexcept
+    render_id get_max_raster_pipeline_id() const noexcept
     {
-        return m_max_material_resolve_pipeline_id;
+        return m_max_raster_pipeline_id;
+    }
+
+    render_id add_resolve_pipeline(const rdg_compute_pipeline& pipeline);
+    void remove_resolve_pipeline(render_id pipeline_id);
+    const rdg_compute_pipeline& get_resolve_pipeline(render_id pipeline_id) const;
+
+    render_id get_max_resolve_pipeline_id() const noexcept
+    {
+        return m_max_resolve_pipeline_id;
     }
 
     void set_shading_model(
@@ -71,20 +79,19 @@ private:
         buffer_allocation constant_allocation;
     };
 
-    struct pipeline_wrapper
-    {
-        rdg_compute_pipeline pipeline;
-        std::uint32_t reference_count;
-    };
-
     std::vector<material_info> m_materials;
     index_allocator m_material_allocator;
     std::array<std::vector<std::pair<render_id, material::dirty_flags>>, 2> m_dirty_materials;
 
-    std::vector<pipeline_wrapper> m_material_resolve_pipelines;
-    std::map<rhi_shader*, render_id> m_material_resolve_pipeline_ids;
-    index_allocator m_material_resolve_pipeline_id_allocator;
-    render_id m_max_material_resolve_pipeline_id{0};
+    std::vector<std::pair<rdg_raster_pipeline, std::uint32_t>> m_raster_pipelines;
+    std::unordered_map<rdg_raster_pipeline, render_id> m_raster_pipeline_ids;
+    index_allocator m_raster_pipeline_id_allocator;
+    render_id m_max_raster_pipeline_id{0};
+
+    std::vector<std::pair<rdg_compute_pipeline, std::uint32_t>> m_resolve_pipelines;
+    std::unordered_map<rhi_shader*, render_id> m_resolve_pipeline_ids;
+    index_allocator m_resolve_pipeline_id_allocator;
+    render_id m_max_resolve_pipeline_id{0};
 
     std::vector<std::unique_ptr<shading_model_base>> m_shading_models;
 

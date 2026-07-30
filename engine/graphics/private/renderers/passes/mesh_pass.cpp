@@ -1,4 +1,5 @@
 #include "graphics/renderers/passes/mesh_pass.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
 
 namespace violet
 {
@@ -78,7 +79,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
             {
                 bool first_batch = true;
 
-                data.context->each_batch(
+                data.context->get_module<render_scene_mesh>().each_batch(
                     data.surface_type,
                     data.material_path,
                     [&](render_id id,
@@ -122,7 +123,7 @@ void mesh_pass::add(render_graph& graph, const parameter& parameter)
                 command.set_parameter(2, RDG_PARAMETER_CAMERA);
                 command.set_index_buffer();
 
-                data.context->each_batch(
+                data.context->get_module<render_scene_mesh>().each_batch(
                     data.surface_type,
                     data.material_path,
                     [&](render_id id,

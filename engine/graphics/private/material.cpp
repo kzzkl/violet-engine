@@ -25,9 +25,14 @@ material::~material()
     auto* material_manager = render_device::instance().get_material_manager();
     material_manager->remove_material(m_material_id);
 
+    if (m_raster_pipeline_id != 0)
+    {
+        material_manager->remove_raster_pipeline(m_raster_pipeline_id);
+    }
+
     if (m_resolve_pipeline_id != 0)
     {
-        material_manager->remove_material_resolve_pipeline(m_resolve_pipeline_id);
+        material_manager->remove_resolve_pipeline(m_resolve_pipeline_id);
     }
 }
 
@@ -92,22 +97,6 @@ void material::update()
     {
         auto* material_manager = render_device::instance().get_material_manager();
 
-        rhi_shader* resolve_shader = get_resolve_shader({});
-        if (resolve_shader != nullptr && m_resolve_pipeline.compute_shader != resolve_shader)
-        {
-            if (m_resolve_pipeline_id != 0)
-            {
-                material_manager->remove_material_resolve_pipeline(m_resolve_pipeline_id);
-            }
-
-            m_resolve_pipeline.compute_shader = resolve_shader;
-
-            m_resolve_pipeline_id =
-                material_manager->add_material_resolve_pipeline(m_resolve_pipeline);
-
-            m_dirty_flags |= DIRTY_FLAG_CONSTANT;
-        }
-
         std::vector<std::wstring> defines;
         if (get_opacity_cutoff())
         {
@@ -126,9 +115,40 @@ void material::update()
             break;
         }
 
-        m_raster_pipeline.vertex_shader = get_vertex_shader(defines);
-        m_raster_pipeline.geometry_shader = get_geometry_shader(defines);
-        m_raster_pipeline.fragment_shader = get_fragment_shader(defines);
+        rhi_shader* vertex_shader = get_vertex_shader(defines);
+        rhi_shader* fragment_shader = get_fragment_shader(defines);
+        rhi_shader* geometry_shader = get_geometry_shader(defines);
+
+        if ((vertex_shader != nullptr && m_raster_pipeline.vertex_shader != vertex_shader) ||
+            (fragment_shader != nullptr && m_raster_pipeline.fragment_shader != fragment_shader) ||
+            (geometry_shader != nullptr && m_raster_pipeline.geometry_shader != geometry_shader))
+        {
+            if (m_raster_pipeline_id != 0)
+            {
+                material_manager->remove_raster_pipeline(m_raster_pipeline_id);
+            }
+
+            m_raster_pipeline.vertex_shader = vertex_shader;
+            m_raster_pipeline.fragment_shader = fragment_shader;
+            m_raster_pipeline.geometry_shader = geometry_shader;
+
+            m_raster_pipeline_id = material_manager->add_raster_pipeline(m_raster_pipeline);
+        }
+
+        rhi_shader* resolve_shader = get_resolve_shader({});
+        if (resolve_shader != nullptr && m_resolve_pipeline.compute_shader != resolve_shader)
+        {
+            if (m_resolve_pipeline_id != 0)
+            {
+                material_manager->remove_resolve_pipeline(m_resolve_pipeline_id);
+            }
+
+            m_resolve_pipeline.compute_shader = resolve_shader;
+
+            m_resolve_pipeline_id = material_manager->add_resolve_pipeline(m_resolve_pipeline);
+
+            m_dirty_flags |= DIRTY_FLAG_CONSTANT;
+        }
     }
 
     std::uint32_t shadow_batch = 0;
@@ -158,7 +178,7 @@ void material::update()
     if (m_dirty_flags & DIRTY_FLAG_CONSTANT)
     {
         auto [data, size] =
-            get_constant_data(m_shading_model, m_resolve_pipeline_id, m_shadow_batch);
+            get_constant_data(m_shading_model_id, m_resolve_pipeline_id, m_shadow_batch);
         material_manager->update_constant(m_material_id, data, size);
     }
 
@@ -176,7 +196,7 @@ void material::set_shading_model_impl(
         material_manager->set_shading_model(shading_model_id, creator());
     }
 
-    m_shading_model = shading_model_id;
+    m_shading_model_id = shading_model_id;
 
     mark_dirty(DIRTY_FLAG_CONSTANT);
 }

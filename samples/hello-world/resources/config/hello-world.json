@@ -5,9 +5,10 @@
         "height": 800
     },
     "hello_world": {
-        "skybox_bak": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
-        "model1": "D:/Workspace/assets/models/gltf/Bistro.glb",
-        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "skybox1": "D:/Workspace/assets/textures/skybox/dry_orchard_meadow_4k.hdr",
+        "model9": "D:/Workspace/assets/models/gltf/Bistro.glb",
+        "model": "D:/Workspace/assets/models/gltf/test.glb",
+        "model1": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
         "model2": "D:/Workspace/assets/models/gltf/CornellBox.glb",
         "model3": "D:/Workspace/assets/models/obj/terrain.obj",
         "model4": "D:/Workspace/assets/models/gltf/SanMiguel.glb",

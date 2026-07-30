@@ -1,6 +1,8 @@
 #include "graphics/renderers/passes/shadow_pass.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
+#include "graphics/render_scene/render_scene_shadow.hpp"
 #include "graphics/renderers/passes/scan_pass.hpp"
 #include "virtual_shadow_map/vsm_common.hpp"
 #include <format>
@@ -63,6 +65,8 @@ struct vsm_light_cull_cs : public shader_cs
 
     struct constant_data
     {
+        std::uint32_t shadow_light_buffer;
+        std::uint32_t shadow_light_count;
         std::uint32_t vsm_info;
         std::uint32_t visible_light_list;
         std::uint32_t visible_vsm_list;
@@ -104,6 +108,7 @@ struct vsm_mark_visible_pages_cs : public shader_cs
     struct constant_data
     {
         std::uint32_t depth_buffer;
+        std::uint32_t shadow_light_buffer;
         std::uint32_t vsm_info;
         std::uint32_t visible_light_list;
         std::uint32_t visible_vsm_list;
@@ -545,6 +550,8 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
 
     m_depth_buffer = parameter.depth_buffer;
 
+    m_shadow_light_buffer = parameter.shadow_light_buffer;
+
     m_vsm_buffer = parameter.vsm_buffer;
     m_vsm_virtual_page_table = parameter.vsm_virtual_page_table;
     m_vsm_physical_page_table = parameter.vsm_physical_page_table;
@@ -744,11 +751,13 @@ void shadow_pass::light_cull(render_graph& graph)
 {
     struct pass_data
     {
+        rdg_buffer_srv shadow_light_buffer;
+        std::uint32_t shadow_light_count;
+
         rdg_buffer_uav vsm_info;
         rdg_buffer_uav visible_light_list;
         rdg_buffer_uav visible_vsm_list;
         rdg_buffer_uav virtual_page_indirect_args;
-        std::uint32_t light_count;
         std::uint32_t camera_id;
         rdg_buffer_srv vsm_directional_buffer;
     };
@@ -758,6 +767,10 @@ void shadow_pass::light_cull(render_graph& graph)
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
+            data.shadow_light_buffer =
+                pass.add_buffer_srv(m_shadow_light_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.shadow_light_count = graph.get_context().get_scene().shadow_light_count;
+
             data.vsm_info = pass.add_buffer_uav(m_vsm_info, RHI_PIPELINE_STAGE_COMPUTE);
             data.visible_light_list =
                 pass.add_buffer_uav(m_visible_light_list, RHI_PIPELINE_STAGE_COMPUTE);
@@ -765,8 +778,7 @@ void shadow_pass::light_cull(render_graph& graph)
                 pass.add_buffer_uav(m_visible_vsm_list, RHI_PIPELINE_STAGE_COMPUTE);
             data.virtual_page_indirect_args =
                 pass.add_buffer_uav(m_virtual_page_indirect_args, RHI_PIPELINE_STAGE_COMPUTE);
-            data.light_count = graph.get_context().get_light_count(true);
-            data.camera_id = graph.get_context().get_camera_id();
+            data.camera_id = graph.get_context().get_camera().id;
             data.vsm_directional_buffer =
                 pass.add_buffer_srv(m_vsm_directional_buffer, RHI_PIPELINE_STAGE_COMPUTE);
         },
@@ -780,6 +792,8 @@ void shadow_pass::light_cull(render_graph& graph)
 
             command.set_constant(
                 vsm_light_cull_cs::constant_data{
+                    .shadow_light_buffer = data.shadow_light_buffer.get_bindless(),
+                    .shadow_light_count = data.shadow_light_count,
                     .vsm_info = data.vsm_info.get_bindless(),
                     .visible_light_list = data.visible_light_list.get_bindless(),
                     .visible_vsm_list = data.visible_vsm_list.get_bindless(),
@@ -792,7 +806,7 @@ void shadow_pass::light_cull(render_graph& graph)
             command.set_parameter(1, RDG_PARAMETER_SCENE);
             command.set_parameter(2, RDG_PARAMETER_CAMERA);
 
-            command.dispatch_1d(data.light_count);
+            command.dispatch_1d(data.shadow_light_count);
         });
 }
 
@@ -851,6 +865,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
     struct pass_data
     {
         rdg_texture_srv depth_buffer;
+        rdg_buffer_srv shadow_light_buffer;
         rdg_buffer_srv vsm_info;
         rdg_buffer_srv visible_light_list;
         rdg_buffer_srv visible_vsm_list;
@@ -865,6 +880,8 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
         [&](pass_data& data, rdg_pass& pass)
         {
             data.depth_buffer = pass.add_texture_srv(m_depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.shadow_light_buffer =
+                pass.add_buffer_srv(m_shadow_light_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_info = pass.add_buffer_srv(m_vsm_info, RHI_PIPELINE_STAGE_COMPUTE);
             data.visible_light_list =
                 pass.add_buffer_srv(m_visible_light_list, RHI_PIPELINE_STAGE_COMPUTE);
@@ -886,6 +903,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
             command.set_constant(
                 vsm_mark_visible_pages_cs::constant_data{
                     .depth_buffer = data.depth_buffer.get_bindless(),
+                    .shadow_light_buffer = data.shadow_light_buffer.get_bindless(),
                     .vsm_info = data.vsm_info.get_bindless(),
                     .visible_light_list = data.visible_light_list.get_bindless(),
                     .visible_vsm_list = data.visible_vsm_list.get_bindless(),
@@ -927,7 +945,7 @@ void shadow_pass::mark_fallback_pages(render_graph& graph)
             data.vsm_virtual_page_table =
                 pass.add_buffer_uav(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
 
-            data.vsm_count = graph.get_context().get_vsm_count();
+            data.vsm_count = graph.get_context().get_scene().vsm_count;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -997,9 +1015,9 @@ void shadow_pass::mark_resident_pages(render_graph& graph)
 
 void shadow_pass::mark_cache_dirty_pages(render_graph& graph)
 {
-    const auto& context = graph.get_context();
+    const auto& shadow_module = graph.get_context().get_module<render_scene_shadow>();
 
-    if (context.get_vsm_invalidation_count() == 0)
+    if (shadow_module.get_vsm_invalidation_count() == 0)
     {
         return;
     }
@@ -1009,7 +1027,6 @@ void shadow_pass::mark_cache_dirty_pages(render_graph& graph)
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_uav vsm_physical_page_table;
         rhi_buffer_srv* vsm_invalidation_buffer;
-
         std::uint32_t vsm_invalidation_count;
     };
 
@@ -1021,9 +1038,8 @@ void shadow_pass::mark_cache_dirty_pages(render_graph& graph)
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_physical_page_table =
                 pass.add_buffer_uav(m_vsm_physical_page_table, RHI_PIPELINE_STAGE_COMPUTE);
-            data.vsm_invalidation_buffer = context.get_vsm_invalidation_buffer()->get_srv();
-
-            data.vsm_invalidation_count = context.get_vsm_invalidation_count();
+            data.vsm_invalidation_buffer = shadow_module.get_vsm_invalidation_buffer()->get_srv();
+            data.vsm_invalidation_count = shadow_module.get_vsm_invalidation_count();
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -1461,7 +1477,7 @@ void shadow_pass::instance_cull(render_graph& graph)
                 data.hzb = pass.add_texture_srv(m_vsm_hzb, RHI_PIPELINE_STAGE_COMPUTE);
             }
 
-            data.instance_count = graph.get_context().get_instance_count();
+            data.instance_count = graph.get_context().get_scene().instance_count;
         },
         [hzb_sampler = m_hzb_sampler](const pass_data& data, rdg_command& command)
         {
@@ -1685,29 +1701,16 @@ void shadow_pass::cluster_cull(render_graph& graph)
 
 void shadow_pass::render_shadow(render_graph& graph)
 {
-    render_shadow(graph, false, RHI_CULL_MODE_NONE, "VSM Render Shadow: No Cull");
-    render_shadow(graph, false, RHI_CULL_MODE_BACK, "VSM Render Shadow: Cull Back");
-    render_shadow(graph, false, RHI_CULL_MODE_FRONT, "VSM Render Shadow: Cull Front");
-    render_shadow(graph, true, RHI_CULL_MODE_NONE, "VSM Render Shadow: Opacity Cutoff | No Cull");
-    render_shadow(graph, true, RHI_CULL_MODE_BACK, "VSM Render Shadow: Opacity Cutoff | Cull Back");
-    render_shadow(
-        graph,
-        true,
-        RHI_CULL_MODE_FRONT,
-        "VSM Render Shadow: Opacity Cutoff | Cull Front");
+    const auto& mesh_module = graph.get_context().get_module<render_scene_mesh>();
+    mesh_module.each_shadow_batch(
+        [&](bool opacity_cutoff, rhi_cull_mode cull_mode)
+        {
+            render_shadow(graph, opacity_cutoff, cull_mode);
+        });
 }
 
-void shadow_pass::render_shadow(
-    render_graph& graph,
-    bool opacity_cutoff,
-    rhi_cull_mode cull_mode,
-    std::string_view pass_name)
+void shadow_pass::render_shadow(render_graph& graph, bool opacity_cutoff, rhi_cull_mode cull_mode)
 {
-    if (graph.get_context().get_shadow_batch_draw_call_count(opacity_cutoff, cull_mode) == 0)
-    {
-        return;
-    }
-
     struct pass_data
     {
         rdg_buffer_srv vsm_buffer;
@@ -1724,7 +1727,10 @@ void shadow_pass::render_shadow(
     };
 
     graph.add_pass<pass_data>(
-        pass_name,
+        std::format(
+            "VSM Render Shadow: Opacity Cutoff[{}] | Cull Mode[{}]",
+            opacity_cutoff,
+            static_cast<std::uint32_t>(cull_mode)),
         RDG_PASS_RASTER,
         [&](pass_data& data, rdg_pass& pass)
         {

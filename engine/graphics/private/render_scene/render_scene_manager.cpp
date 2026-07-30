@@ -7,11 +7,19 @@ render_scene_manager::render_scene_manager(vsm_manager* vsm_manager)
 {
 }
 
+void render_scene_manager::reset_states()
+{
+    for (auto& scene : m_scenes)
+    {
+        scene->reset_states();
+    }
+}
+
 void render_scene_manager::update(gpu_buffer_uploader* uploader)
 {
     for (auto& scene : m_scenes)
     {
-        scene->update(uploader);
+        scene->end_frame(uploader);
     }
 }
 

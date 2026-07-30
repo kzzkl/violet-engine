@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_scene.hpp"
+#include "graphics/render_scene/render_scene.hpp"
 
 namespace violet
 {
@@ -9,14 +9,7 @@ class render_scene_manager
 public:
     render_scene_manager(vsm_manager* vsm_manager);
 
-    void clear_states()
-    {
-        for (auto& scene : m_scenes)
-        {
-            scene->clear_states();
-        }
-    }
-
+    void reset_states();
     void update(gpu_buffer_uploader* uploader);
 
     render_scene* get_scene(std::uint32_t layer);
