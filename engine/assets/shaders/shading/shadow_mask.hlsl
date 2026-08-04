@@ -8,8 +8,8 @@ struct constant_data
     uint vsm_buffer;
     uint vsm_virtual_page_table;
     uint vsm_physical_shadow_map;
-    uint vsm_id;
-    uint light_id;
+    uint shadow_light_index;
+    uint shadow_light_buffer;
     float normal_bias;
     float constant_bias;
     uint sample_mode;
@@ -90,9 +90,14 @@ float fs_main(vs_output input) : SV_TARGET
         return 0.0;
     }
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
-    light_data light = lights[constant.light_id];
-    
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<uint2> shadow_lights = ResourceDescriptorHeap[constant.shadow_light_buffer];
+
+    uint light_id = shadow_lights[constant.shadow_light_index].x;
+    uint vsm_id = shadow_lights[constant.shadow_light_index].y;
+
+    light_data light = lights[light_id];
+
     float3 position_ws = reconstruct_position(depth, input.texcoord, camera.matrix_vp_inv).xyz;
 
     Texture2D<uint> buffer = ResourceDescriptorHeap[constant.normal_buffer];
@@ -107,7 +112,7 @@ float fs_main(vs_output input) : SV_TARGET
     uint cascade = get_directional_cascade(length(position_ws - camera.position));
 
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    vsm_data vsm = vsms[constant.vsm_id + cascade];
+    vsm_data vsm = vsms[vsm_id + cascade];
 
     float sample_radius = constant.sample_radius * vsm.texel_size_inv;
     float normal_bias = constant.normal_bias * (1.0 + ceil(sample_radius)) * vsm.texel_size * 0.5;
@@ -120,10 +125,10 @@ float fs_main(vs_output input) : SV_TARGET
 
     if (constant.sample_mode == 1)
     {
-        return sample_shadow_pcf(constant.vsm_id + cascade, position_ls.xyz, sample_radius * VIRTUAL_TEXEL_SIZE, physical_shadow_map, virtual_page_table);
+        return sample_shadow_pcf(vsm_id + cascade, position_ls.xyz, sample_radius * VIRTUAL_TEXEL_SIZE, physical_shadow_map, virtual_page_table);
     }
     else
     {
-        return sample_shadow(constant.vsm_id + cascade, position_ls.xyz, physical_shadow_map, virtual_page_table);
+        return sample_shadow(vsm_id + cascade, position_ls.xyz, physical_shadow_map, virtual_page_table);
     }
 }

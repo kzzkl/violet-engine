@@ -3,6 +3,8 @@
 
 struct constant_data
 {
+    uint shadow_light_buffer;
+    uint shadow_light_count;
     uint vsm_info;
     uint visible_light_list;
     uint visible_vsm_list;
@@ -19,20 +21,17 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    if (dtid.x >= scene.shadow_casting_light_count)
+    if (dtid.x >= constant.shadow_light_count)
     {
         return;
     }
 
-    uint light_id = dtid.x;
+    StructuredBuffer<uint2> shadow_lights = ResourceDescriptorHeap[constant.shadow_light_buffer];
+    uint light_id = shadow_lights[dtid.x].x;
+    uint vsm_address = shadow_lights[dtid.x].y;
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     light_data light = lights[light_id];
-
-    if (light.vsm_address == 0xFFFFFFFF)
-    {
-        return;
-    }
 
     RWStructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
     RWStructuredBuffer<uint> visible_light_list = ResourceDescriptorHeap[constant.visible_light_list];
@@ -44,7 +43,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     {
         StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
 
-        uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, constant.camera_id);
+        uint vsm_id = get_directional_vsm_id(directional_vsms, vsm_address, constant.camera_id);
 
         uint light_index = 0;
         InterlockedAdd(vsm_info[0].visible_light_count, 1, light_index);

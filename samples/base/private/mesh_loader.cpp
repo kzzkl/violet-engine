@@ -2,6 +2,7 @@
 #include "assimp_loader.hpp"
 #include "common/log.hpp"
 #include "gltf_loader.hpp"
+#include "tools/distance_field_tool.hpp"
 #include "tools/geometry_tool.hpp"
 #include "tools/texture_tool.hpp"
 #include <filesystem>
@@ -19,6 +20,7 @@ enum block_type : std::uint32_t
     BLOCK_GEOMETRY = 1,
     BLOCK_MATERIAL = 2,
     BLOCK_TEXTURE = 3,
+    BLOCK_DISTANCE_FIELD = 4,
 };
 
 enum geometry_flag
@@ -232,6 +234,8 @@ bool read_geometry(std::ifstream& fin, mesh_loader::scene_data& scene_data)
                 }
             }
         }
+
+        read(fin, geometry.distance_field);
     }
 
     return true;
@@ -321,6 +325,8 @@ bool write_geometry(std::ofstream& fout, const mesh_loader::scene_data& scene_da
                 }
             }
         }
+
+        write(fout, geometry.distance_field);
     }
 
     return true;
@@ -421,6 +427,57 @@ bool write_texture(std::ofstream& fout, const mesh_loader::scene_data& scene_dat
         auto pixel_size = static_cast<std::uint32_t>(texture.pixels.size());
         write(fout, pixel_size);
         write(fout, texture.pixels.data(), pixel_size);
+    }
+
+    return true;
+}
+
+bool read_distance_field(std::ifstream& fin, mesh_loader::scene_data& scene_data)
+{
+    auto distance_field_count = static_cast<std::uint32_t>(scene_data.distance_fields.size());
+    read(fin, distance_field_count);
+    scene_data.distance_fields.resize(distance_field_count);
+
+    for (auto& distance_field : scene_data.distance_fields)
+    {
+        std::uint32_t format;
+        read(fin, format);
+        distance_field.format = static_cast<rhi_format>(format);
+
+        read(fin, distance_field.extent.width);
+        read(fin, distance_field.extent.height);
+        read(fin, distance_field.extent.depth);
+
+        read(fin, distance_field.layer_count);
+        read(fin, distance_field.level_count);
+
+        std::uint32_t pixel_size;
+        read(fin, pixel_size);
+
+        distance_field.pixels.resize(pixel_size);
+        read(fin, distance_field.pixels.data(), static_cast<std::streamsize>(pixel_size));
+    }
+
+    return true;
+}
+
+bool write_distance_field(std::ofstream& fout, const mesh_loader::scene_data& scene_data)
+{
+    auto distance_field_count = static_cast<std::uint32_t>(scene_data.distance_fields.size());
+    write(fout, distance_field_count);
+
+    for (const auto& distance_field : scene_data.distance_fields)
+    {
+        write(fout, static_cast<std::uint32_t>(distance_field.format));
+        write(fout, distance_field.extent.width);
+        write(fout, distance_field.extent.height);
+        write(fout, distance_field.extent.depth);
+        write(fout, distance_field.layer_count);
+        write(fout, distance_field.level_count);
+
+        auto pixel_size = static_cast<std::uint32_t>(distance_field.pixels.size());
+        write(fout, pixel_size);
+        write(fout, distance_field.pixels.data(), pixel_size);
     }
 
     return true;
@@ -550,6 +607,26 @@ bool mesh_loader_compress_textures(mesh_loader::scene_data& scene_data)
 
     return true;
 }
+
+bool mesh_loader_generate_distance_field(mesh_loader::scene_data& scene_data)
+{
+    for (std::uint32_t i = 0; i < scene_data.geometries.size(); ++i)
+    {
+        auto& geometry = scene_data.geometries[i];
+        geometry.distance_field = static_cast<std::int32_t>(scene_data.distance_fields.size());
+
+        auto& distance_field = scene_data.distance_fields.emplace_back();
+
+        if (!distance_field_tool::generate(geometry.positions, geometry.indexes, distance_field))
+        {
+            return false;
+        }
+
+        log::info("generate distance field: {} / {}", i + 1, scene_data.geometries.size());
+    }
+
+    return true;
+}
 } // namespace
 
 bool mesh_loader::load(
@@ -557,7 +634,8 @@ bool mesh_loader::load(
     scene_data& scene_data,
     bool generate_clusters,
     bool generate_mipmaps,
-    bool compress_textures)
+    bool compress_textures,
+    bool generate_distance_field)
 {
     namespace fs = std::filesystem;
 
@@ -570,6 +648,7 @@ bool mesh_loader::load(
     options |= generate_clusters ? (1 << 0) : 0;
     options |= generate_mipmaps ? (1 << 1) : 0;
     options |= compress_textures ? (1 << 2) : 0;
+    options |= generate_distance_field ? (1 << 3) : 0;
     std::string cache_path =
         std::format("{}/{}.{}.mesh", cache_dir, file.filename().string(), options);
 
@@ -589,6 +668,11 @@ bool mesh_loader::load(
     {
         assimp_loader loader;
         result = loader.load(path, scene_data);
+    }
+
+    if (result && generate_distance_field)
+    {
+        result = mesh_loader_generate_distance_field(scene_data);
     }
 
     if (result && generate_clusters)
@@ -654,6 +738,9 @@ bool mesh_loader::load(std::string_view path, scene_data& scene_data)
         case BLOCK_TEXTURE:
             result = read_texture(fin, scene_data);
             break;
+        case BLOCK_DISTANCE_FIELD:
+            result = read_distance_field(fin, scene_data);
+            break;
         default:
             return false;
         }
@@ -698,6 +785,11 @@ bool mesh_loader::save(std::string_view path, const scene_data& scene_data)
         ++block_count;
     }
 
+    if (!scene_data.distance_fields.empty())
+    {
+        ++block_count;
+    }
+
     write(fout, block_count);
 
     bool result = true;
@@ -724,6 +816,12 @@ bool mesh_loader::save(std::string_view path, const scene_data& scene_data)
     {
         write(fout, BLOCK_TEXTURE);
         result = write_texture(fout, scene_data);
+    }
+
+    if (result && !scene_data.distance_fields.empty())
+    {
+        write(fout, BLOCK_DISTANCE_FIELD);
+        result = write_distance_field(fout, scene_data);
     }
 
     return result;

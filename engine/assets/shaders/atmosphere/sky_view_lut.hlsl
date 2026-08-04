@@ -8,7 +8,6 @@ struct constant_data
     uint sky_view_lut;
     float3 sun_irradiance;
     uint sample_count;
-    float3 ground_color;
     uint transmittance_lut;
     uint multi_scattering_lut;
 };
@@ -82,13 +81,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
                 sun_mu,
                 transmittance_uv);
 
-            float3 sun_transmittance =
-                transmittance_lut.SampleLevel(get_linear_clamp_sampler(), transmittance_uv, 0.0);
-            float3 view_transmittance =
-                integrate_transmittance(atmosphere, eye, view, ground_distance, constant.sample_count);
+            float3 sun_transmittance = transmittance_lut.SampleLevel(get_linear_clamp_sampler(), transmittance_uv, 0.0);
+            float3 view_transmittance = integrate_transmittance(atmosphere, eye, view, ground_distance, constant.sample_count);
 
-            float3 ground_radiance =
-                constant.ground_color * ground_n_dot_l * sun_transmittance * constant.sun_irradiance / PI;
+            float3 ground_radiance = constant.atmosphere.ground_color * ground_n_dot_l * sun_transmittance * constant.sun_irradiance / PI;
             result.xyz += ground_radiance * view_transmittance;
         }
     }

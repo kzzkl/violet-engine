@@ -76,14 +76,19 @@ public:
         return m_material_id;
     }
 
-    std::uint32_t get_resolve_pipeline() const noexcept
+    render_id get_raster_pipeline_id() const noexcept
+    {
+        return m_raster_pipeline_id;
+    }
+
+    render_id get_resolve_pipeline_id() const noexcept
     {
         return m_resolve_pipeline_id;
     }
 
-    std::uint32_t get_shading_model() const noexcept
+    render_id get_shading_model_id() const noexcept
     {
-        return m_shading_model;
+        return m_shading_model_id;
     }
 
     virtual bool get_opacity_cutoff() const noexcept
@@ -143,13 +148,15 @@ private:
 
     surface_type m_surface_type;
 
-    rdg_raster_pipeline m_raster_pipeline{};
-    rdg_compute_pipeline m_resolve_pipeline{};
-
     render_id m_material_id{INVALID_RENDER_ID};
 
-    std::uint32_t m_resolve_pipeline_id{0};
-    std::uint32_t m_shading_model{0};
+    rdg_raster_pipeline m_raster_pipeline{};
+    render_id m_raster_pipeline_id{0};
+
+    rdg_compute_pipeline m_resolve_pipeline{};
+    render_id m_resolve_pipeline_id{0};
+
+    render_id m_shading_model_id{0};
 
     shadow_cull_mode m_shadow_cull_mode{SHADOW_CULL_MODE_AUTO};
     std::uint32_t m_shadow_batch{0};

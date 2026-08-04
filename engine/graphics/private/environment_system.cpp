@@ -4,6 +4,7 @@
 #include "components/scene_component.hpp"
 #include "components/skybox_component_meta.hpp"
 #include "graphics/render_graph/render_graph.hpp"
+#include "graphics/render_scene/render_scene_environment.hpp"
 #include "graphics/renderers/passes/ibl_pass.hpp"
 
 namespace violet
@@ -347,7 +348,7 @@ void environment_system::update(render_scene_manager& scene_manager)
                 }
 
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
-                render_scene->set_skybox(
+                render_scene->get_module<render_scene_environment>().set_skybox(
                     meta.environment_map.get(),
                     meta.irradiance_sh.get(),
                     meta.prefilter_map.get());
@@ -400,7 +401,7 @@ void environment_system::update(render_scene_manager& scene_manager)
                 }
 
                 render_scene* render_scene = scene_manager.get_scene(scene.layer);
-                render_scene->set_atmosphere(
+                render_scene->get_module<render_scene_environment>().set_atmosphere(
                     meta.atmosphere,
                     light_meta.id,
                     meta.transmittance_lut.get(),

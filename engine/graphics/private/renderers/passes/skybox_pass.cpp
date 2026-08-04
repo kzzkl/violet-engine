@@ -1,5 +1,6 @@
 #include "graphics/renderers/passes/skybox_pass.hpp"
 #include "graphics/render_interface.hpp"
+#include "graphics/render_scene/render_scene_environment.hpp"
 
 namespace violet
 {
@@ -43,8 +44,6 @@ struct skybox_fs : public shader_fs
 
 void skybox_pass::add(render_graph& graph, const parameter& parameter)
 {
-    rdg_scope scope(graph, "Skybox Pass");
-
     struct pass_data
     {
         rhi_texture_srv* environment_map;
@@ -61,9 +60,8 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             pass.add_render_target(parameter.render_target, load_op);
             pass.set_depth_stencil(parameter.depth_buffer, load_op);
 
-            const auto& context = graph.get_context();
-            data.environment_map =
-                context.get_environment_map()->get_srv(RHI_TEXTURE_DIMENSION_CUBE);
+            const auto& scene = graph.get_context().get_scene();
+            data.environment_map = scene.environment_map->get_srv(RHI_TEXTURE_DIMENSION_CUBE);
         },
         [](const pass_data& data, rdg_command& command)
         {

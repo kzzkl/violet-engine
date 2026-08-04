@@ -72,7 +72,7 @@ enum rhi_format : std::uint8_t
     RHI_FORMAT_BC7_SRGB,
 };
 
-struct rhi_format_size
+struct rhi_format_block_size
 {
     std::uint32_t block_size;   // in bytes
     std::uint32_t block_width;  // in texels
@@ -80,7 +80,7 @@ struct rhi_format_size
     std::uint32_t block_depth;  // in texels
 };
 
-inline rhi_format_size rhi_get_format_size(rhi_format format)
+inline rhi_format_block_size rhi_get_format_block_size(rhi_format format)
 {
     switch (format)
     {
@@ -199,6 +199,73 @@ inline rhi_format_size rhi_get_format_size(rhi_format format)
             .block_height = 1,
             .block_depth = 1,
         };
+    }
+}
+
+inline std::uint32_t rhi_get_format_channel_count(rhi_format format)
+{
+    switch (format)
+    {
+    case RHI_FORMAT_R8_UNORM:
+    case RHI_FORMAT_R8_SNORM:
+    case RHI_FORMAT_R8_UINT:
+    case RHI_FORMAT_R8_SINT:
+    case RHI_FORMAT_R32_UINT:
+    case RHI_FORMAT_R32_SINT:
+    case RHI_FORMAT_R32_FLOAT:
+    case RHI_FORMAT_D32_FLOAT:
+        return 1;
+    case RHI_FORMAT_R8G8_UNORM:
+    case RHI_FORMAT_R8G8_SNORM:
+    case RHI_FORMAT_R8G8_UINT:
+    case RHI_FORMAT_R8G8_SINT:
+    case RHI_FORMAT_R16G16_UNORM:
+    case RHI_FORMAT_R16G16_FLOAT:
+    case RHI_FORMAT_R32G32_UINT:
+    case RHI_FORMAT_R32G32_SINT:
+    case RHI_FORMAT_R32G32_FLOAT:
+    case RHI_FORMAT_D24_UNORM_S8_UINT:
+    case RHI_FORMAT_D32_FLOAT_S8_UINT:
+    case RHI_FORMAT_BC5_UNORM:
+        return 2;
+    case RHI_FORMAT_R8G8B8_UNORM:
+    case RHI_FORMAT_R8G8B8_SNORM:
+    case RHI_FORMAT_R8G8B8_UINT:
+    case RHI_FORMAT_R8G8B8_SINT:
+    case RHI_FORMAT_B8G8R8_UNORM:
+    case RHI_FORMAT_B8G8R8_SNORM:
+    case RHI_FORMAT_R32G32B32_UINT:
+    case RHI_FORMAT_R32G32B32_SINT:
+    case RHI_FORMAT_R32G32B32_FLOAT:
+    case RHI_FORMAT_R11G11B10_FLOAT:
+    case RHI_FORMAT_BC1_RGB_UNORM:
+    case RHI_FORMAT_BC1_RGB_SRGB:
+        return 3;
+    case RHI_FORMAT_R8G8B8A8_UNORM:
+    case RHI_FORMAT_R8G8B8A8_SNORM:
+    case RHI_FORMAT_R8G8B8A8_UINT:
+    case RHI_FORMAT_R8G8B8A8_SINT:
+    case RHI_FORMAT_R8G8B8A8_SRGB:
+    case RHI_FORMAT_B8G8R8A8_UNORM:
+    case RHI_FORMAT_B8G8R8A8_SNORM:
+    case RHI_FORMAT_B8G8R8A8_UINT:
+    case RHI_FORMAT_B8G8R8A8_SINT:
+    case RHI_FORMAT_B8G8R8A8_SRGB:
+    case RHI_FORMAT_R16G16B16A16_UNORM:
+    case RHI_FORMAT_R16G16B16A16_FLOAT:
+    case RHI_FORMAT_R32G32B32A32_UINT:
+    case RHI_FORMAT_R32G32B32A32_SINT:
+    case RHI_FORMAT_R32G32B32A32_FLOAT:
+    case RHI_FORMAT_BC1_RGBA_UNORM:
+    case RHI_FORMAT_BC1_RGBA_SRGB:
+    case RHI_FORMAT_BC3_UNORM:
+    case RHI_FORMAT_BC3_SRGB:
+    case RHI_FORMAT_BC7_UNORM:
+    case RHI_FORMAT_BC7_SRGB:
+        return 4;
+    case RHI_FORMAT_UNDEFINED:
+    default:
+        return 0;
     }
 }
 

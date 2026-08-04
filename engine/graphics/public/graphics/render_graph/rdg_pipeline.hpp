@@ -1,6 +1,8 @@
 #pragma once
 
+#include "algorithm/hash.hpp"
 #include "graphics/render_interface.hpp"
+#include <functional>
 
 namespace violet
 {
@@ -41,6 +43,37 @@ struct rdg_raster_pipeline
         desc.render_pass = render_pass;
         return desc;
     }
+
+    std::uint64_t hash() const noexcept
+    {
+        std::uint64_t hash = 0;
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(static_cast<const void*>(&vertex_shader), sizeof(rhi_shader*)));
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(static_cast<const void*>(&geometry_shader), sizeof(rhi_shader*)));
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(static_cast<const void*>(&fragment_shader), sizeof(rhi_shader*)));
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(
+                static_cast<const void*>(&rasterizer_state),
+                sizeof(rhi_rasterizer_state*)));
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(
+                static_cast<const void*>(&depth_stencil_state),
+                sizeof(rhi_depth_stencil_state*)));
+        hash = hash::combine(
+            hash,
+            hash::xx_hash(static_cast<const void*>(&blend_state), sizeof(rhi_blend_state*)));
+        hash =
+            hash::combine(hash, hash::xx_hash(&primitive_topology, sizeof(rhi_primitive_topology)));
+        hash = hash::combine(hash, hash::xx_hash(&samples, sizeof(rhi_sample_count)));
+        return hash;
+    }
 };
 
 struct rdg_compute_pipeline
@@ -58,5 +91,31 @@ struct rdg_compute_pipeline
             .compute_shader = compute_shader,
         };
     }
+
+    std::uint64_t hash() const noexcept
+    {
+        return hash::xx_hash(static_cast<const void*>(&compute_shader), sizeof(rhi_shader*));
+    }
 };
 } // namespace violet
+
+namespace std
+{
+template <>
+struct hash<violet::rdg_raster_pipeline>
+{
+    std::uint64_t operator()(const violet::rdg_raster_pipeline& pipeline) const noexcept
+    {
+        return pipeline.hash();
+    }
+};
+
+template <>
+struct hash<violet::rdg_compute_pipeline>
+{
+    std::uint64_t operator()(const violet::rdg_compute_pipeline& pipeline) const noexcept
+    {
+        return pipeline.hash();
+    }
+};
+} // namespace std

@@ -38,7 +38,10 @@ private:
 
     void add_clear_pass(render_graph& graph, const parameter& parameter);
 
-    void add_visibility_pass(render_graph& graph, const parameter& parameter);
+    void add_visibility_pass(
+        render_graph& graph,
+        const parameter& parameter,
+        rhi_attachment_load_op load_op);
     void add_material_classify_pass(render_graph& graph);
     void add_material_resolve_pass(
         render_graph& graph,
@@ -46,7 +49,10 @@ private:
         std::uint32_t pipeline_id,
         const rdg_compute_pipeline& pipeline);
 
-    void add_deferred_pass(render_graph& graph, const parameter& parameter);
+    void add_deferred_pass(
+        render_graph& graph,
+        const parameter& parameter,
+        rhi_attachment_load_op load_op);
 
     void add_debug_pass(render_graph& graph, const parameter& parameter);
 

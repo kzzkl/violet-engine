@@ -18,6 +18,7 @@ public:
         LOAD_OPTION_GENERATE_CLUSTERS = 1 << 1,
         LOAD_OPTION_GENERATE_MIPMAPS = 1 << 2,
         LOAD_OPTION_COMPRESS_TEXTURES = 1 << 3,
+        LOAD_OPTION_GENERATE_DISTANCE_FIELD = 1 << 4,
     };
     using load_options = std::uint32_t;
 

@@ -1,5 +1,6 @@
 #include "graphics/renderers/passes/atmosphere_pass.hpp"
 #include "graphics/renderers/passes/ibl_pass.hpp"
+#include "math/matrix.hpp"
 
 namespace violet
 {
@@ -49,7 +50,6 @@ struct sky_view_lut_cs : public shader_cs
         std::uint32_t sky_view_lut;
         vec3f sun_irradiance;
         std::uint32_t sample_count;
-        vec3f ground_color;
         std::uint32_t transmittance_lut;
         std::uint32_t multi_scattering_lut;
     };
@@ -205,7 +205,6 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
         atmosphere_data atmosphere;
         vec3f sun_direction;
         vec3f sun_irradiance;
-        vec3f ground_color;
 
         rhi_texture_srv* transmittance_lut;
         rhi_texture_srv* multi_scattering_lut;
@@ -216,18 +215,16 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
-            const auto& context = graph.get_context();
+            const auto& scene = graph.get_context().get_scene();
 
             data.sky_view_lut =
                 pass.add_texture_uav(parameter.sky_view_lut, RHI_PIPELINE_STAGE_COMPUTE);
-            data.atmosphere = context.get_atmosphere();
-            data.sun_direction = context.get_sun_direction();
-            data.sun_irradiance = context.get_sun_irradiance();
-            data.ground_color = context.get_atmosphere().ground_color;
-            data.transmittance_lut = context.get_transmittance_lut()->get_srv();
-            data.multi_scattering_lut = parameter.use_multi_scattering ?
-                                            context.get_multi_scattering_lut()->get_srv() :
-                                            nullptr;
+            data.atmosphere = scene.atmosphere;
+            data.sun_direction = scene.sun_direction;
+            data.sun_irradiance = scene.sun_irradiance;
+            data.transmittance_lut = scene.transmittance_lut->get_srv();
+            data.multi_scattering_lut =
+                parameter.use_multi_scattering ? scene.multi_scattering_lut->get_srv() : nullptr;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -241,7 +238,6 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
                 .sky_view_lut = data.sky_view_lut.get_bindless(),
                 .sun_irradiance = data.sun_irradiance,
                 .sample_count = 40,
-                .ground_color = data.ground_color,
                 .transmittance_lut = data.transmittance_lut->get_bindless(),
             };
 
@@ -286,15 +282,13 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
         rdg_texture_srv vsm_physical_shadow_map;
     };
 
-    const auto& context = graph.get_context();
-
-    mat4f matrix_p = context.get_camera_matrix_p();
-    mat4f matrix_v_inv = matrix::inverse(context.get_camera_matrix_v());
+    const auto& camera = graph.get_context().get_camera();
+    mat4f matrix_v_inv = matrix::inverse(camera.matrix_v);
 
     auto get_corner_direction = [&](const vec2f& ndc)
     {
-        vec4f direction =
-            vector::normalize(vec4f(ndc.x / matrix_p[0][0], ndc.y / matrix_p[1][1], 1.0f, 0.0));
+        vec4f direction = vector::normalize(
+            vec4f(ndc.x / camera.matrix_p[0][0], ndc.y / camera.matrix_p[1][1], 1.0f, 0.0));
         return vec3f(matrix::mul(direction, matrix_v_inv));
     };
 
@@ -313,36 +307,38 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_TEXTURE_DIMENSION_3D);
 
-            data.atmosphere = context.get_atmosphere();
-            data.sun_direction = context.get_sun_direction();
-            data.sun_irradiance = context.get_sun_irradiance();
-            data.transmittance_lut = context.get_transmittance_lut()->get_srv();
+            const auto& scene = graph.get_context().get_scene();
+
+            data.atmosphere = scene.atmosphere;
+            data.sun_direction = scene.sun_direction;
+            data.sun_irradiance = scene.sun_irradiance;
+            data.transmittance_lut = scene.transmittance_lut->get_srv();
 
             if (parameter.use_multi_scattering)
             {
-                data.multi_scattering_lut = context.get_multi_scattering_lut()->get_srv();
+                data.multi_scattering_lut = scene.multi_scattering_lut->get_srv();
             }
             else
             {
                 data.multi_scattering_lut = nullptr;
             }
 
-            bool cast_shadow = false;
-            std::uint32_t sun_index = context.get_sun_index(cast_shadow);
+            // bool cast_shadow = false;
+            // std::uint32_t sun_index = environment.get_sun_index(cast_shadow);
 
-            if (cast_shadow && parameter.vsm_buffer != nullptr)
-            {
-                data.vsm_id = context.get_vsm_id(sun_index);
-                data.vsm_buffer =
-                    pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-                data.vsm_virtual_page_table = pass.add_buffer_srv(
-                    parameter.vsm_virtual_page_table,
-                    RHI_PIPELINE_STAGE_COMPUTE);
-                data.vsm_physical_shadow_map = pass.add_texture_srv(
-                    parameter.vsm_physical_shadow_map,
-                    RHI_PIPELINE_STAGE_COMPUTE);
-            }
-            else
+            // if (cast_shadow && parameter.vsm_buffer != nullptr)
+            // {
+            //     data.vsm_id = context.get_vsm_id(sun_index);
+            //     data.vsm_buffer =
+            //         pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            //     data.vsm_virtual_page_table = pass.add_buffer_srv(
+            //         parameter.vsm_virtual_page_table,
+            //         RHI_PIPELINE_STAGE_COMPUTE);
+            //     data.vsm_physical_shadow_map = pass.add_texture_srv(
+            //         parameter.vsm_physical_shadow_map,
+            //         RHI_PIPELINE_STAGE_COMPUTE);
+            // }
+            // else
             {
                 data.vsm_id = 0xFFFFFFFF;
             }
@@ -478,14 +474,16 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
             data.sky_view_lut =
                 pass.add_texture_srv(parameter.sky_view_lut, RHI_PIPELINE_STAGE_FRAGMENT);
 
-            const auto& context = graph.get_context();
-            data.atmosphere = context.get_atmosphere();
-            data.sun_direction = context.get_sun_direction();
-            data.sun_irradiance = context.get_sun_irradiance();
+            const auto& camera = graph.get_context().get_camera();
+            const auto& scene = graph.get_context().get_scene();
 
-            data.transmittance_lut = context.get_transmittance_lut()->get_srv();
+            data.atmosphere = scene.atmosphere;
+            data.sun_direction = scene.sun_direction;
+            data.sun_irradiance = scene.sun_irradiance;
+
+            data.transmittance_lut = scene.transmittance_lut->get_srv();
             data.transmittance_lut_uv = get_transmittance_lut_uv(
-                context.get_camera_position(),
+                camera.position,
                 data.sun_direction,
                 data.atmosphere.planet_radius,
                 data.atmosphere.atmosphere_radius);

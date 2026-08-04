@@ -112,6 +112,13 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
 {
     assert(m_vsms[vsm_id].light_type == LIGHT_DIRECTIONAL);
 
+    auto& light_data = m_directional_lights[vsm_id];
+    if (light_data.light_direction == light.light_direction &&
+        light_data.camera_position == light.camera_position)
+    {
+        return;
+    }
+
     vec3f up = {0.0f, 1.0f, 0.0f};
     if (std::abs(vector::dot(up, light.light_direction)) > 0.99f)
     {
@@ -126,7 +133,6 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
 
     float cascade_radius = VSM_CLIPMAP_CASCADE_0_RADIUS;
 
-    auto& light_data = m_directional_lights[vsm_id];
     bool force_invalidate = light.light_direction != light_data.light_direction;
     light_data = light;
 

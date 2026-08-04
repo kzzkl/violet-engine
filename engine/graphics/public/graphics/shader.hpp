@@ -115,9 +115,9 @@ struct shader
         vec3f position;
         std::uint32_t type;
         vec3f direction;
-        std::uint32_t vsm_address;
+        std::uint32_t cast_shadow;
         vec3f color;
-        std::uint32_t padding0;
+        std::uint32_t padding;
     };
 
     struct scene_data
@@ -126,16 +126,16 @@ struct shader
         std::uint32_t mesh_count;
         std::uint32_t instance_buffer;
         std::uint32_t instance_count;
-        std::uint32_t shadow_casting_light_buffer;
-        std::uint32_t shadow_casting_light_count;
-        std::uint32_t non_shadow_casting_light_buffer;
-        std::uint32_t non_shadow_casting_light_count;
+        std::uint32_t light_buffer;
+        std::uint32_t light_count;
         std::uint32_t batch_buffer;
         std::uint32_t material_buffer;
         std::uint32_t geometry_buffer;
         std::uint32_t cluster_buffer;
         std::uint32_t vertex_buffer;
         std::uint32_t index_buffer;
+
+        bool operator==(const scene_data& other) const = default;
     };
 
     static constexpr parameter scene = {
@@ -308,7 +308,7 @@ struct shading_model_cs : public shader_cs
         std::uint32_t shading_model;
         std::uint32_t worklist_buffer;
         std::uint32_t worklist_offset;
-        std::uint32_t light_index;
+        std::uint32_t shadow_light_index;
         std::uint32_t shadow_mask;
         std::uint32_t stage;
         std::uint32_t prefilter_map;

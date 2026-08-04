@@ -3,6 +3,7 @@
 #include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/render_scene/render_scene_camera.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 
 namespace violet
@@ -157,10 +158,11 @@ void camera_system::update(render_scene_manager& scene_manager)
                 {
                     if (camera_meta.scene != nullptr)
                     {
-                        camera_meta.scene->remove_camera(camera_meta.id);
+                        camera_meta.scene->get_module<render_scene_camera>().remove_camera(
+                            camera_meta.id);
                     }
 
-                    camera_meta.id = render_scene->add_camera();
+                    camera_meta.id = render_scene->get_module<render_scene_camera>().add_camera();
                     camera_meta.scene = render_scene;
                 }
 
@@ -172,8 +174,12 @@ void camera_system::update(render_scene_manager& scene_manager)
                 data.camera_id = camera_meta.id;
                 camera_meta.parameter->set_uniform(0, &data, sizeof(shader::camera_data));
 
-                render_scene->set_camera_position(camera_meta.id, data.position);
-                render_scene->set_camera_background(camera_meta.id, camera.background);
+                render_scene->get_module<render_scene_camera>().set_camera_position(
+                    camera_meta.id,
+                    data.position);
+                render_scene->get_module<render_scene_camera>().set_camera_background(
+                    camera_meta.id,
+                    camera.background);
 
                 camera_meta.position = data.position;
                 camera_meta.matrix_v = data.matrix_v;

@@ -136,6 +136,8 @@ struct geometry
 
     uint32 submesh_count;
     submesh submeshes[submesh_count];
+
+    int32 distance_field;
 };
 
 struct geometry_block
@@ -191,5 +193,29 @@ struct texture_block
 {
     uint32 texture_count;
     texture textures[texture_count];
+};
+```
+
+## distance field block
+
+```
+struct distance_field
+{
+    uint32 format; // rhi_format
+    uint32 width;
+    uint32 height;
+    uint32 depth;
+
+    uint32 layer_count;
+    uint32 level_count;
+
+    uint32 data_size;
+    char data[data_size];
+};
+
+struct distance_field_block
+{
+    uint32 distance_field_count;
+    distance_field distance_fields[distance_field_count];
 };
 ```

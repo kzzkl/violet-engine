@@ -80,8 +80,8 @@ private:
 
     std::vector<rdg_texture*> m_gbuffers;
     rdg_texture* m_visibility_buffer{nullptr};
-    rdg_texture* m_depth_buffer;
-    rdg_texture* m_ao_buffer;
+    rdg_texture* m_depth_buffer{nullptr};
+    rdg_texture* m_ao_buffer{nullptr};
 
     rdg_texture* m_render_target{nullptr};
     rdg_texture* m_culling_hzb{nullptr};
@@ -91,15 +91,16 @@ private:
     bool m_prev_scene_color_valid{false};
     rdg_texture* m_motion_vectors{nullptr};
 
-    rdg_buffer* m_cluster_queue;
-    rdg_buffer* m_cluster_queue_state;
-    rdg_buffer* m_recheck_instances;
-    rdg_buffer* m_recheck_count;
+    rdg_buffer* m_cluster_queue{nullptr};
+    rdg_buffer* m_cluster_queue_state{nullptr};
+    rdg_buffer* m_recheck_instances{nullptr};
+    rdg_buffer* m_recheck_count{nullptr};
 
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
     rdg_buffer* m_draw_info_buffer{nullptr};
 
+    rdg_buffer* m_shadow_light_buffer{nullptr};
     rdg_buffer* m_vsm_buffer{nullptr};
     rdg_buffer* m_vsm_virtual_page_table{nullptr};
     rdg_buffer* m_vsm_physical_page_table{nullptr};

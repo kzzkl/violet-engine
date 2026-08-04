@@ -55,15 +55,17 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     RWStructuredBuffer<debug_data> debug_infos = ResourceDescriptorHeap[constant.debug_info];
 
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
+    // StructuredBuffer<uint2> shadow_lights = ResourceDescriptorHeap[constant.shadow_light_buffer];
+
     light_data light = lights[constant.light_id];
-    if (light.vsm_address == 0xFFFFFFFF)
-    {
-        return;
-    }
+    // if (light.vsm_address == 0xFFFFFFFF)
+    // {
+    //     return;
+    // }
 
     uint cache_hit = 0;
     uint rendered = 0;
@@ -72,7 +74,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     if (light.type == LIGHT_DIRECTIONAL)
     {
         uint2 virtual_page_coord = dtid.xy;
-        uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
+        uint vsm_id = get_directional_vsm_id(directional_vsms, 0, camera.camera_id);
 
         for (int cascade = 0; cascade < 16; ++cascade)
         {
@@ -137,7 +139,7 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
     }
 
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
 
@@ -145,15 +147,15 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
-    if (light.vsm_address == 0xFFFFFFFF)
-    {
-        return;
-    }
+    // if (light.vsm_address == 0xFFFFFFFF)
+    // {
+    //     return;
+    // }
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
         uint cascade = get_directional_cascade(length(position_ws.xyz - camera.position));
-        uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id) + cascade;
+        uint vsm_id = get_directional_vsm_id(directional_vsms, 0, camera.camera_id) + cascade;
 
         vsm_data vsm = vsms[vsm_id];
 
@@ -191,7 +193,7 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
     }
 
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
@@ -200,15 +202,15 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
     float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
-    if (light.vsm_address == 0xFFFFFFFF)
-    {
-        return;
-    }
+    // if (light.vsm_address == 0xFFFFFFFF)
+    // {
+    //     return;
+    // }
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
         uint cascade = get_directional_cascade(length(position_ws.xyz - camera.position));
-        uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id) + cascade;
+        uint vsm_id = get_directional_vsm_id(directional_vsms, 0, camera.camera_id) + cascade;
 
         vsm_data vsm = vsms[vsm_id];
 

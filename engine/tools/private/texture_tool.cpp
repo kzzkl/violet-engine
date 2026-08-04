@@ -105,7 +105,7 @@ pixel_layout get_pixels_layout(
     std::uint32_t layer_count,
     std::uint32_t level_count)
 {
-    const rhi_format_size format_size = rhi_get_format_size(format);
+    const rhi_format_block_size format_size = rhi_get_format_block_size(format);
 
     pixel_layout layout = {};
 
@@ -155,12 +155,11 @@ bool texture_tool::load(std::string_view path, texture_data& data)
     }
 
     rhi_format format = data.format;
-    std::uint32_t req_comp = STBI_default;
+    int req_comp = STBI_default;
 
     if (format != RHI_FORMAT_UNDEFINED)
     {
-        rhi_format_size format_size = rhi_get_format_size(format);
-        req_comp = format_size.block_size;
+        req_comp = static_cast<int>(rhi_get_format_channel_count(format));
     }
 
     int width;
@@ -168,13 +167,29 @@ bool texture_tool::load(std::string_view path, texture_data& data)
     int channels;
 
     std::vector<std::uint8_t> file_data = read_file(path);
-    stbi_uc* pixels = stbi_load_from_memory(
-        file_data.data(),
-        static_cast<int>(file_data.size()),
-        &width,
-        &height,
-        &channels,
-        req_comp);
+    void* pixels = nullptr;
+
+    bool is_hdr = stbi_is_hdr(std::string(path).c_str());
+    if (is_hdr)
+    {
+        pixels = stbi_loadf_from_memory(
+            file_data.data(),
+            static_cast<int>(file_data.size()),
+            &width,
+            &height,
+            &channels,
+            req_comp);
+    }
+    else
+    {
+        pixels = stbi_load_from_memory(
+            file_data.data(),
+            static_cast<int>(file_data.size()),
+            &width,
+            &height,
+            &channels,
+            req_comp);
+    }
 
     if (pixels == nullptr)
     {
@@ -186,16 +201,16 @@ bool texture_tool::load(std::string_view path, texture_data& data)
         switch (channels)
         {
         case 1:
-            format = RHI_FORMAT_R8_UNORM;
+            format = is_hdr ? RHI_FORMAT_R32_FLOAT : RHI_FORMAT_R8_UNORM;
             break;
         case 2:
-            format = RHI_FORMAT_R8G8_UNORM;
+            format = is_hdr ? RHI_FORMAT_R32G32_FLOAT : RHI_FORMAT_R8G8_UNORM;
             break;
         case 3:
-            format = RHI_FORMAT_R8G8B8_UNORM;
+            format = is_hdr ? RHI_FORMAT_R32G32B32_FLOAT : RHI_FORMAT_R8G8B8_UNORM;
             break;
         case 4:
-            format = RHI_FORMAT_R8G8B8A8_UNORM;
+            format = is_hdr ? RHI_FORMAT_R32G32B32A32_FLOAT : RHI_FORMAT_R8G8B8A8_UNORM;
             break;
         default:
             stbi_image_free(pixels);
@@ -203,8 +218,20 @@ bool texture_tool::load(std::string_view path, texture_data& data)
         }
     }
 
-    std::size_t image_size = static_cast<std::size_t>(width * height);
-    image_size *= req_comp == STBI_default ? channels : req_comp;
+    channels = req_comp == STBI_default ? channels : req_comp;
+
+    bool is_half = format == RHI_FORMAT_R16G16_UNORM || format == RHI_FORMAT_R16G16_FLOAT ||
+                   format == RHI_FORMAT_R16G16B16A16_UNORM ||
+                   format == RHI_FORMAT_R16G16B16A16_FLOAT;
+
+    assert(!is_half);
+
+    std::uint32_t image_size = width * height;
+    image_size *= channels;
+
+    std::uint32_t pixel_size = is_hdr ? sizeof(float) : sizeof(std::uint8_t);
+    pixel_size = is_half ? sizeof(std::uint16_t) : pixel_size;
+    image_size *= pixel_size;
 
     data = {
         .format = format,
@@ -219,7 +246,22 @@ bool texture_tool::load(std::string_view path, texture_data& data)
     };
     data.pixels.resize(image_size);
 
-    std::memcpy(data.pixels.data(), pixels, image_size);
+    if (is_half)
+    {
+        // TODO: Implement half float conversion.
+        // auto* pixels_float = static_cast<float*>(pixels);
+        // auto* pixels_half = reinterpret_cast<std::uint16_t*>(data.pixels.data());
+
+        // std::uint32_t size = width * height * channels;
+        // for (std::uint32_t i = 0; i < size; ++i)
+        // {
+        //     pixels_half[i] = float_to_half(pixels_float[i]);
+        // }
+    }
+    else
+    {
+        std::memcpy(data.pixels.data(), pixels, image_size);
+    }
 
     stbi_image_free(pixels);
 
@@ -348,7 +390,7 @@ bool texture_tool::generate_mipmaps(const texture_data& src, texture_data& dst)
     const auto* src_pixels = reinterpret_cast<const std::uint8_t*>(src.pixels.data());
     auto* dst_pixels = reinterpret_cast<std::uint8_t*>(dst.pixels.data());
 
-    rhi_format_size format_size = rhi_get_format_size(src.format);
+    rhi_format_block_size format_size = rhi_get_format_block_size(src.format);
 
     for (std::uint32_t layer = 0; layer < src.layer_count; ++layer)
     {

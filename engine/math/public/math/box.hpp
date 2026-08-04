@@ -117,6 +117,42 @@ struct box
     }
 
     template <typename T>
+    static std::uint32_t get_max_extent_axis(const box3<T>& box) noexcept
+    {
+        vec3<T> extent = get_extent(box);
+        std::uint32_t axis = 0;
+        if (extent.y > extent.x)
+        {
+            axis = 1;
+        }
+        if (extent.z > extent[axis])
+        {
+            axis = 2;
+        }
+        return axis;
+    }
+
+    template <typename T>
+    static T get_surface_area(const box3<T>& box) noexcept
+    {
+        vec3<T> extent = get_extent(box);
+        return T(2) * (extent.x * extent.y + extent.x * extent.z + extent.y * extent.z);
+    }
+
+    template <typename T>
+    static T get_distance(const box3<T>& box, const vec3<T>& point) noexcept
+    {
+        return std::sqrt(get_distance_sq(box, point));
+    }
+
+    template <typename T>
+    static T get_distance_sq(const box3<T>& box, const vec3<T>& point) noexcept
+    {
+        vec3<T> clamped = vector::clamp(point, box.min, box.max);
+        return vector::length_sq(clamped - point);
+    }
+
+    template <typename T>
     static box3<T> transform(const box3<T>& box, const mat4<T>& matrix) noexcept
     {
         vec4<T> corners[8] = {

@@ -31,13 +31,13 @@ fs_output fs_main(vs_output input)
     float3 V = normalize(camera.position - input.position_ws);
     float3 N = normalize(input.normal_ws);
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
     float NdotV = saturate(dot(N, V));
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 direct_lighting = 0.0;
-    if (scene.shadow_casting_light_count > 0)
+    if (scene.light_count > 0)
     {
         light_data light = lights[0];
 

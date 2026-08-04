@@ -26,22 +26,7 @@ bool skinning_system::initialize(const dictionary& config)
     return true;
 }
 
-void skinning_system::update()
-{
-    update_skin();
-    update_skeleton();
-    update_morph();
-
-    m_system_version = get_world().get_version();
-}
-
-void skinning_system::record(rhi_command* command)
-{
-    morphing(command);
-    skinning(command);
-}
-
-void skinning_system::update_skin()
+void skinning_system::pre_update()
 {
     auto& world = get_world();
 
@@ -98,13 +83,49 @@ void skinning_system::update_skin()
                             submesh.index_count);
                     }
                 }
+            },
+            [this](auto& view)
+            {
+                return view.template is_updated<skinned_component>(m_system_version);
+            });
+}
 
+void skinning_system::update()
+{
+    update_skin();
+    update_skeleton();
+    update_morph();
+
+    m_system_version = get_world().get_version();
+}
+
+void skinning_system::record(rhi_command* command)
+{
+    morphing(command);
+    skinning(command);
+}
+
+void skinning_system::update_skin()
+{
+    auto& world = get_world();
+
+    world.get_view()
+        .read<mesh_component>()
+        .read<mesh_component_meta>()
+        .read<skinned_component>()
+        .write<skinned_component_meta>()
+        .each(
+            [](const mesh_component& mesh,
+               const mesh_component_meta& mesh_meta,
+               const skinned_component& skinned,
+               skinned_component_meta& skinned_meta)
+            {
                 if (mesh_meta.scene != nullptr)
                 {
                     for (std::uint32_t submesh_index = 0; submesh_index < mesh.submeshes.size();
                          ++submesh_index)
                     {
-                        mesh_meta.scene->set_instance_geometry(
+                        mesh_meta.scene->get_module<render_scene_mesh>().set_instance_geometry(
                             mesh_meta.instances[submesh_index],
                             skinned_meta.skinned_geometry.get(),
                             mesh.submeshes[submesh_index].index);
@@ -287,22 +308,22 @@ void skinning_system::skinning(rhi_command* command)
 
         skinning_cs::constant_data constant = {
             .position_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
+                original_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_POSITION),
             .normal_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
+                original_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_NORMAL),
             .tangent_input_address = geometry_manager->get_buffer_address(
-                original_geometry->get_id(),
+                original_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_TANGENT),
             .position_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
+                skinned_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_POSITION),
             .normal_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
+                skinned_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_NORMAL),
             .tangent_output_address = geometry_manager->get_buffer_address(
-                skinned_geometry->get_id(),
+                skinned_geometry->get_geometry_id(),
                 GEOMETRY_BUFFER_TANGENT),
             .vertex_buffer = geometry_manager->get_vertex_buffer()->get_uav()->get_bindless(),
             .skeleton = skinning_data.skeleton->get_uav()->get_bindless(),
@@ -336,18 +357,21 @@ void skinning_system::skinning(rhi_command* command)
         buffer_barriers.reserve(3);
 
         barrier.offset = constant.position_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_POSITION);
+        barrier.size = geometry_manager->get_buffer_size(
+            skinned_geometry->get_geometry_id(),
+            GEOMETRY_BUFFER_POSITION);
         buffer_barriers.push_back(barrier);
 
         barrier.offset = constant.normal_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_NORMAL);
+        barrier.size = geometry_manager->get_buffer_size(
+            skinned_geometry->get_geometry_id(),
+            GEOMETRY_BUFFER_NORMAL);
         buffer_barriers.push_back(barrier);
 
         barrier.offset = constant.tangent_output_address;
-        barrier.size =
-            geometry_manager->get_buffer_size(skinned_geometry->get_id(), GEOMETRY_BUFFER_TANGENT);
+        barrier.size = geometry_manager->get_buffer_size(
+            skinned_geometry->get_geometry_id(),
+            GEOMETRY_BUFFER_TANGENT);
         buffer_barriers.push_back(barrier);
 
         command->set_pipeline_barrier(

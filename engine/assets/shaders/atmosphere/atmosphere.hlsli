@@ -15,6 +15,8 @@ struct atmosphere_data
     float planet_radius;
     float atmosphere_radius;
     float sun_angular_radius;
+    float3 ground_color;
+    float padding;
 
     float3 get_rayleigh_scattering(float h)
     {

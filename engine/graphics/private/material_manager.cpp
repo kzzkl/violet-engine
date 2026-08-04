@@ -4,7 +4,8 @@
 namespace violet
 {
 material_manager::material_manager(std::size_t material_buffer_size)
-    : m_material_resolve_pipeline_id_allocator(1, 0xFFFFFF)
+    : m_raster_pipeline_id_allocator(1, 0xFFFFFF),
+      m_resolve_pipeline_id_allocator(1, 0xFFFFFF)
 {
     m_material_buffer = std::make_unique<persistent_buffer>(
         material_buffer_size,
@@ -43,74 +44,120 @@ void material_manager::remove_material(render_id material_id)
     m_material_allocator.free(material_id);
 }
 
-render_id material_manager::add_material_resolve_pipeline(const rdg_compute_pipeline& pipeline)
+render_id material_manager::add_raster_pipeline(const rdg_raster_pipeline& pipeline)
 {
     std::scoped_lock lock(m_mutex);
 
-    auto iter = m_material_resolve_pipeline_ids.find(pipeline.compute_shader);
-    if (iter != m_material_resolve_pipeline_ids.end())
+    auto iter = m_raster_pipeline_ids.find(pipeline);
+    if (iter != m_raster_pipeline_ids.end())
     {
-        ++m_material_resolve_pipelines[iter->second].reference_count;
+        ++m_raster_pipelines[iter->second].second;
         return iter->second;
     }
 
-    render_id pipeline_id = m_material_resolve_pipeline_id_allocator.allocate();
+    render_id pipeline_id = m_raster_pipeline_id_allocator.allocate();
     if (pipeline_id == buffer_allocator::no_space)
     {
         assert(false);
         return 0;
     }
 
-    if (m_material_resolve_pipelines.size() <= pipeline_id)
+    if (m_raster_pipelines.size() <= pipeline_id)
     {
-        m_material_resolve_pipelines.resize(pipeline_id + 1);
+        m_raster_pipelines.resize(pipeline_id + 1);
     }
 
-    m_material_resolve_pipelines[pipeline_id] = {
-        .pipeline = pipeline,
-        .reference_count = 1,
-    };
+    m_raster_pipelines[pipeline_id] = std::make_pair(pipeline, 1);
 
-    m_material_resolve_pipeline_ids[pipeline.compute_shader] = pipeline_id;
+    m_raster_pipeline_ids[pipeline] = pipeline_id;
 
-    m_max_material_resolve_pipeline_id = std::max(m_max_material_resolve_pipeline_id, pipeline_id);
+    m_max_raster_pipeline_id = std::max(m_max_raster_pipeline_id, pipeline_id);
 
     return pipeline_id;
 }
 
-void material_manager::remove_material_resolve_pipeline(render_id pipeline_id)
+void material_manager::remove_raster_pipeline(render_id pipeline_id)
 {
     std::scoped_lock lock(m_mutex);
 
-    assert(
-        m_material_resolve_pipelines.size() > pipeline_id &&
-        m_material_resolve_pipelines[pipeline_id].reference_count > 0);
+    assert(m_raster_pipelines.size() > pipeline_id && m_raster_pipelines[pipeline_id].second > 0);
 
-    auto& wrapper = m_material_resolve_pipelines.at(pipeline_id);
+    auto& [pipeline, reference_count] = m_raster_pipelines.at(pipeline_id);
 
-    --wrapper.reference_count;
-    if (wrapper.reference_count == 0)
+    --reference_count;
+    if (reference_count == 0)
     {
-        m_material_resolve_pipeline_ids.erase(wrapper.pipeline.compute_shader);
-        wrapper = {};
-        m_material_resolve_pipeline_id_allocator.free(pipeline_id);
+        m_raster_pipeline_ids.erase(pipeline);
+        m_raster_pipeline_id_allocator.free(pipeline_id);
     }
 
-    if (pipeline_id == m_max_material_resolve_pipeline_id)
+    while (m_max_raster_pipeline_id > 0 && m_raster_pipelines[m_max_raster_pipeline_id].second == 0)
     {
-        while (m_max_material_resolve_pipeline_id > 0 &&
-               m_material_resolve_pipelines[m_max_material_resolve_pipeline_id].reference_count ==
-                   0)
-        {
-            --m_max_material_resolve_pipeline_id;
-        }
+        --m_max_raster_pipeline_id;
     }
 }
 
-const rdg_compute_pipeline& material_manager::get_material_resolve_pipeline(
-    render_id pipeline_id) const
+const rdg_raster_pipeline& material_manager::get_raster_pipeline(render_id pipeline_id) const
 {
-    return m_material_resolve_pipelines.at(pipeline_id).pipeline;
+    return m_raster_pipelines[pipeline_id].first;
+}
+
+render_id material_manager::add_resolve_pipeline(const rdg_compute_pipeline& pipeline)
+{
+    std::scoped_lock lock(m_mutex);
+
+    auto iter = m_resolve_pipeline_ids.find(pipeline.compute_shader);
+    if (iter != m_resolve_pipeline_ids.end())
+    {
+        ++m_resolve_pipelines[iter->second].second;
+        return iter->second;
+    }
+
+    render_id pipeline_id = m_resolve_pipeline_id_allocator.allocate();
+    if (pipeline_id == buffer_allocator::no_space)
+    {
+        assert(false);
+        return 0;
+    }
+
+    if (m_resolve_pipelines.size() <= pipeline_id)
+    {
+        m_resolve_pipelines.resize(pipeline_id + 1);
+    }
+
+    m_resolve_pipelines[pipeline_id] = std::make_pair(pipeline, 1);
+
+    m_resolve_pipeline_ids[pipeline.compute_shader] = pipeline_id;
+
+    m_max_resolve_pipeline_id = std::max(m_max_resolve_pipeline_id, pipeline_id);
+
+    return pipeline_id;
+}
+
+void material_manager::remove_resolve_pipeline(render_id pipeline_id)
+{
+    std::scoped_lock lock(m_mutex);
+
+    assert(m_resolve_pipelines.size() > pipeline_id && m_resolve_pipelines[pipeline_id].second > 0);
+
+    auto& [pipeline, reference_count] = m_resolve_pipelines.at(pipeline_id);
+
+    --reference_count;
+    if (reference_count == 0)
+    {
+        m_resolve_pipeline_ids.erase(pipeline.compute_shader);
+        m_resolve_pipeline_id_allocator.free(pipeline_id);
+    }
+
+    while (m_resolve_pipelines[m_max_resolve_pipeline_id].second == 0)
+    {
+        --m_max_resolve_pipeline_id;
+    }
+}
+
+const rdg_compute_pipeline& material_manager::get_resolve_pipeline(render_id pipeline_id) const
+{
+    return m_resolve_pipelines[pipeline_id].first;
 }
 
 void material_manager::set_shading_model(

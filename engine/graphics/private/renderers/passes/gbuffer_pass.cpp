@@ -1,5 +1,6 @@
 #include "graphics/renderers/passes/gbuffer_pass.hpp"
 #include "graphics/material_manager.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
 #include "graphics/renderers/passes/mesh_pass.hpp"
 #include "graphics/renderers/passes/scan_pass.hpp"
 #include <format>
@@ -80,8 +81,22 @@ void gbuffer_pass::add(render_graph& graph, const parameter& parameter)
 
     if (parameter.debug_mode == DEBUG_MODE_NONE)
     {
-        add_visibility_pass(graph, parameter);
-        add_deferred_pass(graph, parameter);
+        const auto& mesh_module = graph.get_context().get_module<render_scene_mesh>();
+
+        rhi_attachment_load_op load_op =
+            parameter.main_pass ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD;
+
+        if (mesh_module.has_material_path(MATERIAL_PATH_VISIBILITY))
+        {
+            add_visibility_pass(graph, parameter, load_op);
+            load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
+        }
+
+        if (mesh_module.has_material_path(MATERIAL_PATH_DEFERRED))
+        {
+            add_deferred_pass(graph, parameter, load_op);
+            load_op = RHI_ATTACHMENT_LOAD_OP_LOAD;
+        }
     }
     else
     {
@@ -129,7 +144,10 @@ void gbuffer_pass::add_clear_pass(render_graph& graph, const parameter& paramete
         });
 }
 
-void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& parameter)
+void gbuffer_pass::add_visibility_pass(
+    render_graph& graph,
+    const parameter& parameter,
+    rhi_attachment_load_op load_op)
 {
     rdg_scope scope(graph, "Visibility Pass");
 
@@ -138,8 +156,7 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
                    ((extent.height + tile_size - 1) / tile_size);
 
     m_material_count =
-        render_device::instance().get_material_manager()->get_max_material_resolve_pipeline_id() +
-        1;
+        render_device::instance().get_material_manager()->get_max_resolve_pipeline_id() + 1;
 
     m_visibility_buffer = parameter.visibility_buffer;
 
@@ -150,14 +167,14 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
     render_targets.push_back({
         .texture = parameter.visibility_buffer,
         .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
-        .load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR,
+        .load_op = load_op,
         .clear_value = clear_value,
     });
 
     mesh_pass::attachment depth_buffer = {
         .texture = parameter.depth_buffer,
         .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
-        .load_op = parameter.main_pass ? RHI_ATTACHMENT_LOAD_OP_CLEAR : RHI_ATTACHMENT_LOAD_OP_LOAD,
+        .load_op = load_op,
     };
 
     graph.add_pass<mesh_pass>({
@@ -172,7 +189,7 @@ void gbuffer_pass::add_visibility_pass(render_graph& graph, const parameter& par
 
     add_material_classify_pass(graph);
 
-    graph.get_context().each_material_resolve_pipeline(
+    graph.get_context().get_module<render_scene_mesh>().each_material_resolve_pipeline(
         [&](std::uint32_t pipeline_id, const rdg_compute_pipeline& pipeline)
         {
             add_material_resolve_pass(graph, parameter, pipeline_id, pipeline);
@@ -423,7 +440,10 @@ void gbuffer_pass::add_material_resolve_pass(
         });
 }
 
-void gbuffer_pass::add_deferred_pass(render_graph& graph, const parameter& parameter)
+void gbuffer_pass::add_deferred_pass(
+    render_graph& graph,
+    const parameter& parameter,
+    rhi_attachment_load_op load_op)
 {
     rdg_scope scope(graph, "Deferred Pass");
 
@@ -433,14 +453,14 @@ void gbuffer_pass::add_deferred_pass(render_graph& graph, const parameter& param
         render_targets.push_back({
             .texture = gbuffer,
             .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
-            .load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+            .load_op = load_op,
         });
     }
 
     mesh_pass::attachment depth_buffer = {
         .texture = parameter.depth_buffer,
         .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
-        .load_op = RHI_ATTACHMENT_LOAD_OP_LOAD,
+        .load_op = load_op,
     };
 
     graph.add_pass<mesh_pass>({

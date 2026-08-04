@@ -5,6 +5,7 @@
 struct constant_data
 {
     uint depth_buffer;
+    uint shadow_light_buffer;
     uint vsm_info;
     uint visible_light_list;
     uint visible_vsm_list;
@@ -52,11 +53,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         valid = false;
     }
 
+    StructuredBuffer<uint2> shadow_lights = ResourceDescriptorHeap[constant.shadow_light_buffer];
+
     StructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
     StructuredBuffer<uint> visible_light_list = ResourceDescriptorHeap[constant.visible_light_list];
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
     RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
@@ -67,7 +70,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     for (uint i = 0; i < light_count; ++i)
     {
-        uint light_id = visible_light_list[i];
+        uint2 shadow_light_pair = shadow_lights[visible_light_list[i]];
+        uint light_id = shadow_light_pair.x;
+        uint vsm_address = shadow_light_pair.y;
 
         light_data light = lights[light_id];
 
@@ -77,7 +82,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         {
             if (light.type == LIGHT_DIRECTIONAL)
             {
-                uint vsm_id = get_directional_vsm_id(directional_vsms, light.vsm_address, camera.camera_id);
+                uint vsm_id = get_directional_vsm_id(directional_vsms, vsm_address, camera.camera_id);
                 virtual_page_index = get_directional_vsm_page_index(position_ws.xyz, vsm_id);
             }
         }

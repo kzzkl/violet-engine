@@ -46,6 +46,8 @@ public:
             options |= LOAD_OPTION_GENERATE_CLUSTERS;
             options |= LOAD_OPTION_GENERATE_MIPMAPS;
             options |= LOAD_OPTION_COMPRESS_TEXTURES;
+            // options |= LOAD_OPTION_GENERATE_DISTANCE_FIELD;
+            // options |= LOAD_OPTION_DYNAMIC_MESH;
 
             m_root = load_model(config["model"], options);
         }
@@ -79,9 +81,9 @@ public:
         // plane_transform.set_position({0.0f, -1.0f, 0.0f});
         // plane_transform.set_scale({10.0f, 0.05f, 10.0f});
 
-        // for (std::uint32_t i = 0; i < 50; ++i)
+        // for (std::uint32_t i = 0; i < 1; ++i)
         // {
-        //     for (std::uint32_t j = 0; j < 50; ++j)
+        //     for (std::uint32_t j = 0; j < 1; ++j)
         //     {
         //         entity box = world.create();
         //         world.add_component<transform_component, mesh_component, scene_component>(box);
@@ -101,6 +103,8 @@ public:
 
         //         auto& box_transform = world.get_component<transform_component>(box);
         //         box_transform.set_position(position);
+
+        //         m_box = box;
         //     }
         // }
 
@@ -233,11 +237,18 @@ private:
                 ligth_dirty = true;
             }
 
+            static bool cast_shadow = true;
+            if (ImGui::Checkbox("Sun Cast Shadow", &cast_shadow))
+            {
+                ligth_dirty = true;
+            }
+
             if (ligth_dirty)
             {
                 auto& light = world.get_component<light_component>(get_sky());
                 light.color = {.x = color[0], .y = color[1], .z = color[2]};
                 light.color *= intensity;
+                light.cast_shadow = cast_shadow;
             }
 
             static vec3f euler = euler::from_quaternion(
@@ -267,8 +278,12 @@ private:
                 atmosphere->set_use_multi_scattering(use_multi_scattering);
             }
 
-            auto& atmosphere = world.get_component<atmosphere_component>(get_sky());
-            ImGui::ColorEdit3("Ground Color", &atmosphere.ground_color.x);
+            static vec3f ground_color = {0.1f, 0.1f, 0.1f};
+            if (ImGui::ColorEdit3("Ground Color", &ground_color.x))
+            {
+                auto& atmosphere = world.get_component<atmosphere_component>(get_sky());
+                atmosphere.ground_color = ground_color;
+            }
         }
 
         if (ImGui::CollapsingHeader("Shadow"))
