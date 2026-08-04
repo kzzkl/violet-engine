@@ -1,5 +1,5 @@
 add_subdirectory(base)
 add_subdirectory(hello-world)
 add_subdirectory(mesh-simplifier)
-# add_subdirectory(mmd-viewer)
+add_subdirectory(mmd-viewer)
 # add_subdirectory(physics)

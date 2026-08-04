@@ -26,22 +26,7 @@ bool skinning_system::initialize(const dictionary& config)
     return true;
 }
 
-void skinning_system::update()
-{
-    update_skin();
-    update_skeleton();
-    update_morph();
-
-    m_system_version = get_world().get_version();
-}
-
-void skinning_system::record(rhi_command* command)
-{
-    morphing(command);
-    skinning(command);
-}
-
-void skinning_system::update_skin()
+void skinning_system::pre_update()
 {
     auto& world = get_world();
 
@@ -98,7 +83,43 @@ void skinning_system::update_skin()
                             submesh.index_count);
                     }
                 }
+            },
+            [this](auto& view)
+            {
+                return view.template is_updated<skinned_component>(m_system_version);
+            });
+}
 
+void skinning_system::update()
+{
+    update_skin();
+    update_skeleton();
+    update_morph();
+
+    m_system_version = get_world().get_version();
+}
+
+void skinning_system::record(rhi_command* command)
+{
+    morphing(command);
+    skinning(command);
+}
+
+void skinning_system::update_skin()
+{
+    auto& world = get_world();
+
+    world.get_view()
+        .read<mesh_component>()
+        .read<mesh_component_meta>()
+        .read<skinned_component>()
+        .write<skinned_component_meta>()
+        .each(
+            [](const mesh_component& mesh,
+               const mesh_component_meta& mesh_meta,
+               const skinned_component& skinned,
+               skinned_component_meta& skinned_meta)
+            {
                 if (mesh_meta.scene != nullptr)
                 {
                     for (std::uint32_t submesh_index = 0; submesh_index < mesh.submeshes.size();

@@ -13,6 +13,8 @@ public:
 
     bool initialize(const dictionary& config) override;
 
+    void pre_update();
+
     void update();
 
     bool need_record() const noexcept

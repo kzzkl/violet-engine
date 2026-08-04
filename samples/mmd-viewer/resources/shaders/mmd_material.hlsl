@@ -96,9 +96,9 @@ fs_output fs_main(vs_output input)
     float3 N = normalize(input.normal_ws);
 
     float3 toon = 0.0;
-    if (scene.shadow_casting_light_count > 0)
+    if (scene.light_count > 0)
     {
-        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
         light_data light = lights[0];
 
         float3 L = -light.direction;

@@ -35,13 +35,13 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
     Texture2D<float4> ramp = ResourceDescriptorHeap[ramp_texture];
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.shadow_casting_light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
     float NdotV = saturate(dot(N, V));
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 direct_lighting = 0.0;
-    if (scene.shadow_casting_light_count > 0)
+    if (scene.light_count > 0)
     {
         light_data light = lights[0];
 
@@ -64,7 +64,7 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
         float3 specular_ramp = ramp.Sample(linear_clamp_sampler, float2(NdotL, 0.625)).rgb;
 
         float shadow_factor = 1.0;
-        if (light.vsm_address != 0xFFFFFFFF)
+        // if (light.vsm_address != 0xFFFFFFFF)
         {
             // shadow_context shadow = shadow_context::create(scene, camera);
             // shadow_factor = shadow.get_shadow(light, position_ws);

@@ -228,6 +228,9 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     }
 
     auto& root_mesh = world.get_component<mesh_component>(m_root);
+
+    // TODO: Update skinning mesh bounding box.
+    root_mesh.flags = MESH_SKIP_FRUSTUM_CULL | MESH_SKIP_OCCLUSION_CULL;
     root_mesh.geometry = scene.geometries[0].get();
     for (const auto& submesh : m_pmx.submeshes)
     {
