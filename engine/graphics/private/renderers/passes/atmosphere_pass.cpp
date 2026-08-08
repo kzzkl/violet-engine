@@ -1,4 +1,6 @@
 #include "graphics/renderers/passes/atmosphere_pass.hpp"
+#include "graphics/render_scene/render_scene_environment.hpp"
+#include "graphics/render_scene/render_scene_shadow.hpp"
 #include "graphics/renderers/passes/ibl_pass.hpp"
 #include "math/matrix.hpp"
 
@@ -323,22 +325,25 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
                 data.multi_scattering_lut = nullptr;
             }
 
-            // bool cast_shadow = false;
-            // std::uint32_t sun_index = environment.get_sun_index(cast_shadow);
+            if (parameter.vsm_buffer != nullptr)
+            {
+                const auto& shadow_module = graph.get_context().get_module<render_scene_shadow>();
+                const auto& environment_module =
+                    graph.get_context().get_module<render_scene_environment>();
 
-            // if (cast_shadow && parameter.vsm_buffer != nullptr)
-            // {
-            //     data.vsm_id = context.get_vsm_id(sun_index);
-            //     data.vsm_buffer =
-            //         pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-            //     data.vsm_virtual_page_table = pass.add_buffer_srv(
-            //         parameter.vsm_virtual_page_table,
-            //         RHI_PIPELINE_STAGE_COMPUTE);
-            //     data.vsm_physical_shadow_map = pass.add_texture_srv(
-            //         parameter.vsm_physical_shadow_map,
-            //         RHI_PIPELINE_STAGE_COMPUTE);
-            // }
-            // else
+                data.vsm_id = shadow_module.get_vsm_id(
+                    environment_module.get_sun_id(),
+                    graph.get_context().get_camera().id);
+                data.vsm_buffer =
+                    pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_virtual_page_table = pass.add_buffer_srv(
+                    parameter.vsm_virtual_page_table,
+                    RHI_PIPELINE_STAGE_COMPUTE);
+                data.vsm_physical_shadow_map = pass.add_texture_srv(
+                    parameter.vsm_physical_shadow_map,
+                    RHI_PIPELINE_STAGE_COMPUTE);
+            }
+            else
             {
                 data.vsm_id = 0xFFFFFFFF;
             }

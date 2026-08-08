@@ -21,5 +21,7 @@ public:
     float slope_scale_depth_bias{0.5f};
     float normal_bias{1.0f};
     float constant_bias{0.0f};
+
+    std::uint32_t render_page_budget{0};
 };
 } // namespace violet

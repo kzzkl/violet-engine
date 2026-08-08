@@ -493,6 +493,7 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
         .lru_prev_index = vsm->get_prev_lru_index(),
+        .render_page_budget = shadow->render_page_budget,
         .slope_scale_depth_bias = shadow->slope_scale_depth_bias,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
@@ -653,9 +654,9 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
         atmosphere_lut_pass::parameter parameter = {
             .sky_view_lut = m_sky_view_lut,
             .aerial_perspective_lut = m_aerial_perspective_lut,
-            // .vsm_buffer = m_vsm_buffer,
-            // .vsm_virtual_page_table = m_vsm_virtual_page_table,
-            // .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
+            .vsm_buffer = m_vsm_buffer,
+            .vsm_virtual_page_table = m_vsm_virtual_page_table,
+            .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
             .use_multi_scattering = atmosphere->get_use_multi_scattering(),
         };
 

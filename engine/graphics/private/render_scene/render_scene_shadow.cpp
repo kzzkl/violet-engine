@@ -70,6 +70,22 @@ rhi_texture* render_scene_shadow::get_vsm_physical_shadow_map_final() const noex
     return m_vsm_manager->get_vsm_physical_shadow_map_final();
 }
 
+render_id render_scene_shadow::get_vsm_id(render_id light_id, render_id camera_id) const
+{
+    const auto& light = m_lights.at(light_id);
+    const auto& shadow_address = m_shadow_addresses[light.shadow_address];
+
+    if (light.is_directional_light)
+    {
+        assert(camera_id != INVALID_RENDER_ID);
+
+        const auto& clipmap = m_clipmaps[shadow_address.vsm_address];
+        return clipmap.vsms[camera_id].vsm_id;
+    }
+
+    return shadow_address.vsm_address;
+}
+
 void render_scene_shadow::deallocate_vsm(render_scene_context& context)
 {
     for (auto light_id : m_removed_lights)
@@ -183,6 +199,7 @@ void render_scene_shadow::allocate_vsm(render_scene_context& context)
         m_lights[light_id] = {
             .light_id = light_id,
             .shadow_address = shadow_address_id,
+            .is_directional_light = light.type == LIGHT_DIRECTIONAL,
         };
     }
 

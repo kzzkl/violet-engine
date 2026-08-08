@@ -35,6 +35,8 @@ public:
         std::uint32_t lru_curr_index;
         std::uint32_t lru_prev_index;
 
+        std::uint32_t render_page_budget{0};
+
         float slope_scale_depth_bias;
 
         debug_mode debug_mode{DEBUG_MODE_NONE};
@@ -50,12 +52,13 @@ private:
     void light_cull(render_graph& graph);
     void clear_page_table(render_graph& graph);
     void mark_visible_pages(render_graph& graph);
-    void mark_fallback_pages(render_graph& graph);
+    void mark_coarse_pages(render_graph& graph);
     void mark_resident_pages(render_graph& graph);
     void mark_cache_dirty_pages(render_graph& graph);
     void build_dispatch_args(render_graph& graph);
     void update_lru(render_graph& graph);
     void allocate_pages(render_graph& graph);
+    void mark_fallback_pages(render_graph& graph);
     void clear_physical_pages(render_graph& graph);
 
     void instance_cull(render_graph& graph);
@@ -102,6 +105,7 @@ private:
     std::uint32_t m_lru_curr_index;
     std::uint32_t m_lru_prev_index;
 
+    std::uint32_t m_render_page_budget{0};
     float m_slope_scale_depth_bias{0.0f};
 
     rdg_buffer* m_draw_buffer{nullptr};

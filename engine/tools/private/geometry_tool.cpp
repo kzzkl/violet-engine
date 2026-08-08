@@ -29,203 +29,6 @@ enum cluster_flag : std::uint8_t
 using cluster_flags = std::uint32_t;
 } // namespace
 
-bool geometry_tool::cluster_output::load(std::string_view path)
-{
-    std::ifstream fin(std::string(path), std::ios::binary);
-    if (!fin.is_open())
-    {
-        return false;
-    }
-
-    return load(fin);
-}
-
-bool geometry_tool::cluster_output::save(std::string_view path) const
-{
-    std::ofstream fout(std::string(path), std::ios::binary);
-    if (!fout.is_open())
-    {
-        return false;
-    }
-
-    return save(fout);
-}
-
-bool geometry_tool::cluster_output::load(std::ifstream& fin)
-{
-    std::uint32_t vertex_count = 0;
-    std::uint32_t index_count = 0;
-    std::uint32_t submesh_count = 0;
-
-    fin.read(reinterpret_cast<char*>(&vertex_count), sizeof(std::uint32_t));
-    fin.read(reinterpret_cast<char*>(&index_count), sizeof(std::uint32_t));
-    fin.read(reinterpret_cast<char*>(&submesh_count), sizeof(std::uint32_t));
-
-    cluster_flags flags = 0;
-    fin.read(reinterpret_cast<char*>(&flags), sizeof(cluster_flags));
-
-    positions.resize(vertex_count);
-    indexes.resize(index_count);
-    submeshes.resize(submesh_count);
-
-    fin.read(
-        reinterpret_cast<char*>(positions.data()),
-        static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
-    fin.read(
-        reinterpret_cast<char*>(indexes.data()),
-        static_cast<std::streamsize>(index_count * sizeof(std::uint32_t)));
-
-    if (flags & CLUSTER_HAS_NORMAL)
-    {
-        normals.resize(vertex_count);
-        fin.read(
-            reinterpret_cast<char*>(normals.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
-    }
-
-    if (flags & CLUSTER_HAS_TANGENT)
-    {
-        tangents.resize(vertex_count);
-        fin.read(
-            reinterpret_cast<char*>(tangents.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec4f)));
-    }
-
-    if (flags & CLUSTER_HAS_TEXCOORD)
-    {
-        texcoords.resize(vertex_count);
-        fin.read(
-            reinterpret_cast<char*>(texcoords.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec2f)));
-    }
-
-    for (std::uint32_t i = 0; i < submesh_count; ++i)
-    {
-        std::uint32_t cluster_count = 0;
-        std::uint32_t cluster_node_count = 0;
-
-        fin.read(reinterpret_cast<char*>(&cluster_count), sizeof(std::uint32_t));
-        fin.read(reinterpret_cast<char*>(&cluster_node_count), sizeof(std::uint32_t));
-
-        submeshes[i].clusters.resize(cluster_count);
-        submeshes[i].cluster_nodes.resize(cluster_node_count);
-
-        for (auto& cluster : submeshes[i].clusters)
-        {
-            fin.read(reinterpret_cast<char*>(&cluster.index_offset), sizeof(std::uint32_t));
-            fin.read(reinterpret_cast<char*>(&cluster.index_count), sizeof(std::uint32_t));
-            fin.read(reinterpret_cast<char*>(&cluster.bounding_sphere), sizeof(sphere3f));
-            fin.read(reinterpret_cast<char*>(&cluster.lod_bounds), sizeof(sphere3f));
-            fin.read(reinterpret_cast<char*>(&cluster.lod_error), sizeof(float));
-            fin.read(reinterpret_cast<char*>(&cluster.parent_lod_bounds), sizeof(sphere3f));
-            fin.read(reinterpret_cast<char*>(&cluster.parent_lod_error), sizeof(float));
-            fin.read(reinterpret_cast<char*>(&cluster.lod), sizeof(std::uint32_t));
-        }
-
-        for (auto& cluster_node : submeshes[i].cluster_nodes)
-        {
-            fin.read(reinterpret_cast<char*>(&cluster_node.bounding_sphere), sizeof(sphere3f));
-            fin.read(reinterpret_cast<char*>(&cluster_node.lod_bounds), sizeof(sphere3f));
-            fin.read(reinterpret_cast<char*>(&cluster_node.min_lod_error), sizeof(float));
-            fin.read(reinterpret_cast<char*>(&cluster_node.max_parent_lod_error), sizeof(float));
-            fin.read(reinterpret_cast<char*>(&cluster_node.is_leaf), sizeof(bool));
-            fin.read(reinterpret_cast<char*>(&cluster_node.depth), sizeof(std::uint32_t));
-            fin.read(reinterpret_cast<char*>(&cluster_node.child_offset), sizeof(std::uint32_t));
-            fin.read(reinterpret_cast<char*>(&cluster_node.child_count), sizeof(std::uint32_t));
-        }
-    }
-
-    return true;
-}
-
-bool geometry_tool::cluster_output::save(std::ofstream& fout) const
-{
-    auto vertex_count = static_cast<std::uint32_t>(positions.size());
-    auto index_count = static_cast<std::uint32_t>(indexes.size());
-    auto submesh_count = static_cast<std::uint32_t>(submeshes.size());
-
-    fout.write(reinterpret_cast<const char*>(&vertex_count), sizeof(std::uint32_t));
-    fout.write(reinterpret_cast<const char*>(&index_count), sizeof(std::uint32_t));
-    fout.write(reinterpret_cast<const char*>(&submesh_count), sizeof(std::uint32_t));
-
-    cluster_flags flags = 0;
-    flags |= normals.empty() ? 0 : CLUSTER_HAS_NORMAL;
-    flags |= tangents.empty() ? 0 : CLUSTER_HAS_TANGENT;
-    flags |= texcoords.empty() ? 0 : CLUSTER_HAS_TEXCOORD;
-    fout.write(reinterpret_cast<const char*>(&flags), sizeof(cluster_flags));
-
-    fout.write(
-        reinterpret_cast<const char*>(positions.data()),
-        static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
-    fout.write(
-        reinterpret_cast<const char*>(indexes.data()),
-        static_cast<std::streamsize>(index_count * sizeof(std::uint32_t)));
-
-    if (!normals.empty())
-    {
-        fout.write(
-            reinterpret_cast<const char*>(normals.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec3f)));
-    }
-
-    if (!tangents.empty())
-    {
-        fout.write(
-            reinterpret_cast<const char*>(tangents.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec4f)));
-    }
-
-    if (!texcoords.empty())
-    {
-        fout.write(
-            reinterpret_cast<const char*>(texcoords.data()),
-            static_cast<std::streamsize>(vertex_count * sizeof(vec2f)));
-    }
-
-    for (const auto& submesh : submeshes)
-    {
-        auto cluster_count = static_cast<std::uint32_t>(submesh.clusters.size());
-        auto cluster_node_count = static_cast<std::uint32_t>(submesh.cluster_nodes.size());
-
-        fout.write(reinterpret_cast<const char*>(&cluster_count), sizeof(std::uint32_t));
-        fout.write(reinterpret_cast<const char*>(&cluster_node_count), sizeof(std::uint32_t));
-
-        for (const auto& cluster : submesh.clusters)
-        {
-            fout.write(reinterpret_cast<const char*>(&cluster.index_offset), sizeof(std::uint32_t));
-            fout.write(reinterpret_cast<const char*>(&cluster.index_count), sizeof(std::uint32_t));
-            fout.write(reinterpret_cast<const char*>(&cluster.bounding_sphere), sizeof(sphere3f));
-            fout.write(reinterpret_cast<const char*>(&cluster.lod_bounds), sizeof(sphere3f));
-            fout.write(reinterpret_cast<const char*>(&cluster.lod_error), sizeof(float));
-            fout.write(reinterpret_cast<const char*>(&cluster.parent_lod_bounds), sizeof(sphere3f));
-            fout.write(reinterpret_cast<const char*>(&cluster.parent_lod_error), sizeof(float));
-            fout.write(reinterpret_cast<const char*>(&cluster.lod), sizeof(std::uint32_t));
-        }
-
-        for (const auto& cluster_node : submesh.cluster_nodes)
-        {
-            fout.write(
-                reinterpret_cast<const char*>(&cluster_node.bounding_sphere),
-                sizeof(sphere3f));
-            fout.write(reinterpret_cast<const char*>(&cluster_node.lod_bounds), sizeof(sphere3f));
-            fout.write(reinterpret_cast<const char*>(&cluster_node.min_lod_error), sizeof(float));
-            fout.write(
-                reinterpret_cast<const char*>(&cluster_node.max_parent_lod_error),
-                sizeof(float));
-            fout.write(reinterpret_cast<const char*>(&cluster_node.is_leaf), sizeof(bool));
-            fout.write(reinterpret_cast<const char*>(&cluster_node.depth), sizeof(std::uint32_t));
-            fout.write(
-                reinterpret_cast<const char*>(&cluster_node.child_offset),
-                sizeof(std::uint32_t));
-            fout.write(
-                reinterpret_cast<const char*>(&cluster_node.child_count),
-                sizeof(std::uint32_t));
-        }
-    }
-
-    return true;
-}
-
 std::vector<vec4f> geometry_tool::generate_tangents(
     std::span<const vec3f> positions,
     std::span<const vec3f> normals,
@@ -625,6 +428,7 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
                 submesh_output.clusters.push_back({
                     .index_offset = cluster.index_offset + index_offset,
                     .index_count = cluster.index_count,
+                    .bounding_box = cluster.bounding_box,
                     .bounding_sphere = cluster.bounding_sphere,
                     .lod_bounds = cluster.lod_bounds,
                     .lod_error = cluster.lod_error,
@@ -646,6 +450,7 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             queue.pop();
 
             submesh_output.cluster_nodes.push_back({
+                .bounding_box = cluster_node.bounding_box,
                 .bounding_sphere = cluster_node.bounding_sphere,
                 .lod_bounds = cluster_node.lod_bounds,
                 .min_lod_error = cluster_node.min_lod_error,

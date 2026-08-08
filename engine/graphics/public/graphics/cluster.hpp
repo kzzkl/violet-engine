@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/box.hpp"
 #include "math/sphere.hpp"
 
 namespace violet
@@ -9,6 +10,7 @@ struct cluster
     std::uint32_t index_offset;
     std::uint32_t index_count;
 
+    box3f bounding_box;
     sphere3f bounding_sphere;
 
     sphere3f lod_bounds;
@@ -22,6 +24,7 @@ struct cluster
 
 struct cluster_node
 {
+    box3f bounding_box;
     sphere3f bounding_sphere;
 
     sphere3f lod_bounds;

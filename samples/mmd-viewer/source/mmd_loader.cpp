@@ -573,10 +573,23 @@ void mmd_loader::load_physics(world& world)
         math::store(position_b, joint.target_position);
         math::store(rotation_b, joint.target_rotation);
 
-        for (std::size_t i = 0; i < 6; ++i)
+        joint.spring_enable[0] = pmx_joint.spring_translate_factor.x != 0.0f;
+        joint.spring_enable[1] = pmx_joint.spring_translate_factor.y != 0.0f;
+        joint.spring_enable[2] = pmx_joint.spring_translate_factor.z != 0.0f;
+        joint.spring_enable[3] = pmx_joint.spring_rotate_factor.x != 0.0f;
+        joint.spring_enable[4] = pmx_joint.spring_rotate_factor.y != 0.0f;
+        joint.spring_enable[5] = pmx_joint.spring_rotate_factor.z != 0.0f;
+
+        joint.stiffness[0] = pmx_joint.spring_translate_factor.x;
+        joint.stiffness[1] = pmx_joint.spring_translate_factor.y;
+        joint.stiffness[2] = pmx_joint.spring_translate_factor.z;
+        joint.stiffness[3] = pmx_joint.spring_rotate_factor.x;
+        joint.stiffness[4] = pmx_joint.spring_rotate_factor.y;
+        joint.stiffness[5] = pmx_joint.spring_rotate_factor.z;
+
+        for (float& damping : joint.damping)
         {
-            joint.spring_enable[i] = pmx_joint.spring_translate_factor[i] != 0.0f;
-            joint.stiffness[i] = pmx_joint.spring_translate_factor[i];
+            damping = 1.0f;
         }
 
         if (!world.has_component<joint_component>(rigidbody_a))
@@ -607,8 +620,8 @@ void mmd_loader::load_animation(world& world)
         int y1 = cp[12];
 
         return bezier{
-            {static_cast<float>(x0) / 127.0f, static_cast<float>(y0) / 127.0f},
-            {static_cast<float>(x1) / 127.0f, static_cast<float>(y1) / 127.0f},
+            .p1 = {static_cast<float>(x0) / 127.0f, static_cast<float>(y0) / 127.0f},
+            .p2 = {static_cast<float>(x1) / 127.0f, static_cast<float>(y1) / 127.0f},
         };
     };
 
@@ -660,9 +673,8 @@ void mmd_loader::load_animation(world& world)
 
     for (auto& motion : mmd_animator.motions)
     {
-        std::sort(
-            motion.ik_keys.begin(),
-            motion.ik_keys.end(),
+        std::ranges::sort(
+            motion.ik_keys,
             [](const auto& a, const auto& b)
             {
                 return a.frame < b.frame;
@@ -674,9 +686,8 @@ void mmd_loader::load_animation(world& world)
 
     for (auto& morph : m_vmd.morphs)
     {
-        auto iter = std::find_if(
-            m_pmx.morphs.begin(),
-            m_pmx.morphs.end(),
+        auto iter = std::ranges::find_if(
+            m_pmx.morphs,
             [&](const auto& m)
             {
                 return m.name_jp == morph.morph_name;
@@ -694,9 +705,8 @@ void mmd_loader::load_animation(world& world)
 
     for (auto& morph : mmd_animator.morphs)
     {
-        std::sort(
-            morph.morph_keys.begin(),
-            morph.morph_keys.end(),
+        std::ranges::sort(
+            morph.morph_keys,
             [](const auto& a, const auto& b)
             {
                 return a.frame < b.frame;

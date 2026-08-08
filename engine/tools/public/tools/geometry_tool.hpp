@@ -2,7 +2,6 @@
 
 #include "graphics/cluster.hpp"
 #include "math/types.hpp"
-#include <fstream>
 #include <span>
 #include <vector>
 
@@ -75,12 +74,6 @@ public:
         std::vector<vec2f> texcoords;
         std::vector<std::uint32_t> indexes;
         std::vector<submesh> submeshes;
-
-        bool load(std::string_view path);
-        bool save(std::string_view path) const;
-
-        bool load(std::ifstream& fin);
-        bool save(std::ofstream& fout) const;
     };
 
     static cluster_output generate_clusters(const cluster_input& input);

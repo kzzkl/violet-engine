@@ -11,6 +11,8 @@ static const uint PHYSICAL_PAGE_TABLE_PAGE_COUNT = PHYSICAL_PAGE_TABLE_SIZE_X * 
 
 static const uint DIRECTIONAL_VSM_CASCADE_FIRST = 7;
 static const uint DIRECTIONAL_VSM_CASCADE_LAST = 22;
+static const uint DIRECTIONAL_VSM_CASCADE_COUNT = DIRECTIONAL_VSM_CASCADE_LAST - DIRECTIONAL_VSM_CASCADE_FIRST + 1;
+static const uint DIRECTIONAL_VSM_CASCADE_COARSE_OFFSET = 5;
 
 static const uint PAGE_WORLD_SIZE = 1.28 * 2.0 / VIRTUAL_PAGE_TABLE_SIZE;
 static const uint PAGE_RESOLUTION = 128;
@@ -53,6 +55,7 @@ static const uint VIRTUAL_PAGE_FLAG_VISIBLE = 1 << 0;
 static const uint VIRTUAL_PAGE_FLAG_RESIDENT = 1 << 1;
 static const uint VIRTUAL_PAGE_FLAG_RENDERING = 1 << 2;
 static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 3;
+static const uint VIRTUAL_PAGE_FLAG_FALLBACK = 1 << 4;
 static const uint VIRTUAL_PAGE_FLAG_VALID = VIRTUAL_PAGE_FLAG_RESIDENT | VIRTUAL_PAGE_FLAG_RENDERING;
 
 struct vsm_info
@@ -73,13 +76,15 @@ struct vsm_virtual_page
 {
     uint2 physical_page_coord;
     uint flags;
+    uint fallback_offset;
 
     static vsm_virtual_page unpack(uint packed_data)
     {
         vsm_virtual_page virtual_page;
         virtual_page.physical_page_coord.x = (packed_data & 0xFF000000) >> 24;
         virtual_page.physical_page_coord.y = (packed_data & 0x00FF0000) >> 16;
-        virtual_page.flags = packed_data & 0x0000FFFF;
+        virtual_page.fallback_offset = (packed_data & 0x0000F000) >> 12;
+        virtual_page.flags = packed_data & 0x00000FFF;
         return virtual_page;
     }
 
@@ -88,6 +93,7 @@ struct vsm_virtual_page
         uint packed_data = 0;
         packed_data |= (physical_page_coord.x << 24);
         packed_data |= (physical_page_coord.y << 16);
+        packed_data |= (fallback_offset << 12);
         packed_data |= flags;
         return packed_data;
     }
@@ -105,6 +111,11 @@ struct vsm_virtual_page
     bool valid()
     {
         return flags & VIRTUAL_PAGE_FLAG_VALID;
+    }
+
+    bool visible()
+    {
+        return (flags & VIRTUAL_PAGE_FLAG_VISIBLE) != 0;
     }
 };
 
@@ -193,7 +204,9 @@ uint get_lru_offset(uint lru_index)
 struct vsm_sample_result
 {
     bool valid;
+    float shadow;
     float depth;
+    uint fallback_offset;
 };
 
 vsm_sample_result vsm_sample_depth(
@@ -215,8 +228,62 @@ vsm_sample_result vsm_sample_depth(
     vsm_sample_result result;
     result.valid = virtual_page.valid();
     result.depth = asfloat(physical_shadow_map[physical_texel]);
+    result.fallback_offset = virtual_page.fallback_offset;
 
     return result;
+}
+
+vsm_sample_result vsm_sample_shadow(
+    uint vsm_id,
+    uint cascade_offset,
+    float3 position_ws,
+    float2 uv_offset,
+    float depth_bias,
+    StructuredBuffer<vsm_data> vsms,
+    Texture2D<uint> physical_shadow_map,
+    StructuredBuffer<uint> virtual_page_table)
+{
+    vsm_data vsm = vsms[vsm_id + cascade_offset];
+
+    float4 position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));
+    position_ls /= position_ls.w;
+    position_ls.xy = position_ls.xy * 0.5 + 0.5 + uv_offset;
+    position_ls.z += depth_bias;
+
+    vsm_sample_result result = vsm_sample_depth(vsm_id + cascade_offset, position_ls.xy, physical_shadow_map, virtual_page_table);
+
+    if (result.valid)
+    {
+        result.shadow = result.depth > position_ls.z ? 0.0 : 1.0;
+    }
+    else if (result.fallback_offset != 0)
+    {
+        uint fallback_vsm_id = vsm_id + cascade_offset + result.fallback_offset;
+        float fallback_scale = exp2(float(result.fallback_offset));
+
+        vsm = vsms[fallback_vsm_id];
+        position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));
+        position_ls /= position_ls.w;
+        position_ls.xy = position_ls.xy * 0.5 + 0.5 + uv_offset / fallback_scale;
+        position_ls.z += depth_bias * fallback_scale;
+
+        result = vsm_sample_depth(fallback_vsm_id, position_ls.xy, physical_shadow_map, virtual_page_table);
+        result.shadow = result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
+    }
+
+    return result;
+}
+
+vsm_sample_result vsm_sample_shadow(
+    float3 camera,
+    float3 position,
+    uint vsm_id,
+    StructuredBuffer<vsm_data> vsms,
+    StructuredBuffer<uint> virtual_page_table,
+    Texture2D<uint> physical_shadow_map)
+{
+    uint cascade = get_directional_cascade(length(position - camera));
+    return vsm_sample_shadow(vsm_id, cascade, position, float2(0.0, 0.0), 0.0, vsms, physical_shadow_map, virtual_page_table);
 }
 
 #endif

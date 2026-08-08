@@ -103,6 +103,8 @@ private:
 
     std::uint32_t m_system_version{0};
 
+    vec3f m_gravity;
+
     float m_time{0.0f};
 
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW

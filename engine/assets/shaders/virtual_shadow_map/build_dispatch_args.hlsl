@@ -6,7 +6,7 @@ struct constant_data
     uint vsm_info;
     uint visible_vsm_list;
     uint visible_virtual_page_list;
-    uint visible_virtual_pages_indirect_args;
+    uint visible_virtual_page_indirect_args;
     uint visible_virtual_page_texels_indirect_args;
     uint vsm_virtual_page_table;
 };
@@ -48,14 +48,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         RWStructuredBuffer<vsm_info> vsm_info = ResourceDescriptorHeap[constant.vsm_info];
         InterlockedAdd(vsm_info[0].visible_virtual_page_count, gs_visible_virtual_page_count, gs_visible_virtual_page_offset);
 
-        RWStructuredBuffer<dispatch_command> visible_virtual_pages_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_pages_indirect_args];
+        RWStructuredBuffer<dispatch_command> visible_virtual_page_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_indirect_args];
 
         uint start = gs_visible_virtual_page_offset;
         uint end = gs_visible_virtual_page_offset + gs_visible_virtual_page_count;
         uint dispatch_count = (end + 63) / 64 - (start + 63) / 64;
         if (dispatch_count > 0)
         {
-            InterlockedAdd(visible_virtual_pages_indirect_args[0].x, dispatch_count);
+            InterlockedAdd(visible_virtual_page_indirect_args[0].x, dispatch_count);
         }
 
         RWStructuredBuffer<dispatch_command> visible_virtual_page_texels_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_texels_indirect_args];

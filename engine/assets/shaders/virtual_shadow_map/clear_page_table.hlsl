@@ -19,8 +19,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     uint vsm_id = visible_vsm_list[dtid.z];
 
+    StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
+    vsm_data vsm = vsms[vsm_id];
+
+    vsm_virtual_page virtual_page = (vsm_virtual_page)0;
+    virtual_page.fallback_offset = vsm.cascade_index >= DIRECTIONAL_VSM_CASCADE_COUNT - DIRECTIONAL_VSM_CASCADE_COARSE_OFFSET ? 0 : DIRECTIONAL_VSM_CASCADE_COARSE_OFFSET;
+
     uint virtual_page_index = get_virtual_page_index(vsm_id, dtid.xy);
-    virtual_page_table[virtual_page_index] = 0;
+    virtual_page_table[virtual_page_index] = virtual_page.pack();
 
     if (dtid.x == 0 && dtid.y == 0)
     {

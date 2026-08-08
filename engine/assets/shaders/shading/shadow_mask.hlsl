@@ -29,12 +29,6 @@ struct vs_output
 
 static const uint PCF_SAMPLE_COUNT = 8;
 
-float sample_shadow(uint vsm_id, float3 position_ls, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
-{
-    vsm_sample_result result = vsm_sample_depth(vsm_id, position_ls.xy, physical_shadow_map, virtual_page_table);
-    return result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
-}
-
 float random(float2 uv)
 {
     float a = 12.9898;
@@ -45,12 +39,21 @@ float random(float2 uv)
     return frac(sin(sn) * c);
 }
 
-float sample_shadow_pcf(uint vsm_id, float3 position_ls, float sample_radius, Texture2D<uint> physical_shadow_map, StructuredBuffer<uint> virtual_page_table)
+float sample_shadow_pcf(
+    uint vsm_id,
+    uint cascade_offset,
+    float3 position_ws,
+    float2 position_ls_xy,
+    float depth_bias,
+    float sample_radius,
+    StructuredBuffer<vsm_data> vsms,
+    Texture2D<uint> physical_shadow_map,
+    StructuredBuffer<uint> virtual_page_table)
 {
     float2 poisson_disk[PCF_SAMPLE_COUNT];
     float angle_step = TWO_PI * float(10) / float(PCF_SAMPLE_COUNT);
 
-    float angle = random(position_ls.xy) * TWO_PI;
+    float angle = random(position_ls_xy) * TWO_PI;
     float radius = 1.0 / float(PCF_SAMPLE_COUNT);
     float radius_step = radius;
 
@@ -66,12 +69,12 @@ float sample_shadow_pcf(uint vsm_id, float3 position_ls, float sample_radius, Te
     for(int i = 0; i < PCF_SAMPLE_COUNT; i++)
     {
         float2 offset = poisson_disk[i] * sample_radius;
-        float2 sample_uv = position_ls.xy + offset;
 
-        vsm_sample_result result = vsm_sample_depth(vsm_id, sample_uv, physical_shadow_map, virtual_page_table);
+        vsm_sample_result result = vsm_sample_shadow(vsm_id, cascade_offset, position_ws, offset, depth_bias, vsms, physical_shadow_map, virtual_page_table);
+
         if (result.valid)
         {
-            visibility += result.depth > position_ls.z ? 0.0 : 1.0;
+            visibility += result.shadow;
             ++sample_count;
         }
     }
@@ -121,14 +124,16 @@ float fs_main(vs_output input) : SV_TARGET
     float4 position_ls = mul(vsm.matrix_vp, float4(position_ws, 1.0));
     position_ls /= position_ls.w;
     position_ls.xy = position_ls.xy * 0.5 + 0.5;
-    position_ls.z += constant.constant_bias * VIRTUAL_TEXEL_SIZE;
+    float depth_bias = constant.constant_bias * VIRTUAL_TEXEL_SIZE;
+    position_ls.z += depth_bias;
 
     if (constant.sample_mode == 1)
     {
-        return sample_shadow_pcf(vsm_id + cascade, position_ls.xyz, sample_radius * VIRTUAL_TEXEL_SIZE, physical_shadow_map, virtual_page_table);
+        return sample_shadow_pcf(vsm_id, cascade, position_ws, position_ls.xy, depth_bias, sample_radius * VIRTUAL_TEXEL_SIZE, vsms, physical_shadow_map, virtual_page_table);
     }
     else
     {
-        return sample_shadow(vsm_id + cascade, position_ls.xyz, physical_shadow_map, virtual_page_table);
+        vsm_sample_result result = vsm_sample_shadow(vsm_id, cascade, position_ws, float2(0.0, 0.0), depth_bias, vsms, physical_shadow_map, virtual_page_table);
+        return result.shadow;
     }
 }

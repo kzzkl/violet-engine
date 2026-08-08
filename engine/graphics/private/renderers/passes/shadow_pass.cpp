@@ -258,10 +258,30 @@ struct vsm_allocate_pages_cs : public shader_cs
         std::uint32_t lru_curr_index;
         std::uint32_t render_physical_page_list;
         std::uint32_t render_physical_page_texels_indirect_args;
+        std::uint32_t render_page_budget;
     };
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
+    };
+};
+
+struct vsm_mark_coarse_pages_cs : public shader_cs
+{
+    static constexpr std::string_view path =
+        "assets/shaders/virtual_shadow_map/mark_coarse_pages.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t vsm_info;
+        std::uint32_t visible_vsm_list;
+        std::uint32_t vsm_buffer;
+        std::uint32_t vsm_virtual_page_table;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = camera},
     };
 };
 
@@ -274,14 +294,15 @@ struct vsm_mark_fallback_pages_cs : public shader_cs
     {
         std::uint32_t vsm_info;
         std::uint32_t visible_vsm_list;
+        std::uint32_t visible_virtual_page_list;
+        std::uint32_t visible_virtual_page_indirect_args;
+        std::uint32_t visible_virtual_page_texels_indirect_args;
         std::uint32_t vsm_buffer;
         std::uint32_t vsm_virtual_page_table;
-        std::uint32_t fallback_start;
     };
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
-        {.space = 1, .desc = camera},
     };
 };
 
@@ -579,6 +600,8 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     m_lru_curr_index = parameter.lru_curr_index;
     m_lru_prev_index = parameter.lru_prev_index;
 
+    m_render_page_budget = parameter.render_page_budget;
+
     m_virtual_page_indirect_args = graph.add_buffer(
         "VSM Virtual Page Table Indirect Args",
         sizeof(shader::dispatch_command),
@@ -657,12 +680,13 @@ void shadow_pass::add(render_graph& graph, const parameter& parameter)
     light_cull(graph);
     clear_page_table(graph);
     mark_visible_pages(graph);
-    mark_fallback_pages(graph);
+    mark_coarse_pages(graph);
     mark_cache_dirty_pages(graph);
     mark_resident_pages(graph);
     build_dispatch_args(graph);
     update_lru(graph);
     allocate_pages(graph);
+    mark_fallback_pages(graph);
     clear_physical_pages(graph);
     instance_cull(graph);
     cluster_cull(graph);
@@ -921,7 +945,7 @@ void shadow_pass::mark_visible_pages(render_graph& graph)
         });
 }
 
-void shadow_pass::mark_fallback_pages(render_graph& graph)
+void shadow_pass::mark_coarse_pages(render_graph& graph)
 {
     struct pass_data
     {
@@ -934,7 +958,7 @@ void shadow_pass::mark_fallback_pages(render_graph& graph)
     };
 
     graph.add_pass<pass_data>(
-        "VSM Mark Fallback Pages",
+        "VSM Mark Coarse Pages",
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -952,16 +976,15 @@ void shadow_pass::mark_fallback_pages(render_graph& graph)
             auto& device = render_device::instance();
 
             command.set_pipeline({
-                .compute_shader = device.get_shader<vsm_mark_fallback_pages_cs>(),
+                .compute_shader = device.get_shader<vsm_mark_coarse_pages_cs>(),
             });
 
             command.set_constant(
-                vsm_mark_fallback_pages_cs::constant_data{
+                vsm_mark_coarse_pages_cs::constant_data{
                     .vsm_info = data.vsm_info.get_bindless(),
                     .visible_vsm_list = data.visible_vsm_list.get_bindless(),
                     .vsm_buffer = data.vsm_buffer.get_bindless(),
                     .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
-                    .fallback_start = 4,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
@@ -1270,7 +1293,7 @@ void shadow_pass::allocate_pages(render_graph& graph)
 {
     struct pass_data
     {
-        rdg_buffer_srv vsm_info;
+        rdg_buffer_uav vsm_info;
         rdg_buffer_srv visible_virtual_page_list;
         rdg_buffer_srv vsm_buffer;
         rdg_buffer_uav vsm_virtual_page_table;
@@ -1282,6 +1305,8 @@ void shadow_pass::allocate_pages(render_graph& graph)
         rdg_buffer_uav render_physical_page_list;
         rdg_buffer_uav render_physical_page_texels_indirect_args;
         rdg_buffer_ref visible_virtual_page_indirect_args;
+
+        std::uint32_t render_page_budget;
     };
 
     graph.add_pass<pass_data>(
@@ -1289,7 +1314,7 @@ void shadow_pass::allocate_pages(render_graph& graph)
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
-            data.vsm_info = pass.add_buffer_srv(m_vsm_info, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_info = pass.add_buffer_uav(m_vsm_info, RHI_PIPELINE_STAGE_COMPUTE);
             data.visible_virtual_page_list =
                 pass.add_buffer_srv(m_visible_virtual_page_list, RHI_PIPELINE_STAGE_COMPUTE);
             data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
@@ -1312,6 +1337,8 @@ void shadow_pass::allocate_pages(render_graph& graph)
                 m_visible_virtual_page_indirect_args,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
+
+            data.render_page_budget = m_render_page_budget;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -1335,11 +1362,77 @@ void shadow_pass::allocate_pages(render_graph& graph)
                     .render_physical_page_list = data.render_physical_page_list.get_bindless(),
                     .render_physical_page_texels_indirect_args =
                         data.render_physical_page_texels_indirect_args.get_bindless(),
+                    .render_page_budget = data.render_page_budget,
                 });
 
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
             command.dispatch_indirect(data.visible_virtual_page_indirect_args.get_rhi());
+        });
+}
+
+void shadow_pass::mark_fallback_pages(render_graph& graph)
+{
+    struct pass_data
+    {
+        rdg_buffer_uav vsm_info;
+        rdg_buffer_srv visible_vsm_list;
+        rdg_buffer_uav visible_virtual_page_list;
+        rdg_buffer_uav visible_virtual_page_indirect_args;
+        rdg_buffer_uav visible_virtual_page_texels_indirect_args;
+        rdg_buffer_srv vsm_buffer;
+        rdg_buffer_uav vsm_virtual_page_table;
+        rdg_buffer_ref virtual_page_indirect_args;
+    };
+
+    graph.add_pass<pass_data>(
+        "Mark Fallback Pages",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
+        {
+            data.vsm_info = pass.add_buffer_uav(m_vsm_info, RHI_PIPELINE_STAGE_COMPUTE);
+            data.visible_vsm_list =
+                pass.add_buffer_srv(m_visible_vsm_list, RHI_PIPELINE_STAGE_COMPUTE);
+            data.visible_virtual_page_indirect_args = pass.add_buffer_uav(
+                m_visible_virtual_page_indirect_args,
+                RHI_PIPELINE_STAGE_COMPUTE);
+            data.visible_virtual_page_texels_indirect_args = pass.add_buffer_uav(
+                m_visible_virtual_page_texels_indirect_args,
+                RHI_PIPELINE_STAGE_COMPUTE);
+            data.visible_virtual_page_list =
+                pass.add_buffer_uav(m_visible_virtual_page_list, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_buffer = pass.add_buffer_srv(m_vsm_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.vsm_virtual_page_table =
+                pass.add_buffer_uav(m_vsm_virtual_page_table, RHI_PIPELINE_STAGE_COMPUTE);
+            data.virtual_page_indirect_args = pass.add_buffer(
+                m_virtual_page_indirect_args,
+                RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+                RHI_ACCESS_INDIRECT_COMMAND_READ);
+        },
+        [](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            command.set_pipeline({
+                .compute_shader = device.get_shader<vsm_mark_fallback_pages_cs>(),
+            });
+
+            command.set_constant(
+                vsm_mark_fallback_pages_cs::constant_data{
+                    .vsm_info = data.vsm_info.get_bindless(),
+                    .visible_vsm_list = data.visible_vsm_list.get_bindless(),
+                    .visible_virtual_page_list = data.visible_virtual_page_list.get_bindless(),
+                    .visible_virtual_page_indirect_args =
+                        data.visible_virtual_page_indirect_args.get_bindless(),
+                    .visible_virtual_page_texels_indirect_args =
+                        data.visible_virtual_page_texels_indirect_args.get_bindless(),
+                    .vsm_buffer = data.vsm_buffer.get_bindless(),
+                    .vsm_virtual_page_table = data.vsm_virtual_page_table.get_bindless(),
+                });
+
+            command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+
+            command.dispatch_indirect(data.virtual_page_indirect_args.get_rhi());
         });
 }
 
