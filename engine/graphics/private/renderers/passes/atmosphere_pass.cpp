@@ -226,7 +226,7 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
             data.sun_irradiance = scene.sun_irradiance;
             data.transmittance_lut = scene.transmittance_lut->get_srv();
             data.multi_scattering_lut =
-                parameter.use_multi_scattering ? scene.multi_scattering_lut->get_srv() : nullptr;
+                parameter.enable_multi_scattering ? scene.multi_scattering_lut->get_srv() : nullptr;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -316,7 +316,7 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
             data.sun_irradiance = scene.sun_irradiance;
             data.transmittance_lut = scene.transmittance_lut->get_srv();
 
-            if (parameter.use_multi_scattering)
+            if (parameter.enable_multi_scattering)
             {
                 data.multi_scattering_lut = scene.multi_scattering_lut->get_srv();
             }

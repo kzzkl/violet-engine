@@ -36,6 +36,7 @@ public:
         std::uint32_t lru_prev_index;
 
         std::uint32_t render_page_budget{0};
+        bool render_coarse_page{false};
 
         float slope_scale_depth_bias;
 
@@ -48,34 +49,33 @@ public:
     void add(render_graph& graph, const parameter& parameter);
 
 private:
-    void prepare(render_graph& graph);
-    void light_cull(render_graph& graph);
-    void clear_page_table(render_graph& graph);
-    void mark_visible_pages(render_graph& graph);
-    void mark_coarse_pages(render_graph& graph);
-    void mark_resident_pages(render_graph& graph);
-    void mark_cache_dirty_pages(render_graph& graph);
-    void build_dispatch_args(render_graph& graph);
-    void update_lru(render_graph& graph);
-    void allocate_pages(render_graph& graph);
-    void mark_fallback_pages(render_graph& graph);
-    void clear_physical_pages(render_graph& graph);
+    void prepare(render_graph& graph, const parameter& parameter);
+    void light_cull(render_graph& graph, const parameter& parameter);
+    void clear_page_table(render_graph& graph, const parameter& parameter);
+    void mark_visible_pages(render_graph& graph, const parameter& parameter);
+    void mark_coarse_pages(render_graph& graph, const parameter& parameter);
+    void mark_resident_pages(render_graph& graph, const parameter& parameter);
+    void mark_cache_dirty_pages(render_graph& graph, const parameter& parameter);
+    void build_dispatch_args(render_graph& graph, const parameter& parameter);
+    void update_lru(render_graph& graph, const parameter& parameter);
+    void allocate_pages(render_graph& graph, const parameter& parameter);
+    void mark_fallback_pages(render_graph& graph, const parameter& parameter);
+    void clear_physical_pages(render_graph& graph, const parameter& parameter);
 
-    void instance_cull(render_graph& graph);
+    void instance_cull(render_graph& graph, const parameter& parameter);
     void prepare_cluster_cull(render_graph& graph, rdg_buffer* dispatch_buffer, bool cull_cluster);
-    void cluster_cull(render_graph& graph);
+    void cluster_cull(render_graph& graph, const parameter& parameter);
 
-    void render_shadow(render_graph& graph);
-    void render_shadow(render_graph& graph, bool opacity_cutoff, rhi_cull_mode cull_mode);
-    void merge_physical_pages(render_graph& graph);
+    void render_shadow(
+        render_graph& graph,
+        const parameter& parameter,
+        bool opacity_cutoff,
+        rhi_cull_mode cull_mode);
+    void merge_physical_pages(render_graph& graph, const parameter& parameter);
 
-    void build_hzb(render_graph& graph);
+    void build_hzb(render_graph& graph, const parameter& parameter);
 
-    void add_debug_pass(render_graph& graph);
-
-    rdg_texture* m_depth_buffer{nullptr};
-
-    rdg_buffer* m_shadow_light_buffer{nullptr};
+    void add_debug_pass(render_graph& graph, const parameter& parameter);
 
     rdg_buffer* m_virtual_page_indirect_args{nullptr};
 
@@ -90,23 +90,7 @@ private:
     rdg_buffer* m_visible_light_list{nullptr};
     rdg_buffer* m_visible_vsm_list{nullptr};
 
-    rdg_buffer* m_vsm_buffer{nullptr};
-    rdg_buffer* m_vsm_virtual_page_table{nullptr};
-    rdg_buffer* m_vsm_physical_page_table{nullptr};
-    rdg_texture* m_vsm_physical_shadow_map_static{nullptr};
-    rdg_texture* m_vsm_physical_shadow_map_final{nullptr};
-    rdg_texture* m_vsm_hzb{nullptr};
-    rdg_buffer* m_vsm_directional_buffer{nullptr};
-
     rdg_buffer* m_vsm_bounds_buffer{nullptr};
-
-    rdg_buffer* m_lru_state{nullptr};
-    rdg_buffer* m_lru_buffer{nullptr};
-    std::uint32_t m_lru_curr_index;
-    std::uint32_t m_lru_prev_index;
-
-    std::uint32_t m_render_page_budget{0};
-    float m_slope_scale_depth_bias{0.0f};
 
     rdg_buffer* m_draw_buffer{nullptr};
     rdg_buffer* m_draw_count_buffer{nullptr};
@@ -116,10 +100,5 @@ private:
     rdg_buffer* m_cluster_queue_state{nullptr};
 
     rhi_sampler* m_hzb_sampler{nullptr};
-
-    debug_mode m_debug_mode{DEBUG_MODE_NONE};
-    std::uint32_t m_debug_light_id{0};
-    rdg_texture* m_debug_output{nullptr};
-    rdg_buffer* m_debug_info{nullptr};
 };
 } // namespace violet

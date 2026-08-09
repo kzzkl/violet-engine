@@ -65,7 +65,7 @@ float sample_shadow_pcf(
     }
 
     float visibility = 0.0;
-    float sample_count = 0.0;
+    uint sample_count = 0.0;
     for(int i = 0; i < PCF_SAMPLE_COUNT; i++)
     {
         float2 offset = poisson_disk[i] * sample_radius;
@@ -79,9 +79,7 @@ float sample_shadow_pcf(
         }
     }
 
-    visibility /= sample_count;
-
-    return visibility;
+    return sample_count == 0 ? 1.0 : visibility / sample_count;
 }
 
 float fs_main(vs_output input) : SV_TARGET

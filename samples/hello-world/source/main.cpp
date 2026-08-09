@@ -270,12 +270,20 @@ private:
                 transform.set_rotation(quaternion::from_euler(euler));
             }
 
-            static bool use_multi_scattering = true;
-            if (ImGui::Checkbox("Multi Scattering", &use_multi_scattering))
+            static bool enable_multi_scattering = true;
+            if (ImGui::Checkbox("Multi Scattering", &enable_multi_scattering))
             {
                 auto& main_camera = world.get_component<camera_component>(get_camera());
                 auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
-                atmosphere->set_use_multi_scattering(use_multi_scattering);
+                atmosphere->enable_multi_scattering = enable_multi_scattering;
+            }
+
+            static bool enable_atmosphere_shadow = false;
+            if (ImGui::Checkbox("Atmosphere Shadow", &enable_atmosphere_shadow))
+            {
+                auto& main_camera = world.get_component<camera_component>(get_camera());
+                auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
+                atmosphere->enable_shadow = enable_atmosphere_shadow;
             }
 
             static vec3f ground_color = {0.1f, 0.1f, 0.1f};
@@ -319,6 +327,8 @@ private:
             int render_page_budget = static_cast<int>(shadow->render_page_budget);
             ImGui::SliderInt("Render Page Budget", &render_page_budget, 0, 64);
             shadow->render_page_budget = static_cast<std::uint32_t>(render_page_budget);
+
+            ImGui::Checkbox("Render Coarse Page", &shadow->render_coarse_page);
         }
 
         if (ImGui::CollapsingHeader("Dithering"))

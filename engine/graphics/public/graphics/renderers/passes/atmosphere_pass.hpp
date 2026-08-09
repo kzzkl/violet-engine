@@ -18,7 +18,7 @@ public:
         rdg_buffer* vsm_virtual_page_table;
         rdg_texture* vsm_physical_shadow_map;
 
-        bool use_multi_scattering;
+        bool enable_multi_scattering;
     };
 
     void add(render_graph& graph, const parameter& parameter);

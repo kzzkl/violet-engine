@@ -55,7 +55,7 @@ static const uint VIRTUAL_PAGE_FLAG_VISIBLE = 1 << 0;
 static const uint VIRTUAL_PAGE_FLAG_RESIDENT = 1 << 1;
 static const uint VIRTUAL_PAGE_FLAG_RENDERING = 1 << 2;
 static const uint VIRTUAL_PAGE_FLAG_UNMAPPED = 1 << 3;
-static const uint VIRTUAL_PAGE_FLAG_FALLBACK = 1 << 4;
+static const uint VIRTUAL_PAGE_FLAG_COARSE = 1 << 4;
 static const uint VIRTUAL_PAGE_FLAG_VALID = VIRTUAL_PAGE_FLAG_RESIDENT | VIRTUAL_PAGE_FLAG_RENDERING;
 
 struct vsm_info
@@ -146,6 +146,11 @@ struct vsm_physical_page
         packed_data.z = vsm_id;
         packed_data.w = flags;
         return packed_data;
+    }
+
+    bool resident()
+    {
+        return (flags & PHYSICAL_PAGE_FLAG_RESIDENT) != 0;
     }
 };
 

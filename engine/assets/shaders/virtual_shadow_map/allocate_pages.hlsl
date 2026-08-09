@@ -66,7 +66,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
                 allocate = render_virtual_page_index < constant.render_page_budget;
             }
-            allocate = allocate || (virtual_page.flags & VIRTUAL_PAGE_FLAG_FALLBACK);
+            allocate = allocate || (virtual_page.flags & VIRTUAL_PAGE_FLAG_COARSE);
 
             uint lru_index = 0;
             if (allocate)
@@ -77,12 +77,31 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             if (allocate && lru_index < lru_states[constant.lru_curr_index].tail)
             {
                 uint free_physical_page_index = lru_buffer[get_lru_offset(constant.lru_curr_index) + lru_index];
+                
+                vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[free_physical_page_index]);
+                if (physical_page.resident())
+                {
+                    vsm_data old_vsm = vsms[physical_page.vsm_id];
+                    uint2 old_virtual_page_coord = physical_page.virtual_page_coord - old_vsm.page_coord;
+
+                    if (old_virtual_page_coord.x < VIRTUAL_PAGE_TABLE_SIZE ||
+                        old_virtual_page_coord.y < VIRTUAL_PAGE_TABLE_SIZE ||
+                        old_virtual_page_coord.x >= 0 ||
+                        old_virtual_page_coord.y >= 0)
+                    {
+                        uint old_virtual_page_index = get_virtual_page_index(physical_page.vsm_id, old_virtual_page_coord);
+
+                        vsm_virtual_page old_virtual_page = vsm_virtual_page::unpack(virtual_page_table[old_virtual_page_index]);
+                        old_virtual_page.flags &= ~VIRTUAL_PAGE_FLAG_RESIDENT;
+                        virtual_page_table[old_virtual_page_index] = old_virtual_page.pack();
+                    }
+                }
+
 
                 virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
                 virtual_page.flags |= VIRTUAL_PAGE_FLAG_RENDERING;
                 virtual_page_table[virtual_page_index] = virtual_page.pack();
 
-                vsm_physical_page physical_page;
                 physical_page.virtual_page_coord = virtual_page_coord + vsms[vsm_id].page_coord;
                 physical_page.vsm_id = vsm_id;
                 physical_page.flags = PHYSICAL_PAGE_FLAG_RESIDENT | PHYSICAL_PAGE_FLAG_REQUEST | PHYSICAL_PAGE_FLAG_HZB_DIRTY;

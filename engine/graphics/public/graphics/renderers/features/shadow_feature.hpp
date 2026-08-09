@@ -23,5 +23,6 @@ public:
     float constant_bias{0.0f};
 
     std::uint32_t render_page_budget{0};
+    bool render_coarse_page{false};
 };
 } // namespace violet

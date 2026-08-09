@@ -48,8 +48,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         get_virtual_page_index(vsm_id, uint2(virtual_page_coord_min.x, virtual_page_coord_max.y)),
         get_virtual_page_index(vsm_id, virtual_page_coord_max));
 
-    virtual_page_table[virtual_page_indices.x] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_FALLBACK;
-    virtual_page_table[virtual_page_indices.y] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_FALLBACK;
-    virtual_page_table[virtual_page_indices.z] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_FALLBACK;
-    virtual_page_table[virtual_page_indices.w] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_FALLBACK;
+    virtual_page_table[virtual_page_indices.x] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_COARSE;
+    virtual_page_table[virtual_page_indices.y] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_COARSE;
+    virtual_page_table[virtual_page_indices.z] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_COARSE;
+    virtual_page_table[virtual_page_indices.w] |= VIRTUAL_PAGE_FLAG_VISIBLE | VIRTUAL_PAGE_FLAG_COARSE;
 }
