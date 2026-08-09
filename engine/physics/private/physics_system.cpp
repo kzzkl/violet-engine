@@ -37,6 +37,17 @@ bool physics_system::initialize(const dictionary& config)
     m_plugin->load(config["plugin"]);
     m_context = std::make_unique<physics_context>(m_plugin->get_plugin());
 
+    if (config.contains("gravity"))
+    {
+        m_gravity.x = config["gravity"][0];
+        m_gravity.y = config["gravity"][1];
+        m_gravity.z = config["gravity"][2];
+    }
+    else
+    {
+        m_gravity = {.x = 0.0f, .y = -9.8f, .z = 0.0f};
+    }
+
     auto& task_graph = get_task_graph();
     auto& post_update_group = task_graph.get_group("PostUpdate");
     auto& transform_group = task_graph.get_group("Transform");
@@ -421,7 +432,7 @@ physics_scene* physics_system::get_scene(std::uint32_t layer)
     if (m_scenes[layer] == nullptr)
     {
         m_scenes[layer] = std::make_unique<physics_scene>(
-            vec3f{0.0f, -9.8f, 0.0f},
+            m_gravity,
 #ifdef VIOLET_PHYSICS_DEBUG_DRAW
             m_debug.get(),
 #else

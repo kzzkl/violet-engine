@@ -493,6 +493,8 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
         .lru_curr_index = vsm->get_curr_lru_index(),
         .lru_prev_index = vsm->get_prev_lru_index(),
+        .render_page_budget = shadow->render_page_budget,
+        .render_coarse_page = shadow->render_coarse_page,
         .slope_scale_depth_bias = shadow->slope_scale_depth_bias,
         .debug_mode = debug_mode,
         .debug_output = m_debug_output,
@@ -631,19 +633,29 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
     }
     else if (camera.background == BACKGROUND_TYPE_ATMOSPHERE)
     {
+        auto* atmosphere = get_feature<atmosphere_feature>();
+
         m_sky_view_lut = graph.add_texture(
             "Sky View LUT",
             {.width = 192, .height = 108},
             RHI_FORMAT_R11G11B10_FLOAT,
             RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
 
+        rhi_extent aerial_perspective_lut_extent;
+        if (atmosphere->enable_shadow)
+        {
+            aerial_perspective_lut_extent = { .width = 200, .height = 150, .depth = 32 };
+        }
+        else
+        {
+            aerial_perspective_lut_extent = { .width = 32, .height = 32, .depth = 32 };
+        }
+
         m_aerial_perspective_lut = graph.add_texture(
             "Aerial Perspective LUT",
-            {.width = 32, .height = 32, .depth = 32},
+            aerial_perspective_lut_extent,
             RHI_FORMAT_R16G16B16A16_FLOAT,
             RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
-
-        auto* atmosphere = get_feature<atmosphere_feature>();
 
         if (scene.atmosphere_diry)
         {
@@ -653,13 +665,17 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
         atmosphere_lut_pass::parameter parameter = {
             .sky_view_lut = m_sky_view_lut,
             .aerial_perspective_lut = m_aerial_perspective_lut,
-            // .vsm_buffer = m_vsm_buffer,
-            // .vsm_virtual_page_table = m_vsm_virtual_page_table,
-            // .vsm_physical_shadow_map = m_vsm_physical_shadow_map_final,
-            .use_multi_scattering = atmosphere->get_use_multi_scattering(),
+            .enable_multi_scattering = atmosphere->enable_multi_scattering,
         };
 
-        if (m_ibl_dirty && get_frame() % atmosphere->get_ibl_update_interval() == 0)
+        if (atmosphere->enable_shadow)
+        {
+            parameter.vsm_buffer = m_vsm_buffer;
+            parameter.vsm_virtual_page_table = m_vsm_virtual_page_table;
+            parameter.vsm_physical_shadow_map = m_vsm_physical_shadow_map_final;
+        }
+
+        if (m_ibl_dirty && get_frame() % atmosphere->ibl_update_interval == 0)
         {
             m_prefilter_map = graph.add_texture(
                 "Prefilter Map",

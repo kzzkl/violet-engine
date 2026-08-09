@@ -141,7 +141,7 @@ private:
             }
 
             static float scale = 1.0f;
-            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 10.0f))
+            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 10000.0f))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
                 transform.set_scale({scale, scale, scale});
@@ -174,7 +174,7 @@ private:
         {
             auto& main_camera = world.get_component<camera_component>(get_camera());
             auto& controller = world.get_component<first_person_control_component>(get_camera());
-            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Move Speed", &controller.move_speed, 0.0f, 10000.0f);
 
             const char* camera_types[] = {"Perspective", "Orthographic"};
             static int camera_type = static_cast<int>(main_camera.type);
@@ -270,12 +270,20 @@ private:
                 transform.set_rotation(quaternion::from_euler(euler));
             }
 
-            static bool use_multi_scattering = true;
-            if (ImGui::Checkbox("Multi Scattering", &use_multi_scattering))
+            static bool enable_multi_scattering = true;
+            if (ImGui::Checkbox("Multi Scattering", &enable_multi_scattering))
             {
                 auto& main_camera = world.get_component<camera_component>(get_camera());
                 auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
-                atmosphere->set_use_multi_scattering(use_multi_scattering);
+                atmosphere->enable_multi_scattering = enable_multi_scattering;
+            }
+
+            static bool enable_atmosphere_shadow = false;
+            if (ImGui::Checkbox("Atmosphere Shadow", &enable_atmosphere_shadow))
+            {
+                auto& main_camera = world.get_component<camera_component>(get_camera());
+                auto* atmosphere = main_camera.renderer->get_feature<atmosphere_feature>();
+                atmosphere->enable_shadow = enable_atmosphere_shadow;
             }
 
             static vec3f ground_color = {0.1f, 0.1f, 0.1f};
@@ -315,6 +323,12 @@ private:
                 2.0f);
             ImGui::SliderFloat("Normal Bias", &shadow->normal_bias, 0.0f, 2.0f);
             ImGui::SliderFloat("Constant Bias", &shadow->constant_bias, 0.0f, 1.0f);
+
+            int render_page_budget = static_cast<int>(shadow->render_page_budget);
+            ImGui::SliderInt("Render Page Budget", &render_page_budget, 0, 64);
+            shadow->render_page_budget = static_cast<std::uint32_t>(render_page_budget);
+
+            ImGui::Checkbox("Render Coarse Page", &shadow->render_coarse_page);
         }
 
         if (ImGui::CollapsingHeader("Dithering"))

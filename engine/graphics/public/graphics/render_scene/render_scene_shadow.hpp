@@ -57,6 +57,8 @@ public:
         return m_invalidations.get_size();
     }
 
+    render_id get_vsm_id(render_id light_id, render_id camera_id = INVALID_RENDER_ID) const;
+
 private:
     struct shadow_address
     {
@@ -90,6 +92,8 @@ private:
 
         vec3f position;
         vec3f direction;
+
+        bool is_directional_light;
     };
 
     struct camera_snapshot

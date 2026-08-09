@@ -188,34 +188,6 @@ float3 sun_disk(float3 view_dir, float3 sun_dir, float3 transmittance, float sun
     return smoothstep(cos_radius, cos_radius + 0.01, cos_theta) * 1e9 * transmittance;
 }
 
-float get_shadow(float3 camera, float3 position, uint vsm_id, StructuredBuffer<vsm_data> vsms, StructuredBuffer<uint> virtual_page_table, Texture2D<uint> physical_shadow_map)
-{
-    uint cascade = get_directional_cascade(length(position - camera));
-    vsm_data vsm = vsms[vsm_id + cascade];
-
-    float4 position_ls = mul(vsm.matrix_vp, float4(position, 1.0));
-    position_ls /= position_ls.w;
-    position_ls.xy = position_ls.xy * 0.5 + 0.5;
-
-    vsm_sample_result result = vsm_sample_depth(vsm_id + cascade, position_ls.xy, physical_shadow_map, virtual_page_table);
-    if (result.valid)
-    {
-        return result.depth > position_ls.z ? 0.0 : 1.0;
-    }
-
-    if (vsm.cascade_index < 12)
-    {
-        vsm = vsms[vsm_id + cascade + 4];
-        position_ls = mul(vsm.matrix_vp, float4(position, 1.0));
-        position_ls /= position_ls.w;
-        position_ls.xy = position_ls.xy * 0.5 + 0.5;
-
-        result = vsm_sample_depth(vsm_id + cascade + 4, position_ls.xy, physical_shadow_map, virtual_page_table);
-    }
-
-    return result.valid && result.depth > position_ls.z ? 0.0 : 1.0;
-}
-
 float3 get_atmosphere_extinction(atmosphere_data atmosphere, float h)
 {
     float3 extinction = atmosphere.get_rayleigh_scattering(h);
@@ -303,13 +275,13 @@ float4 integrate_atmosphere(
             float shadow = 1.0;
 
 #ifdef USE_SHADOW
-            shadow = get_shadow(
+            shadow = vsm_sample_shadow(
                 eye - float3(0.0, atmosphere.planet_radius, 0.0),
                 p - float3(0.0, atmosphere.planet_radius, 0.0),
                 vsm_id,
                 vsms,
                 virtual_page_table,
-                physical_shadow_map);
+                physical_shadow_map).shadow;
 #endif
 
             float2 uv;

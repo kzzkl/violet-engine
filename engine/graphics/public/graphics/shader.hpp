@@ -76,7 +76,6 @@ struct shader
 
     struct geometry_data
     {
-        vec4f bounding_sphere;
         std::uint32_t position_address;
         std::uint32_t normal_address;
         std::uint32_t tangent_address;
@@ -89,6 +88,11 @@ struct shader
         std::uint32_t index_count;
         std::uint32_t cluster_root;
         std::uint32_t padding0;
+        vec3f bounding_box_min;
+        std::uint32_t padding1;
+        vec3f bounding_box_max;
+        std::uint32_t padding2;
+        vec4f bounding_sphere;
     };
 
     struct mesh_data

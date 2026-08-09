@@ -92,6 +92,7 @@ render_id geometry_manager::add_submesh(
     {
         points.push_back(positions[indexes[submesh.index_offset + i] + submesh.vertex_offset]);
     }
+    submesh.bounding_box = box::create(points);
     submesh.bounding_sphere = sphere::create(points);
 
     m_submeshes.mark_dirty(submesh_id);
@@ -113,6 +114,7 @@ render_id geometry_manager::add_submesh(
     submesh.submesh_id = submesh_id;
     submesh.geometry_id = geometry_id;
     submesh.cluster_root_id = root_id;
+    submesh.bounding_box = cluster_nodes[0].bounding_box;
     submesh.bounding_sphere = cluster_nodes[0].bounding_sphere;
 
     std::queue<std::pair<std::uint32_t, render_id>> queue;
@@ -207,7 +209,6 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
         [&](const gpu_geometry& geometry) -> shader::geometry_data
         {
             return {
-                .bounding_sphere = m_submeshes[geometry.submesh_id].bounding_sphere,
                 .position_address = get_buffer_address(
                     geometry.geometry_id,
                     GEOMETRY_BUFFER_POSITION,
@@ -245,6 +246,9 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
                     geometry.index_offset,
                 .index_count = geometry.index_count,
                 .cluster_root = static_cast<std::uint32_t>(geometry.cluster_root_id),
+                .bounding_box_min = geometry.bounding_box.min,
+                .bounding_box_max = geometry.bounding_box.max,
+                .bounding_sphere = m_submeshes[geometry.submesh_id].bounding_sphere,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)

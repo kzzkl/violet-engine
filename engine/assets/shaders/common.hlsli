@@ -39,7 +39,6 @@ struct dispatch_command
 
 struct geometry_data
 {
-    float4 bounding_sphere;
     uint position_address;
     uint normal_address;
     uint tangent_address;
@@ -49,6 +48,11 @@ struct geometry_data
     uint index_count;
     uint cluster_root;
     uint padding0;
+    float3 bounding_box_min;
+    uint padding1;
+    float3 bounding_box_max;
+    uint padding2;
+    float4 bounding_sphere;
 };
 
 static const uint MESH_STATIC = 1 << 0;

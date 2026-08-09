@@ -205,6 +205,7 @@ bool read_geometry(std::ifstream& fin, mesh_loader::scene_data& scene_data)
                 {
                     read(fin, cluster.index_offset);
                     read(fin, cluster.index_count);
+                    read(fin, cluster.bounding_box);
                     read(fin, cluster.bounding_sphere);
                     read(fin, cluster.lod_bounds);
                     read(fin, cluster.lod_error);
@@ -219,6 +220,7 @@ bool read_geometry(std::ifstream& fin, mesh_loader::scene_data& scene_data)
 
                 for (auto& cluster_node : submesh.cluster_nodes)
                 {
+                    read(fin, cluster_node.bounding_box);
                     read(fin, cluster_node.bounding_sphere);
                     read(fin, cluster_node.lod_bounds);
                     read(fin, cluster_node.min_lod_error);
@@ -301,6 +303,7 @@ bool write_geometry(std::ofstream& fout, const mesh_loader::scene_data& scene_da
                 {
                     write(fout, cluster.index_offset);
                     write(fout, cluster.index_count);
+                    write(fout, cluster.bounding_box);
                     write(fout, cluster.bounding_sphere);
                     write(fout, cluster.lod_bounds);
                     write(fout, cluster.lod_error);
@@ -314,6 +317,7 @@ bool write_geometry(std::ofstream& fout, const mesh_loader::scene_data& scene_da
 
                 for (const auto& cluster_node : submesh.cluster_nodes)
                 {
+                    write(fout, cluster_node.bounding_box);
                     write(fout, cluster_node.bounding_sphere);
                     write(fout, cluster_node.lod_bounds);
                     write(fout, cluster_node.min_lod_error);

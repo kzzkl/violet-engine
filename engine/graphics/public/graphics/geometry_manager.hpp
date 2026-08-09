@@ -4,6 +4,7 @@
 #include "gpu_array.hpp"
 #include "graphics/geometry.hpp"
 #include "graphics/resources/persistent_buffer.hpp"
+#include "math/box.hpp"
 #include "math/sphere.hpp"
 #include <mutex>
 
@@ -136,6 +137,7 @@ private:
         std::uint32_t index_offset;
         std::uint32_t index_count;
 
+        box3f bounding_box;
         sphere3f bounding_sphere;
 
         render_id cluster_root_id{INVALID_RENDER_ID};
