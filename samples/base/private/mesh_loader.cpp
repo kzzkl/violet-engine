@@ -176,8 +176,8 @@ bool read_geometry(std::ifstream& fin, mesh_loader::scene_data& scene_data)
 
         if (flags & GEOMETRY_HAS_TEXCOORD)
         {
-            geometry.texcoords.resize(vertex_count);
-            read(fin, geometry.texcoords.data(), vertex_count);
+            geometry.uvs.resize(vertex_count);
+            read(fin, geometry.uvs.data(), vertex_count);
         }
 
         std::uint32_t submesh_count;
@@ -259,7 +259,7 @@ bool write_geometry(std::ofstream& fout, const mesh_loader::scene_data& scene_da
         std::uint32_t flags = 0;
         flags |= geometry.normals.empty() ? 0 : GEOMETRY_HAS_NORMAL;
         flags |= geometry.tangents.empty() ? 0 : GEOMETRY_HAS_TANGENT;
-        flags |= geometry.texcoords.empty() ? 0 : GEOMETRY_HAS_TEXCOORD;
+        flags |= geometry.uvs.empty() ? 0 : GEOMETRY_HAS_TEXCOORD;
         write(fout, flags);
 
         write(fout, geometry.positions.data(), vertex_count);
@@ -275,9 +275,9 @@ bool write_geometry(std::ofstream& fout, const mesh_loader::scene_data& scene_da
             write(fout, geometry.tangents.data(), vertex_count);
         }
 
-        if (!geometry.texcoords.empty())
+        if (!geometry.uvs.empty())
         {
-            write(fout, geometry.texcoords.data(), vertex_count);
+            write(fout, geometry.uvs.data(), vertex_count);
         }
 
         auto submesh_count = static_cast<std::uint32_t>(geometry.submeshes.size());
@@ -514,7 +514,7 @@ bool mesh_loader_generate_clusters(mesh_loader::scene_data& scene_data)
                         .positions = geometry_data.positions,
                         .normals = geometry_data.normals,
                         .tangents = geometry_data.tangents,
-                        .texcoords = geometry_data.texcoords,
+                        .uvs = geometry_data.uvs,
                         .indexes = geometry_data.indexes,
                     };
 
@@ -531,7 +531,7 @@ bool mesh_loader_generate_clusters(mesh_loader::scene_data& scene_data)
                     geometry_data.positions = std::move(output.positions);
                     geometry_data.normals = std::move(output.normals);
                     geometry_data.tangents = std::move(output.tangents);
-                    geometry_data.texcoords = std::move(output.texcoords);
+                    geometry_data.uvs = std::move(output.uvs);
                     geometry_data.indexes = std::move(output.indexes);
 
                     for (std::size_t i = 0; i < geometry_data.submeshes.size(); ++i)

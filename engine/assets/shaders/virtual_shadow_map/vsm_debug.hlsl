@@ -143,8 +143,8 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
+    float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
     // if (light.vsm_address == 0xFFFFFFFF)
@@ -198,8 +198,8 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
+    float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
     // if (light.vsm_address == 0xFFFFFFFF)

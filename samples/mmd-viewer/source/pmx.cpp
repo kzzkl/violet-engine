@@ -122,20 +122,20 @@ bool pmx::load_mesh(std::ifstream& fin)
 
     position.resize(vertex_count);
     normal.resize(vertex_count);
-    texcoord.resize(vertex_count);
+    uv.resize(vertex_count);
     skin.resize(vertex_count);
     outline.resize(vertex_count);
-    add_texcoord.resize(header.num_add_vec4, std::vector<vec4f>(vertex_count));
+    add_uv.resize(header.num_add_vec4, std::vector<vec4f>(vertex_count));
 
     for (std::size_t i = 0; i < vertex_count; ++i)
     {
         read<vec3f>(fin, position[i]);
         read<vec3f>(fin, normal[i]);
-        read<vec2f>(fin, texcoord[i]);
+        read<vec2f>(fin, uv[i]);
 
         for (std::uint8_t j = 0; j < header.num_add_vec4; ++j)
         {
-            read<vec4f>(fin, add_texcoord[j][i]);
+            read<vec4f>(fin, add_uv[j][i]);
         }
 
         pmx_vertex_type weight_type;

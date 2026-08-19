@@ -127,20 +127,20 @@ void cluster_builder::set_tangents(std::span<const vec4f> tangents)
     }
 }
 
-void cluster_builder::set_texcoords(std::span<const vec2f> texcoords)
+void cluster_builder::set_uvs(std::span<const vec2f> uvs)
 {
-    m_texcoords.assign(texcoords.begin(), texcoords.end());
+    m_uvs.assign(uvs.begin(), uvs.end());
 
-    for (auto& texcoord : m_texcoords)
+    for (auto& uv : m_uvs)
     {
-        if (std::isnan(texcoord.x))
+        if (std::isnan(uv.x))
         {
-            texcoord.x = 0.0f;
+            uv.x = 0.0f;
         }
 
-        if (std::isnan(texcoord.y))
+        if (std::isnan(uv.y))
         {
-            texcoord.y = 0.0f;
+            uv.y = 0.0f;
         }
     }
 }
@@ -634,10 +634,10 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
             attributes.insert(attributes.end(), {tangent.x, tangent.y, tangent.z, tangent.w});
         }
 
-        if (!m_texcoords.empty())
+        if (!m_uvs.empty())
         {
-            const auto& texcoord = m_texcoords[index];
-            attributes.insert(attributes.end(), {texcoord.x, texcoord.y});
+            const auto& uv = m_uvs[index];
+            attributes.insert(attributes.end(), {uv.x, uv.y});
         }
     }
 
@@ -652,16 +652,16 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
         attribute_weights.insert(attribute_weights.end(), {0.0625f, 0.0625f, 0.0625f, 0.5f});
     }
 
-    if (!m_texcoords.empty())
+    if (!m_uvs.empty())
     {
         float uv_area = 0.0f;
 
         std::uint32_t triangle_count = static_cast<std::uint32_t>(indexes.size()) / 3;
         for (std::uint32_t i = 0; i < triangle_count; ++i)
         {
-            vec2f uv0 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 0]]];
-            vec2f uv1 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 1]]];
-            vec2f uv2 = m_texcoords[group_vertex_remap[indexes[(i * 3) + 2]]];
+            vec2f uv0 = m_uvs[group_vertex_remap[indexes[(i * 3) + 0]]];
+            vec2f uv1 = m_uvs[group_vertex_remap[indexes[(i * 3) + 1]]];
+            vec2f uv2 = m_uvs[group_vertex_remap[indexes[(i * 3) + 2]]];
 
             vec2f edge01 = uv1 - uv0;
             vec2f edge02 = uv2 - uv0;
@@ -756,9 +756,9 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
         m_tangents.resize(m_tangents.size() + simplifier.get_vertex_count());
     }
 
-    if (!m_texcoords.empty())
+    if (!m_uvs.empty())
     {
-        m_texcoords.resize(m_texcoords.size() + simplifier.get_vertex_count());
+        m_uvs.resize(m_uvs.size() + simplifier.get_vertex_count());
     }
 
     if (!attributes.empty())
@@ -778,9 +778,9 @@ void cluster_builder::simplify_group(std::uint32_t group_index)
                 attribute_data += 4;
             }
 
-            if (!m_texcoords.empty())
+            if (!m_uvs.empty())
             {
-                std::memcpy(m_texcoords.data() + vertex_offset + i, attribute_data, sizeof(vec2f));
+                std::memcpy(m_uvs.data() + vertex_offset + i, attribute_data, sizeof(vec2f));
                 attribute_data += 2;
             }
         }

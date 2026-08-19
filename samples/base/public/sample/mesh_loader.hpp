@@ -59,7 +59,7 @@ public:
         std::vector<vec3f> positions;
         std::vector<vec3f> normals;
         std::vector<vec4f> tangents;
-        std::vector<vec2f> texcoords;
+        std::vector<vec2f> uvs;
         std::vector<std::uint32_t> indexes;
 
         std::vector<submesh_data> submeshes;

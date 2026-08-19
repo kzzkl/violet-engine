@@ -26,7 +26,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 uv = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
     float depth = depth_buffer.SampleLevel(get_point_clamp_sampler(), uv, 0.0);

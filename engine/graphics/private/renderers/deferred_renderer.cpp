@@ -10,6 +10,7 @@
 #include "graphics/renderers/features/ssgi_feature.hpp"
 #include "graphics/renderers/features/taa_feature.hpp"
 #include "graphics/renderers/features/vsm_feature.hpp"
+#include "graphics/renderers/gbuffer.hpp"
 #include "graphics/renderers/passes/atmosphere_pass.hpp"
 #include "graphics/renderers/passes/blit_pass.hpp"
 #include "graphics/renderers/passes/bloom_pass.hpp"
@@ -271,25 +272,25 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
         RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 
     m_gbuffers.resize(4);
-    m_gbuffers[SHADING_GBUFFER_ALBEDO] = graph.add_texture(
+    m_gbuffers[GBUFFER_ALBEDO] = graph.add_texture(
         "GBuffer Albedo",
         render_extent,
         RHI_FORMAT_R8G8B8A8_UNORM,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_MATERIAL] = graph.add_texture(
+    m_gbuffers[GBUFFER_MATERIAL] = graph.add_texture(
         "GBuffer Material",
         render_extent,
         RHI_FORMAT_R8G8_UNORM,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_NORMAL] = graph.add_texture(
+    m_gbuffers[GBUFFER_NORMAL] = graph.add_texture(
         "GBuffer Normal",
         render_extent,
         RHI_FORMAT_R32_UINT,
         RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_SHADER_RESOURCE |
             RHI_TEXTURE_TRANSFER_DST);
-    m_gbuffers[SHADING_GBUFFER_EMISSIVE] = graph.add_texture(
+    m_gbuffers[GBUFFER_EMISSIVE] = graph.add_texture(
         "GBuffer Emissive",
         render_extent,
         RHI_FORMAT_R11G11B10_FLOAT,
@@ -447,7 +448,7 @@ void deferred_renderer::add_gtao_pass(render_graph& graph)
         .falloff = gtao->falloff,
         .hzb = m_tracing_hzb,
         .depth_buffer = m_depth_buffer,
-        .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
+        .normal_buffer = m_gbuffers[GBUFFER_NORMAL],
         .ao_buffer = m_ao_buffer,
     });
 }
@@ -514,16 +515,12 @@ void deferred_renderer::add_shading_pass(render_graph& graph)
         break;
     }
 
-    std::vector<rdg_texture*> auxiliary_buffers = {
-        m_depth_buffer,
-        m_ao_buffer,
-    };
-
     auto* shadow = get_feature<shadow_feature>();
 
     graph.add_pass<shading_pass>({
         .gbuffers = m_gbuffers,
-        .auxiliary_buffers = auxiliary_buffers,
+        .ao_buffer = m_ao_buffer,
+        .depth_buffer = m_depth_buffer,
         .render_target = m_render_target,
         .shadow_light_buffer = m_shadow_light_buffer,
         .vsm_buffer = m_vsm_buffer,
@@ -598,7 +595,7 @@ void deferred_renderer::add_ssgi_pass(render_graph& graph)
         .scene_color = m_prev_scene_color,
         .scene_color_valid = m_prev_scene_color_valid,
         .motion_vector = m_motion_vectors,
-        .normal_buffer = m_gbuffers[SHADING_GBUFFER_NORMAL],
+        .normal_buffer = m_gbuffers[GBUFFER_NORMAL],
         .hzb = m_tracing_hzb,
         .irradiance_sh = m_irradiance_sh,
         .indirect_diffuse = m_indirect_diffuse,
@@ -644,11 +641,11 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
         rhi_extent aerial_perspective_lut_extent;
         if (atmosphere->enable_shadow)
         {
-            aerial_perspective_lut_extent = { .width = 200, .height = 150, .depth = 32 };
+            aerial_perspective_lut_extent = {.width = 200, .height = 150, .depth = 32};
         }
         else
         {
-            aerial_perspective_lut_extent = { .width = 32, .height = 32, .depth = 32 };
+            aerial_perspective_lut_extent = {.width = 32, .height = 32, .depth = 32};
         }
 
         m_aerial_perspective_lut = graph.add_texture(

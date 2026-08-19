@@ -227,11 +227,11 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
 
             if (primitive.attributes.contains("TEXCOORD_0"))
             {
-                load_attribute(model, primitive, "TEXCOORD_0", geometry_data.texcoords);
+                load_attribute(model, primitive, "TEXCOORD_0", geometry_data.uvs);
             }
             else
             {
-                geometry_data.texcoords.resize(geometry_data.positions.size());
+                geometry_data.uvs.resize(geometry_data.positions.size());
             }
 
             if (primitive.attributes.contains("NORMAL"))
@@ -259,8 +259,8 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
                         geometry_data.normals.begin() + vertex_offset,
                         geometry_data.normals.begin() + vertex_offset + vertex_count),
                     std::span(
-                        geometry_data.texcoords.begin() + vertex_offset,
-                        geometry_data.texcoords.begin() + vertex_offset + vertex_count),
+                        geometry_data.uvs.begin() + vertex_offset,
+                        geometry_data.uvs.begin() + vertex_offset + vertex_count),
                     std::span(
                         geometry_data.indexes.begin() + index_offset,
                         geometry_data.indexes.begin() + index_offset + index_count));
@@ -281,12 +281,12 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
         if (geometry_data.tangents.empty())
         {
             geometry_data.tangents.resize(geometry_data.positions.size());
-            if (!geometry_data.normals.empty() && !geometry_data.texcoords.empty())
+            if (!geometry_data.normals.empty() && !geometry_data.uvs.empty())
             {
                 auto temp = geometry_tool::generate_tangents(
                     geometry_data.positions,
                     geometry_data.normals,
-                    geometry_data.texcoords,
+                    geometry_data.uvs,
                     geometry_data.indexes);
                 std::ranges::transform(
                     temp,
@@ -303,9 +303,9 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
             geometry_data.normals.resize(geometry_data.positions.size());
         }
 
-        if (geometry_data.texcoords.empty())
+        if (geometry_data.uvs.empty())
         {
-            geometry_data.texcoords.resize(geometry_data.positions.size());
+            geometry_data.uvs.resize(geometry_data.positions.size());
         }
 
         // Convert to left-handed coordinate system (negate Z).

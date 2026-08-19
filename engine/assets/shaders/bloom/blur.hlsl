@@ -28,14 +28,14 @@ void blur_horizontal(uint3 dtid : SV_DispatchThreadID)
 
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     float3 color = 0.0;
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x - offsets[2] * constant.texel_size, texcoord.y), 0.0) * weights[2];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x - offsets[1] * constant.texel_size, texcoord.y), 0.0) * weights[1];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x + offsets[0] * constant.texel_size, texcoord.y), 0.0) * weights[0];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x + offsets[1] * constant.texel_size, texcoord.y), 0.0) * weights[1];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x + offsets[2] * constant.texel_size, texcoord.y), 0.0) * weights[2];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x - offsets[2] * constant.texel_size, uv.y), 0.0) * weights[2];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x - offsets[1] * constant.texel_size, uv.y), 0.0) * weights[1];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x + offsets[0] * constant.texel_size, uv.y), 0.0) * weights[0];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x + offsets[1] * constant.texel_size, uv.y), 0.0) * weights[1];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x + offsets[2] * constant.texel_size, uv.y), 0.0) * weights[2];
 
     RWTexture2D<float3> dst = ResourceDescriptorHeap[constant.dst];
     dst[dtid.xy] = color;
@@ -58,14 +58,14 @@ void blur_vertical(uint3 dtid : SV_DispatchThreadID)
 
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     float3 color = 0.0;
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x, texcoord.y - offsets[2] * constant.texel_size), 0.0) * weights[2];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x, texcoord.y - offsets[1] * constant.texel_size), 0.0) * weights[1];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x, texcoord.y + offsets[0] * constant.texel_size), 0.0) * weights[0];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x, texcoord.y + offsets[1] * constant.texel_size), 0.0) * weights[1];
-    color += src.SampleLevel(linear_clamp_sampler, float2(texcoord.x, texcoord.y + offsets[2] * constant.texel_size), 0.0) * weights[2];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x, uv.y - offsets[2] * constant.texel_size), 0.0) * weights[2];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x, uv.y - offsets[1] * constant.texel_size), 0.0) * weights[1];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x, uv.y + offsets[0] * constant.texel_size), 0.0) * weights[0];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x, uv.y + offsets[1] * constant.texel_size), 0.0) * weights[1];
+    color += src.SampleLevel(linear_clamp_sampler, float2(uv.x, uv.y + offsets[2] * constant.texel_size), 0.0) * weights[2];
 
     RWTexture2D<float3> dst = ResourceDescriptorHeap[constant.dst];
     dst[dtid.xy] = color;

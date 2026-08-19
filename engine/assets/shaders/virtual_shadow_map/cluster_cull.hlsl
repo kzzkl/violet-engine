@@ -1,5 +1,6 @@
 #include "cluster.hlsli"
 #include "virtual_shadow_map/vsm_cull.hlsli"
+#include "material.hlsli"
 
 struct constant_data
 {
@@ -243,10 +244,10 @@ void process_cluster(uint3 dtid)
 
     if (visible)
     {
-        material_info material = load_material_info(scene.material_buffer, instance.material_address);
+        material_common material = load_material<material_common>(scene.material_buffer, instance.material_address);
         uint command_offset;
         uint count_offset;
-        get_shadow_draw_offset(is_static, material.shadow_batch, command_offset, count_offset);
+        get_shadow_draw_offset(is_static, material.get_shadow_batch(), command_offset, count_offset);
 
         RWStructuredBuffer<uint> draw_counts = ResourceDescriptorHeap[constant.draw_count_buffer];
 

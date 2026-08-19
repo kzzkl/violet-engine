@@ -67,6 +67,7 @@ add_library(violet-graphics STATIC
     private/renderer.cpp
     private/rhi_plugin.cpp
     private/shader_compiler.cpp
+    private/shading_model.cpp
     private/skinning_system.cpp
     private/texture_loader.cpp
     private/transient_allocator.cpp)

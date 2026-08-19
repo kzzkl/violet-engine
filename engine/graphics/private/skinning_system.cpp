@@ -56,7 +56,7 @@ void skinning_system::pre_update()
                     skinned_geometry->set_positions(original_geometry->get_positions());
                     skinned_geometry->set_normals(original_geometry->get_normals());
                     skinned_geometry->set_tangents(original_geometry->get_tangents());
-                    skinned_geometry->set_texcoords_shared(original_geometry);
+                    skinned_geometry->set_uvs_shared(original_geometry);
 
                     for (std::size_t i = 0; i < geometry::max_custom_attribute; ++i)
                     {

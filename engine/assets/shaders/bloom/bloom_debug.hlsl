@@ -25,8 +25,8 @@ void debug_prefilter(uint3 dtid : SV_DispatchThreadID)
 
     Texture2D<float3> prefilter = ResourceDescriptorHeap[constant.src];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    debug_output[dtid.xy] = float4(prefilter.SampleLevel(get_linear_repeat_sampler(), texcoord, 0), 1.0);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
+    debug_output[dtid.xy] = float4(prefilter.SampleLevel(get_linear_repeat_sampler(), uv, 0), 1.0);
 }
 
 [shader("compute")]
@@ -46,6 +46,6 @@ void debug_bloom(uint3 dtid : SV_DispatchThreadID)
 
     Texture2D<float3> bloom = ResourceDescriptorHeap[constant.src];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    debug_output[dtid.xy] = float4(bloom.SampleLevel(get_linear_repeat_sampler(), texcoord, 0.0) * 0.125 * constant.intensity, 1.0);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
+    debug_output[dtid.xy] = float4(bloom.SampleLevel(get_linear_repeat_sampler(), uv, 0.0) * 0.125 * constant.intensity, 1.0);
 }

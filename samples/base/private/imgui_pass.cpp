@@ -9,7 +9,7 @@ struct imgui_vs : public shader_vs
 
     static constexpr input_layout inputs = {
         {.name = "position", .format = RHI_FORMAT_R32G32_FLOAT},
-        {.name = "texcoord", .format = RHI_FORMAT_R32G32_FLOAT},
+        {.name = "uv", .format = RHI_FORMAT_R32G32_FLOAT},
         {.name = "color", .format = RHI_FORMAT_R32_UINT},
     };
 
@@ -51,7 +51,7 @@ imgui_pass::imgui_pass()
             .size = sizeof(vec2f) * MAX_VERTEX_COUNT,
             .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
         });
-        geometry.texcoord = device.create_buffer({
+        geometry.uv = device.create_buffer({
             .size = sizeof(vec2f) * MAX_VERTEX_COUNT,
             .flags = RHI_BUFFER_VERTEX | RHI_BUFFER_HOST_VISIBLE,
         });
@@ -112,7 +112,7 @@ void imgui_pass::add(render_graph& graph, const parameter& parameter)
 
             std::vector<rhi_buffer*> vertex_buffers = {
                 geometry.position.get(),
-                geometry.texcoord.get(),
+                geometry.uv.get(),
                 geometry.color.get(),
             };
             command.set_vertex_buffers(vertex_buffers);
@@ -159,7 +159,7 @@ void imgui_pass::update_vertex()
     ImVec2 clip_off = data->DisplayPos;
 
     auto* position = static_cast<vec2f*>(geometry.position->get_buffer_pointer());
-    auto* texcoord = static_cast<vec2f*>(geometry.texcoord->get_buffer_pointer());
+    auto* uv = static_cast<vec2f*>(geometry.uv->get_buffer_pointer());
     auto* color = static_cast<std::uint32_t*>(geometry.color->get_buffer_pointer());
     auto* index = static_cast<std::uint32_t*>(geometry.index->get_buffer_pointer());
 
@@ -175,11 +175,11 @@ void imgui_pass::update_vertex()
             };
             ++position;
 
-            *texcoord = {
+            *uv = {
                 .x = list->VtxBuffer[j].uv.x,
                 .y = list->VtxBuffer[j].uv.y,
             };
-            ++texcoord;
+            ++uv;
 
             *color = list->VtxBuffer[j].col;
             ++color;

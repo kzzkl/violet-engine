@@ -16,7 +16,8 @@ public:
     struct parameter
     {
         std::span<rdg_texture*> gbuffers;
-        std::span<rdg_texture*> auxiliary_buffers;
+        rdg_texture* ao_buffer;
+        rdg_texture* depth_buffer;
         rdg_texture* render_target;
 
         rdg_buffer* shadow_light_buffer{nullptr};

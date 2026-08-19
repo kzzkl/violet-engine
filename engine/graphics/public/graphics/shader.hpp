@@ -79,7 +79,7 @@ struct shader
         std::uint32_t position_address;
         std::uint32_t normal_address;
         std::uint32_t tangent_address;
-        std::uint32_t texcoord_address;
+        std::uint32_t uv_address;
         std::uint32_t custom0_address;
         std::uint32_t custom1_address;
         std::uint32_t custom2_address;
@@ -284,6 +284,8 @@ struct mesh_fs : public shader_fs
 
 struct material_resolve_cs : public shader_cs
 {
+    static constexpr std::string_view path = "assets/shaders/visibility/material_resolve.hlsl";
+
     struct constant_data
     {
         std::uint32_t gbuffers[8];
@@ -293,37 +295,6 @@ struct material_resolve_cs : public shader_cs
         std::uint32_t material_offset_buffer;
 
         std::uint32_t resolve_pipeline;
-    };
-
-    static constexpr parameter_layout parameters = {
-        {.space = 0, .desc = bindless},
-        {.space = 1, .desc = scene},
-        {.space = 2, .desc = camera},
-    };
-};
-
-struct shading_model_cs : public shader_cs
-{
-    struct constant_data
-    {
-        std::uint32_t gbuffers[8];
-        std::uint32_t auxiliary_buffers[4];
-        std::uint32_t render_target;
-        std::uint32_t shading_model;
-        std::uint32_t worklist_buffer;
-        std::uint32_t worklist_offset;
-        std::uint32_t shadow_light_index;
-        std::uint32_t shadow_mask;
-        std::uint32_t stage;
-        std::uint32_t prefilter_map;
-        std::uint32_t irradiance_sh;
-        std::uint32_t sun_index;
-        float planet_radius;
-        float atmosphere_radius;
-        std::uint32_t transmittance_lut;
-        std::uint32_t indirect_diffuse;
-        std::uint32_t padding0;
-        std::uint32_t padding1;
     };
 
     static constexpr parameter_layout parameters = {

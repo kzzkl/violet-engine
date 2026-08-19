@@ -25,7 +25,7 @@ plane_geometry::plane_geometry(
     std::vector<vec3f> positions;
     std::vector<vec3f> normals;
     std::vector<vec4f> tangents;
-    std::vector<vec2f> texcoords;
+    std::vector<vec2f> uvs;
     std::vector<std::uint32_t> indexes;
 
     for (int i = 0; i < grid_y1; ++i)
@@ -40,10 +40,10 @@ plane_geometry::plane_geometry(
             normals.push_back({.x = 0, .y = 0, .z = 1});
             tangents.push_back({.x = 1, .y = 0, .z = 0, .w = 1});
 
-            vec2f texcoord;
-            texcoord.x = static_cast<float>(j) / static_cast<float>(grid_x);
-            texcoord.y = 1.0f - (static_cast<float>(i) / static_cast<float>(grid_y));
-            texcoords.push_back(texcoord);
+            vec2f uv;
+            uv.x = static_cast<float>(j) / static_cast<float>(grid_x);
+            uv.y = 1.0f - (static_cast<float>(i) / static_cast<float>(grid_y));
+            uvs.push_back(uv);
         }
     }
 
@@ -69,7 +69,7 @@ plane_geometry::plane_geometry(
     set_positions(positions);
     set_normals(normals);
     set_tangents(tangents);
-    set_texcoords(texcoords);
+    set_uvs(uvs);
     set_indexes(indexes);
 
     add_submesh(0, 0, static_cast<std::uint32_t>(indexes.size()));

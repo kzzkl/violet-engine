@@ -21,7 +21,7 @@ fs_output fs_main(vs_output input)
     gbuffer.albedo = 0.0;
     gbuffer.roughness = 0.0;
     gbuffer.metallic = 0.0;
-    gbuffer.emissive = diffuse_texture.Sample(linear_repeat_sampler, input.texcoord).rgb;
+    gbuffer.emissive = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
     gbuffer.normal = 0.0;
     gbuffer.shading_model = material_info.shading_model;
 

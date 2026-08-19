@@ -221,9 +221,9 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
                     geometry.geometry_id,
                     GEOMETRY_BUFFER_TANGENT,
                     geometry.vertex_offset),
-                .texcoord_address = get_buffer_address(
+                .uv_address = get_buffer_address(
                     geometry.geometry_id,
-                    GEOMETRY_BUFFER_TEXCOORD,
+                    GEOMETRY_BUFFER_UV,
                     geometry.vertex_offset),
                 .custom0_address = get_buffer_address(
                     geometry.geometry_id,

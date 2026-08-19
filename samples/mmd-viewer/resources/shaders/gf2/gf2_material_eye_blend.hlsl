@@ -11,8 +11,8 @@ struct vs_output
     float3 normal_ws : NORMAL_WS;
     float3 tangent_ws : TANGENT_WS;
     float3 bitangent_ws : BITANGENT_WS;
-    float2 texcoord : TEXCOORD;
-    float4 texcoord2 : TEXCOORD2;
+    float2 uv : TEXCOORD;
+    float4 uv2 : TEXCOORD2;
     uint material_address : MATERIAL_ADDRESS;
 };
 
@@ -28,5 +28,5 @@ float4 fs_main(vs_output input) : SV_TARGET
     gf2_material_eye material = load_material<gf2_material_eye>(scene.material_buffer, input.material_address);
 
     Texture2D<float4> blend_texture = ResourceDescriptorHeap[material.blend_texture];
-    return blend_texture.Sample(linear_repeat_sampler, input.texcoord);
+    return blend_texture.Sample(linear_repeat_sampler, input.uv);
 }

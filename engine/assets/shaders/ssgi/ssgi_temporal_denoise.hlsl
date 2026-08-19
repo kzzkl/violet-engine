@@ -74,7 +74,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
@@ -82,26 +82,26 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     Texture2D<float4> history_buffer = ResourceDescriptorHeap[constant.history_buffer];
     Texture2D<float2> motion_vector = ResourceDescriptorHeap[constant.motion_vector];
 
-    float4 curr_color = current_buffer.SampleLevel(linear_clamp_sampler, texcoord, 0.0);
+    float4 curr_color = current_buffer.SampleLevel(linear_clamp_sampler, uv, 0.0);
     if (constant.history_valid == 0)
     {
         indirect_diffuse[dtid.xy] = curr_color;
         return;
     }
 
-    float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, texcoord, 0.0).xy;
-    float2 history_texcoord = texcoord + velocity;
-    if (any(history_texcoord < 0.0) || any(history_texcoord > 1.0))
+    float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, uv, 0.0).xy;
+    float2 history_uv = uv + velocity;
+    if (any(history_uv < 0.0) || any(history_uv > 1.0))
     {
         indirect_diffuse[dtid.xy] = curr_color;
         return;
     }
 
-    float3 prev_color = history_buffer.SampleLevel(linear_clamp_sampler, history_texcoord, 0.0).rgb;
+    float3 prev_color = history_buffer.SampleLevel(linear_clamp_sampler, history_uv, 0.0).rgb;
 
     float3 aabb_min;
     float3 aabb_max;
-    clip_aabb(curr_color.rgb, 1.0, texcoord, constant.texel_size, current_buffer, linear_clamp_sampler, aabb_min, aabb_max);
+    clip_aabb(curr_color.rgb, 1.0, uv, constant.texel_size, current_buffer, linear_clamp_sampler, aabb_min, aabb_max);
 
     prev_color = clamp(prev_color, aabb_min, aabb_max);
 

@@ -1,10 +1,42 @@
 #include "graphics/material.hpp"
+#include "common/utility.hpp"
 #include "graphics/material_manager.hpp"
+#include <format>
 
 namespace violet
 {
-material::material() noexcept
+struct material_deferred_vs : public mesh_vs
 {
+    static constexpr std::string_view path = "assets/shaders/materials/material_deferred.hlsl";
+};
+
+struct material_deferred_fs : public mesh_fs
+{
+    static constexpr std::string_view path = "assets/shaders/materials/material_deferred.hlsl";
+};
+
+struct material_visibility_vs : public mesh_vs
+{
+    static constexpr std::string_view path = "assets/shaders/visibility/material_visibility.hlsl";
+};
+
+struct material_visibility_fs : public mesh_fs
+{
+    static constexpr std::string_view path = "assets/shaders/visibility/material_visibility.hlsl";
+};
+
+material::material(std::string_view name, std::size_t constant_size, std::string_view shader_path)
+    : m_name(name)
+{
+    if (shader_path.empty())
+    {
+        m_shader_path = std::format("materials/{}.hlsli", name);
+    }
+    else
+    {
+        m_shader_path = shader_path;
+    }
+
     auto* material_manager = render_device::instance().get_material_manager();
     m_material_id = material_manager->add_material(this);
 
@@ -18,6 +50,8 @@ material::material() noexcept
         .depth_stencil_state = device.get_depth_stencil_state<true, true, RHI_COMPARE_OP_GREATER>(),
         .primitive_topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     };
+
+    m_constant.resize(sizeof(material_header) + constant_size);
 }
 
 material::~material()
@@ -25,14 +59,14 @@ material::~material()
     auto* material_manager = render_device::instance().get_material_manager();
     material_manager->remove_material(m_material_id);
 
-    if (m_raster_pipeline_id != 0)
+    if (get_raster_pipeline_id() != 0)
     {
-        material_manager->remove_raster_pipeline(m_raster_pipeline_id);
+        material_manager->remove_raster_pipeline(get_raster_pipeline_id());
     }
 
-    if (m_resolve_pipeline_id != 0)
+    if (get_resolve_pipeline_id() != 0)
     {
-        material_manager->remove_resolve_pipeline(m_resolve_pipeline_id);
+        material_manager->remove_resolve_pipeline(get_resolve_pipeline_id());
     }
 }
 
@@ -91,37 +125,51 @@ void material::set_shadow_cull_mode(shadow_cull_mode cull_mode)
 
 void material::update()
 {
+    auto& device = render_device::instance();
+
     auto* material_manager = render_device::instance().get_material_manager();
 
     if (m_dirty_flags & DIRTY_FLAG_PIPELINE)
     {
-        auto* material_manager = render_device::instance().get_material_manager();
-
         std::vector<std::wstring> defines;
         if (get_opacity_cutoff())
         {
             defines.emplace_back(L"-DVIOLET_OPACITY_CUTOFF");
         }
 
-        switch (get_material_path())
+        defines.emplace_back(std::format(L"-DMATERIAL_NAME={}", string_to_wstring(m_name)));
+        defines.emplace_back(
+            std::format(L"-DMATERIAL_SHADER=\"{}\"", string_to_wstring(m_shader_path)));
+
+        rhi_shader* vertex_shader = nullptr;
+        rhi_shader* fragment_shader = nullptr;
+
+        material_path material_path = get_material_path();
+
+        switch (material_path)
         {
-        case MATERIAL_PATH_FORWARD:
-            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH_FORWARD");
+        case MATERIAL_PATH_FORWARD: {
+            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH=MATERIAL_PATH_FORWARD");
             break;
-        case MATERIAL_PATH_DEFERRED:
-            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH_DEFERRED");
+        }
+        case MATERIAL_PATH_DEFERRED: {
+            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH=MATERIAL_PATH_DEFERRED");
+            vertex_shader = device.get_shader<material_deferred_vs>(defines);
+            fragment_shader = device.get_shader<material_deferred_fs>(defines);
             break;
+        }
+        case MATERIAL_PATH_VISIBILITY: {
+            defines.emplace_back(L"-DVIOLET_MATERIAL_PATH=MATERIAL_PATH_VISIBILITY");
+            vertex_shader = device.get_shader<material_visibility_vs>(defines);
+            fragment_shader = device.get_shader<material_visibility_fs>(defines);
+            break;
+        }
         default:
             break;
         }
 
-        rhi_shader* vertex_shader = get_vertex_shader(defines);
-        rhi_shader* fragment_shader = get_fragment_shader(defines);
-        rhi_shader* geometry_shader = get_geometry_shader(defines);
-
         if ((vertex_shader != nullptr && m_raster_pipeline.vertex_shader != vertex_shader) ||
-            (fragment_shader != nullptr && m_raster_pipeline.fragment_shader != fragment_shader) ||
-            (geometry_shader != nullptr && m_raster_pipeline.geometry_shader != geometry_shader))
+            (fragment_shader != nullptr && m_raster_pipeline.fragment_shader != fragment_shader))
         {
             if (m_raster_pipeline_id != 0)
             {
@@ -130,56 +178,60 @@ void material::update()
 
             m_raster_pipeline.vertex_shader = vertex_shader;
             m_raster_pipeline.fragment_shader = fragment_shader;
-            m_raster_pipeline.geometry_shader = geometry_shader;
 
             m_raster_pipeline_id = material_manager->add_raster_pipeline(m_raster_pipeline);
         }
 
-        rhi_shader* resolve_shader = get_resolve_shader({});
-        if (resolve_shader != nullptr && m_resolve_pipeline.compute_shader != resolve_shader)
+        if (material_path == MATERIAL_PATH_VISIBILITY)
         {
-            if (m_resolve_pipeline_id != 0)
+            rhi_shader* resolve_shader = device.get_shader<material_resolve_cs>(defines);
+
+            if (m_resolve_pipeline.compute_shader != resolve_shader)
             {
-                material_manager->remove_resolve_pipeline(m_resolve_pipeline_id);
+                auto& header = get_header();
+
+                if (header.get_resolve_pipeline() != 0)
+                {
+                    material_manager->remove_resolve_pipeline(header.get_resolve_pipeline());
+                }
+
+                m_resolve_pipeline.compute_shader = resolve_shader;
+
+                header.set_resolve_pipeline(
+                    material_manager->add_resolve_pipeline(m_resolve_pipeline));
+
+                m_dirty_flags |= DIRTY_FLAG_CONSTANT;
             }
-
-            m_resolve_pipeline.compute_shader = resolve_shader;
-
-            m_resolve_pipeline_id = material_manager->add_resolve_pipeline(m_resolve_pipeline);
-
-            m_dirty_flags |= DIRTY_FLAG_CONSTANT;
         }
     }
 
-    std::uint32_t shadow_batch = 0;
-    shadow_batch |= get_opacity_cutoff() ? 1 : 0;
+    rhi_cull_mode shadow_cull_mode = RHI_CULL_MODE_NONE;
     switch (m_shadow_cull_mode)
     {
     case SHADOW_CULL_MODE_NONE:
-        shadow_batch |= RHI_CULL_MODE_NONE << 1;
+        shadow_cull_mode = RHI_CULL_MODE_NONE;
         break;
     case SHADOW_CULL_MODE_BACK:
-        shadow_batch |= RHI_CULL_MODE_BACK << 1;
+        shadow_cull_mode = RHI_CULL_MODE_BACK;
         break;
     case SHADOW_CULL_MODE_FRONT:
-        shadow_batch |= RHI_CULL_MODE_FRONT << 1;
+        shadow_cull_mode = RHI_CULL_MODE_FRONT;
         break;
     default:
-        shadow_batch |= m_raster_pipeline.rasterizer_state->cull_mode << 1;
+        shadow_cull_mode = m_raster_pipeline.rasterizer_state->cull_mode;
         break;
     }
 
-    if (m_shadow_batch != shadow_batch)
+    auto& header = get_header();
+    if (shadow_cull_mode != header.get_shadow_cull_mode())
     {
-        m_shadow_batch = shadow_batch;
+        header.set_shadow_cull_mode(shadow_cull_mode);
         m_dirty_flags |= DIRTY_FLAG_CONSTANT;
     }
 
     if (m_dirty_flags & DIRTY_FLAG_CONSTANT)
     {
-        auto [data, size] =
-            get_constant_data(m_shading_model_id, m_resolve_pipeline_id, m_shadow_batch);
-        material_manager->update_constant(m_material_id, data, size);
+        material_manager->update_constant(m_material_id, m_constant.data(), m_constant.size());
     }
 
     m_dirty_flags = 0;
@@ -187,7 +239,7 @@ void material::update()
 
 void material::set_shading_model_impl(
     render_id shading_model_id,
-    const std::function<std::unique_ptr<shading_model_base>()>& creator)
+    const std::function<std::unique_ptr<shading_model>()>& creator)
 {
     auto* material_manager = render_device::instance().get_material_manager();
 
@@ -196,7 +248,7 @@ void material::set_shading_model_impl(
         material_manager->set_shading_model(shading_model_id, creator());
     }
 
-    m_shading_model_id = shading_model_id;
+    get_header().set_shading_model(shading_model_id);
 
     mark_dirty(DIRTY_FLAG_CONSTANT);
 }

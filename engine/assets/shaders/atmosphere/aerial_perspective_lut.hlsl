@@ -49,7 +49,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 eye = camera.position + float3(0.0, atmosphere.planet_radius, 0.0);
     eye.y = max(eye.y, atmosphere.planet_radius + 100.0);
 
-    float2 uv = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
     float3 view = normalize(lerp(
         lerp(constant.frustum_top_left, constant.frustum_top_right, uv.x),
         lerp(constant.frustum_bottom_left, constant.frustum_bottom_right, uv.x), uv.y));

@@ -81,7 +81,7 @@ void load_irradiance_sh_from_cube(uint thread_id, uint group_index)
     sh9 sh = (sh9)0;
 
     uint3 coord = uint3(thread_id % width, thread_id / width, 0);
-    float weight = texel_solid_angle(get_compute_texcoord(coord.xy, width, height), width);
+    float weight = texel_solid_angle(get_compute_uv(coord.xy, width, height), width);
 
     for (uint i = 0; i < 6; ++i)
     {

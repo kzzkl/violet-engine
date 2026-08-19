@@ -21,15 +21,15 @@ fs_output fs_main(vs_output input)
     Texture2D<float4> normal_texture = ResourceDescriptorHeap[material.normal_texture];
     Texture2D<float4> rmo_texture = ResourceDescriptorHeap[material.rmo_texture];
 
-    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.texcoord).rgb;
-    float3 rmo = rmo_texture.Sample(linear_repeat_sampler, input.texcoord).rgb;
+    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
+    float3 rmo = rmo_texture.Sample(linear_repeat_sampler, input.uv).rgb;
 
     float roughness = rmo.r;
     float metallic = rmo.g;
     float ao = rmo.b;
 
     float3 V = normalize(camera.position - input.position_ws);
-    float3 N = get_normal(input, normal_texture.Sample(linear_repeat_sampler, input.texcoord).xyz);
+    float3 N = get_normal(input, normal_texture.Sample(linear_repeat_sampler, input.uv).xyz);
 
     float3 direct_lighting = direct_light(N, V, albedo, roughness, metallic, material.ramp_texture, input.position_ws);
     float3 indirect_lighting = indirect_light(N, V, albedo, roughness, metallic, material.brdf_lut) * ao;

@@ -17,7 +17,7 @@ sphere_geometry::sphere_geometry(
     std::vector<vec3f> positions;
     std::vector<vec3f> normals;
     std::vector<vec4f> tangents;
-    std::vector<vec2f> texcoords;
+    std::vector<vec2f> uvs;
     std::vector<std::uint32_t> indexes;
 
     width_segments = std::max(3ull, width_segments);
@@ -70,7 +70,7 @@ sphere_geometry::sphere_geometry(
             tangents.push_back({.x = std::sin(phi), .y = 0.0f, .z = std::cos(phi), .w = 1.0f});
 
             // uv
-            texcoords.push_back({.x = u + u_offset, .y = 1 - v});
+            uvs.push_back({.x = u + u_offset, .y = 1 - v});
 
             vertices_row.push_back(index++);
         }
@@ -107,7 +107,7 @@ sphere_geometry::sphere_geometry(
     set_positions(positions);
     set_normals(normals);
     set_tangents(tangents);
-    set_texcoords(texcoords);
+    set_uvs(uvs);
     set_indexes(indexes);
 
     add_submesh(0, 0, static_cast<std::uint32_t>(indexes.size()));

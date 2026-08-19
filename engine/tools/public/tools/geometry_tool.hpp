@@ -13,7 +13,7 @@ public:
     static std::vector<vec4f> generate_tangents(
         std::span<const vec3f> positions,
         std::span<const vec3f> normals,
-        std::span<const vec2f> texcoords,
+        std::span<const vec2f> uvs,
         std::span<const std::uint32_t> indexes);
 
     static std::vector<vec3f> generate_smooth_normals(
@@ -27,7 +27,7 @@ public:
         std::span<vec3f> positions;
         std::span<vec3f> normals;
         std::span<vec4f> tangents;
-        std::span<vec2f> texcoords;
+        std::span<vec2f> uvs;
         std::span<std::uint32_t> indexes;
         std::span<const vec3f> locked_positions;
 
@@ -55,7 +55,7 @@ public:
         std::span<const vec3f> positions;
         std::span<const vec3f> normals;
         std::span<const vec4f> tangents;
-        std::span<const vec2f> texcoords;
+        std::span<const vec2f> uvs;
         std::span<const std::uint32_t> indexes;
         std::vector<submesh> submeshes;
     };
@@ -71,7 +71,7 @@ public:
         std::vector<vec3f> positions;
         std::vector<vec3f> normals;
         std::vector<vec4f> tangents;
-        std::vector<vec2f> texcoords;
+        std::vector<vec2f> uvs;
         std::vector<std::uint32_t> indexes;
         std::vector<submesh> submeshes;
     };

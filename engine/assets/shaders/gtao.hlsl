@@ -45,12 +45,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     SamplerState point_clamp_sampler = get_point_clamp_sampler();
 
     Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
-    float depth = depth_buffer.SampleLevel(point_clamp_sampler, texcoord, 0.0);
+    float depth = depth_buffer.SampleLevel(point_clamp_sampler, uv, 0.0);
 
     // If the depth value is 0 (reverse depth), it means the pixel has no valid depth information.
     if (depth == 0)
@@ -60,7 +60,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     }
 
     // Get the position of the current pixel in view space.
-    float3 position_vs = reconstruct_position(depth, texcoord, camera.matrix_p_inv).xyz;
+    float3 position_vs = reconstruct_position(depth, uv, camera.matrix_p_inv).xyz;
     float3 view = normalize(-position_vs);
 
     // Get the normal of the current pixel in view space.
@@ -128,15 +128,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
             offset = round(offset) * texel_size;
 
             // Calculate h1.
-            float p1_depth = hzb.SampleLevel(point_clamp_sampler, texcoord - offset, level);
-            float3 p1_position_vs = reconstruct_position(p1_depth, texcoord - offset, camera.matrix_p_inv).xyz;
+            float p1_depth = hzb.SampleLevel(point_clamp_sampler, uv - offset, level);
+            float3 p1_position_vs = reconstruct_position(p1_depth, uv - offset, camera.matrix_p_inv).xyz;
             float3 p1_delta = p1_position_vs - position_vs;
             float p1_delta_length = length(p1_delta);
             float p1_cos = dot(view, p1_delta / p1_delta_length);
 
             // Calculate h2.
-            float p2_depth = hzb.SampleLevel(point_clamp_sampler, texcoord + offset, level);
-            float3 p2_position_vs = reconstruct_position(p2_depth, texcoord + offset, camera.matrix_p_inv).xyz;
+            float p2_depth = hzb.SampleLevel(point_clamp_sampler, uv + offset, level);
+            float3 p2_position_vs = reconstruct_position(p2_depth, uv + offset, camera.matrix_p_inv).xyz;
             float3 p2_delta = p2_position_vs - position_vs;
             float p2_delta_length = length(p2_delta);
             float p2_cos = dot(view, p2_delta / p2_delta_length);

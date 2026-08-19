@@ -50,7 +50,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 uv = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
 

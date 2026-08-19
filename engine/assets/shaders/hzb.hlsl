@@ -44,7 +44,7 @@ void hzb_reduce(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 
         Texture2D<float> src = ResourceDescriptorHeap[constant.src];
         SamplerState hzb_sampler = SamplerDescriptorHeap[constant.hzb_sampler];
 
-        float2 uv = get_compute_texcoord(dtid.xy, width, height);
+        float2 uv = get_compute_uv(dtid.xy, width, height);
 
         float depth_mip0 = src.SampleLevel(hzb_sampler, uv, 0.0);
         dst_mip0[dtid.xy] = depth_mip0;

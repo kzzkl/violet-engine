@@ -149,7 +149,8 @@ void material_manager::remove_resolve_pipeline(render_id pipeline_id)
         m_resolve_pipeline_id_allocator.free(pipeline_id);
     }
 
-    while (m_resolve_pipelines[m_max_resolve_pipeline_id].second == 0)
+    while (m_max_resolve_pipeline_id > 0 &&
+           m_resolve_pipelines[m_max_resolve_pipeline_id].second == 0)
     {
         --m_max_resolve_pipeline_id;
     }
@@ -162,7 +163,7 @@ const rdg_compute_pipeline& material_manager::get_resolve_pipeline(render_id pip
 
 void material_manager::set_shading_model(
     render_id shading_model_id,
-    std::unique_ptr<shading_model_base>&& shading_model)
+    std::unique_ptr<shading_model>&& shading_model)
 {
     std::scoped_lock lock(m_mutex);
     if (m_shading_models.size() <= shading_model_id)
@@ -173,7 +174,7 @@ void material_manager::set_shading_model(
     m_shading_models[shading_model_id] = std::move(shading_model);
 }
 
-shading_model_base* material_manager::get_shading_model(render_id shading_model_id) const noexcept
+shading_model* material_manager::get_shading_model(render_id shading_model_id) const noexcept
 {
     std::scoped_lock lock(m_mutex);
 

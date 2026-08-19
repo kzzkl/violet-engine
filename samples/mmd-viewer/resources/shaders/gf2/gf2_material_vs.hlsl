@@ -20,8 +20,8 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     output.normal_ws = vertex.normal_ws;
     output.tangent_ws = vertex.tangent_ws;
     output.bitangent_ws = vertex.bitangent_ws;
-    output.texcoord = vertex.texcoord;
-    output.texcoord2 = mesh.fetch_custom_attribute<float4>(vertex_id, 1);
+    output.uv = vertex.uv;
+    output.uv2 = mesh.fetch_custom_attribute<float4>(vertex_id, 1);
     output.material_address = mesh.get_material_address();
 
     return output;

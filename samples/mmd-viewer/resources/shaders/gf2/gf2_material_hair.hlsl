@@ -18,7 +18,7 @@ fs_output fs_main(vs_output input)
 
     Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[material.diffuse_texture];
 
-    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.texcoord).rgb;
+    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
     float roughness = 1.0;
     float metallic = 0.0;
 

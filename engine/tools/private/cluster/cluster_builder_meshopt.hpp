@@ -78,7 +78,7 @@ public:
     void set_positions(std::span<const vec3f> positions);
     void set_normals(std::span<const vec3f> normals);
     void set_tangents(std::span<const vec4f> tangents);
-    void set_texcoords(std::span<const vec2f> texcoords);
+    void set_uvs(std::span<const vec2f> uvs);
     void set_indexes(std::span<const std::uint32_t> indexes);
 
     void build(const cluster_builder_meshopt_options& options = {});
@@ -113,9 +113,9 @@ public:
         return m_tangents;
     }
 
-    const std::vector<vec2f>& get_texcoords() const noexcept
+    const std::vector<vec2f>& get_uvs() const noexcept
     {
-        return m_texcoords;
+        return m_uvs;
     }
 
     const std::vector<std::uint32_t>& get_indexes() const noexcept
@@ -190,7 +190,7 @@ private:
             count += 4;
         }
 
-        if (!m_texcoords.empty())
+        if (!m_uvs.empty())
         {
             count += 2;
         }
@@ -207,7 +207,7 @@ private:
     std::vector<vec3f> m_positions;
     std::vector<vec3f> m_normals;
     std::vector<vec4f> m_tangents;
-    std::vector<vec2f> m_texcoords;
+    std::vector<vec2f> m_uvs;
 
     std::vector<std::uint32_t> m_indexes;
 

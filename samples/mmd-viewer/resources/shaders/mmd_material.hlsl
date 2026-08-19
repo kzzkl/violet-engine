@@ -16,7 +16,7 @@ struct vs_output
 {
     float4 position_cs : SV_POSITION;
     float3 normal_ws : NORMAL_WS;
-    float2 texcoord : TEXCOORD;
+    float2 uv : TEXCOORD;
     uint material_address : MATERIAL_ADDRESS;
 };
 
@@ -31,7 +31,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     vs_output output;
     output.position_cs = vertex.position_cs;
     output.normal_ws = vertex.normal_ws;
-    output.texcoord = vertex.texcoord;
+    output.uv = vertex.uv;
     output.material_address = mesh.get_material_address();
 
     return output;
@@ -70,7 +70,7 @@ fs_output fs_main(vs_output input)
     Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[material.diffuse_texture];
     Texture2D<float4> environment_texture = ResourceDescriptorHeap[material.environment_texture];
 
-    float4 color = material.diffuse * diffuse_texture.Sample(linear_repeat_sampler, input.texcoord);
+    float4 color = material.diffuse * diffuse_texture.Sample(linear_repeat_sampler, input.uv);
 
     float3 rgb = color.rgb;
     float3 hsv = rgb_to_hsv(rgb);
@@ -80,8 +80,8 @@ fs_output fs_main(vs_output input)
     // {
     //     float3 normal_vs = normalize(input.normal_vs);
 
-    //     float2 environment_texcoord = float2(normal_vs.x * 0.5 + 0.5, 1.0 - (normal_vs.y * 0.5 + 0.5));
-    //     float4 environment_color = environment_texture.Sample(linear_clamp_sampler, environment_texcoord);
+    //     float2 environment_uv = float2(normal_vs.x * 0.5 + 0.5, 1.0 - (normal_vs.y * 0.5 + 0.5));
+    //     float4 environment_color = environment_texture.Sample(linear_clamp_sampler, environment_uv);
 
     //     if (material.environment_blend_mode == 1)
     //     {

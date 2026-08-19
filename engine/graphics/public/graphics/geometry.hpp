@@ -14,7 +14,7 @@ enum geometry_buffer_type
     GEOMETRY_BUFFER_POSITION,
     GEOMETRY_BUFFER_NORMAL,
     GEOMETRY_BUFFER_TANGENT,
-    GEOMETRY_BUFFER_TEXCOORD,
+    GEOMETRY_BUFFER_UV,
     GEOMETRY_BUFFER_CUSTOM_0,
     GEOMETRY_BUFFER_CUSTOM_1,
     GEOMETRY_BUFFER_CUSTOM_2,
@@ -66,9 +66,9 @@ public:
     void set_tangents_shared(geometry* src_geometry);
     std::span<const vec4f> get_tangents() const noexcept;
 
-    void set_texcoords(std::span<const vec2f> texcoords);
-    void set_texcoords_shared(geometry* src_geometry);
-    std::span<const vec2f> get_texcoords() const noexcept;
+    void set_uvs(std::span<const vec2f> uvs);
+    void set_uvs_shared(geometry* src_geometry);
+    std::span<const vec2f> get_uvs() const noexcept;
 
     template <std::ranges::contiguous_range R>
     void set_custom(std::size_t index, R&& attribute)

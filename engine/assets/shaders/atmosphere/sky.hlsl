@@ -22,7 +22,7 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 struct vs_output
 {
     float4 position : SV_POSITION;
-    float3 texcoord : TEXCOORD;
+    float3 view : VIEW;
 #ifdef DYNAMIC_SKY
     float3 transmittance : TRANSMITTANCE;
 #endif
@@ -59,7 +59,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
     vs_output result;
     result.position = mul(camera.matrix_vp_no_jitter, float4(position, 1.0));
     result.position.z = 0.0;
-    result.texcoord = normalize(vertices[indexes[vertex_id]]);
+    result.view = normalize(vertices[indexes[vertex_id]]);
 
 #ifdef DYNAMIC_SKY
     // float r = max(camera.position.y + constant.planet_radius, constant.planet_radius + 1.0);
@@ -75,7 +75,7 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
 
 float4 fs_main(vs_output input) : SV_TARGET
 {
-    float3 view = normalize(input.texcoord);
+    float3 view = normalize(input.view);
 
 #ifdef DYNAMIC_SKY
     Texture2D<float3> sky_view_lut = ResourceDescriptorHeap[constant.sky_view_lut];

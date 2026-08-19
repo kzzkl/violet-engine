@@ -37,13 +37,21 @@ struct dispatch_command
     uint z;
 };
 
+enum geometry_attribute
+{
+    GEOMETRY_ATTRIBUTE_POSITION = 0,
+    GEOMETRY_ATTRIBUTE_NORMAL = 1,
+    GEOMETRY_ATTRIBUTE_TANGENT = 2,
+    GEOMETRY_ATTRIBUTE_UV = 3,
+    GEOMETRY_ATTRIBUTE_CUSTOM0 = 4,
+    GEOMETRY_ATTRIBUTE_CUSTOM1 = 5,
+    GEOMETRY_ATTRIBUTE_CUSTOM2 = 6,
+    GEOMETRY_ATTRIBUTE_CUSTOM3 = 7,
+};
+
 struct geometry_data
 {
-    uint position_address;
-    uint normal_address;
-    uint tangent_address;
-    uint texcoord_address;
-    uint4 custom_addresses;
+    uint attributes[8];
     uint index_offset;
     uint index_count;
     uint cluster_root;
@@ -175,37 +183,6 @@ SamplerState get_linear_clamp_sampler()
     return SamplerDescriptorHeap[5];
 }
 
-struct material_info
-{
-    uint resolve_pipeline;
-    uint shading_model;
-    uint shadow_batch;
-    uint opacity_mask;
-    uint opacity_cutoff;
-};
-
-material_info load_material_info(uint material_buffer, uint material_address)
-{
-    ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
-    uint2 pack = buffer.Load<uint2>(material_address);
-
-    material_info info;
-    info.resolve_pipeline = (pack.x & 0xFFFF0000) >> 16;
-    info.shading_model = (pack.x & 0xFF00 ) >> 8;
-    info.shadow_batch = pack.x & 0xFF;
-    info.opacity_mask = (pack.y & 0xFFFFFF00) >> 8;
-    info.opacity_cutoff = pack.y & 0xFF;
-
-    return info;
-}
-
-template <typename T>
-T load_material(uint material_buffer, uint material_address)
-{
-    ByteAddressBuffer buffer = ResourceDescriptorHeap[material_buffer];
-    return buffer.Load<T>(material_address + sizeof(uint2)); // Skip material info.
-}
-
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
 {
     StructuredBuffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];
@@ -219,20 +196,20 @@ float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
     return morph;
 }
 
-float4 reconstruct_position(float depth, float2 texcoord, float4x4 matrix_inv)
+float4 reconstruct_position(float depth, float2 uv, float4x4 matrix_inv)
 {
-    texcoord.y = 1.0 - texcoord.y;
-    float4 position_cs = float4(texcoord * 2.0 - 1.0, depth, 1.0);
+    uv.y = 1.0 - uv.y;
+    float4 position_cs = float4(uv * 2.0 - 1.0, depth, 1.0);
     float4 position_ws = mul(matrix_inv, position_cs);
 
     return position_ws / position_ws.w;
 }
 
-float4 reconstruct_position(uint depth_buffer, float2 texcoord, float4x4 matrix_inv)
+float4 reconstruct_position(uint depth_buffer, float2 uv, float4x4 matrix_inv)
 {
     Texture2D<float> buffer = ResourceDescriptorHeap[depth_buffer];
-    float depth = buffer.SampleLevel(get_point_clamp_sampler(), texcoord, 0.0);
-    return reconstruct_position(depth, texcoord, matrix_inv);
+    float depth = buffer.SampleLevel(get_point_clamp_sampler(), uv, 0.0);
+    return reconstruct_position(depth, uv, matrix_inv);
 }
 
 float get_luminance(float3 color)
@@ -250,9 +227,17 @@ float3 tonemap_invert(float3 color)
     return color / (1 - get_luminance(color));
 }
 
-float2 get_compute_texcoord(uint2 texel_coord, uint width, uint height)
+float2 get_compute_uv(uint2 texel_coord, uint width, uint height)
 {
     return (float2(texel_coord) + 0.5) / float2(width, height);
 }
+
+#define MATERIAL_PATH_FORWARD 1
+#define MATERIAL_PATH_DEFERRED 2
+#define MATERIAL_PATH_VISIBILITY 3
+
+#ifndef VIOLET_MATERIAL_PATH
+#define VIOLET_MATERIAL_PATH MATERIAL_PATH_VISIBILITY
+#endif
 
 #endif

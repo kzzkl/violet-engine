@@ -24,7 +24,7 @@ ConstantBuffer<camera_data> camera : register(b0, space2);
 struct vs_output
 {
     float4 position : SV_POSITION;
-    float2 texcoord : TEXCOORD;
+    float2 uv : TEXCOORD;
 };
 
 static const uint PCF_SAMPLE_COUNT = 8;
@@ -85,7 +85,7 @@ float sample_shadow_pcf(
 float fs_main(vs_output input) : SV_TARGET
 {
     Texture2D<float> depth_buffer = ResourceDescriptorHeap[constant.depth_buffer];
-    float depth = depth_buffer.SampleLevel(get_point_clamp_sampler(), input.texcoord, 0.0);
+    float depth = depth_buffer.SampleLevel(get_point_clamp_sampler(), input.uv, 0.0);
     if (depth == 0.0)
     {
         return 0.0;
@@ -99,13 +99,13 @@ float fs_main(vs_output input) : SV_TARGET
 
     light_data light = lights[light_id];
 
-    float3 position_ws = reconstruct_position(depth, input.texcoord, camera.matrix_vp_inv).xyz;
+    float3 position_ws = reconstruct_position(depth, input.uv, camera.matrix_vp_inv).xyz;
 
     Texture2D<uint> buffer = ResourceDescriptorHeap[constant.normal_buffer];
     uint width;
     uint height;
     buffer.GetDimensions(width, height);
-    float3 normal_ws = unpack_gbuffer_normal(constant.normal_buffer, input.texcoord * float2(width, height));
+    float3 normal_ws = unpack_gbuffer_normal(constant.normal_buffer, input.uv * float2(width, height));
 
     StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
     Texture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];

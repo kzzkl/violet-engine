@@ -63,8 +63,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
-    float4 position_ws = reconstruct_position(depth, texcoord, camera.matrix_vp_inv);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
+    float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
 
     uint light_count = vsm_info[0].visible_light_count;
 

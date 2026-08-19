@@ -38,6 +38,11 @@ public:
         m_command->set_constant(&constant, sizeof(T), offset);
     }
 
+    void set_constant(const void* data, std::size_t size, std::size_t offset = 0)
+    {
+        m_command->set_constant(data, size, offset);
+    }
+
     void set_viewport();
     void set_viewport(const rhi_viewport& viewport)
     {

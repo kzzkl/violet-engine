@@ -113,21 +113,21 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
 #if defined(USE_MOTION_VECTOR)
     float2 motion_vector = get_motion_vector(dtid.xy);
-    float2 history_texcoord = texcoord + motion_vector;
+    float2 history_uv = uv + motion_vector;
 #else
-    float2 history_texcoord = texcoord;
+    float2 history_uv = uv;
 #endif
 
-    if (!any(history_texcoord < 0.0) && !any(history_texcoord > 1.0))
+    if (!any(history_uv < 0.0) && !any(history_uv > 1.0))
     {
         float3 current_color = current[dtid.xy].rgb;
 
         Texture2D<float4> history = ResourceDescriptorHeap[constant.history_render_target];
-        float3 history_color = history.SampleLevel(get_linear_clamp_sampler(), history_texcoord, 0.0).rgb;
+        float3 history_color = history.SampleLevel(get_linear_clamp_sampler(), history_uv, 0.0).rgb;
         history_color = clip_color(history_color, dtid.xy);
 
         current[dtid.xy] = float4(lerp(current_color, history_color, 0.9), 1.0);

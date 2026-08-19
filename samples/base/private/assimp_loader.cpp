@@ -55,7 +55,7 @@ void process_mesh(aiMesh* mesh, mesh_loader::scene_data& scene_data)
             vec2f uv;
             uv.x = mesh->mTextureCoords[0][i].x;
             uv.y = mesh->mTextureCoords[0][i].y;
-            geometry_data.texcoords.push_back(uv);
+            geometry_data.uvs.push_back(uv);
         }
     }
 

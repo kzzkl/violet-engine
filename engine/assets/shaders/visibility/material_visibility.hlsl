@@ -1,5 +1,6 @@
+
+#include "shader_configs/material_config.hlsli"
 #include "cluster.hlsli"
-#include "mesh.hlsli"
 #include "visibility/visibility_utils.hlsli"
 
 struct constant_data
@@ -17,9 +18,8 @@ struct vs_output
     uint instance_id : INSTANCE_ID;
     uint primitive_offset : PRIMITIVE_OFFSET;
 
-    float2 texcoord : TEXCOORD;
-
 #ifdef VIOLET_OPACITY_CUTOFF
+    float2 uv : TEXCOORD;
     uint opacity_mask : OPACITY_MASK;
     uint opacity_cutoff : OPACITY_CUTOFF;
 #endif
@@ -31,11 +31,15 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     uint instance_id = draw_infos[draw_id].instance_id;
     uint cluster_id = draw_infos[draw_id].cluster_id;
 
-    mesh mesh = mesh::create(instance_id, scene);
-    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
+    material_context context;
+    mesh mesh = mesh::create(instance_id, scene, vertex_id);
+
+    material_data material = load_material<material_data>(scene.material_buffer, mesh.get_material_address());
+
+    material::varying varying = material.data.evaluate_varying(context, mesh, camera);
 
     vs_output output;
-    output.position_cs = vertex.position_cs;
+    output.position_cs = varying.position_cs;
     output.instance_id = instance_id;
 
     if (cluster_id != 0xFFFFFFFF)
@@ -50,12 +54,10 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
         output.primitive_offset = 0;
     }
 
-    output.texcoord = vertex.texcoord;
-
 #ifdef VIOLET_OPACITY_CUTOFF
-    material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
-    output.opacity_mask = material_info.opacity_mask;
-    output.opacity_cutoff = material_info.opacity_cutoff;
+    output.uv = varying.uv;
+    output.opacity_mask = material.common.get_opacity_mask();
+    output.opacity_cutoff = material.common.get_opacity_cutoff();
 #endif
 
     return output;
@@ -67,7 +69,7 @@ uint2 fs_main(vs_output input, uint primitive_id : SV_PrimitiveID) : SV_Target0
     Texture2D<float4> opacity_mask = ResourceDescriptorHeap[input.opacity_mask];
     SamplerState point_repeat_sampler = get_point_repeat_sampler();
 
-    float mask = opacity_mask.Sample(point_repeat_sampler, input.texcoord).a;
+    float mask = opacity_mask.Sample(point_repeat_sampler, input.uv).a;
     clip(mask * 255.0 - input.opacity_cutoff);
 #endif
 

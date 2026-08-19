@@ -1,5 +1,5 @@
 #include "cluster.hlsli"
-#include "mesh.hlsli"
+#include "material.hlsli"
 #include "utils.hlsli"
 
 struct constant_data
@@ -35,7 +35,7 @@ struct vs_output
     uint primitive_offset : PRIMITIVE_OFFSET;
 #endif
 
-    float2 texcoord : TEXCOORD;
+    float2 uv : TEXCOORD;
     uint opacity_mask : OPACITY_MASK;
     uint opacity_cutoff : OPACITY_CUTOFF;
 };
@@ -46,11 +46,10 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     uint instance_id = draw_infos[draw_id].instance_id;
     uint cluster_id = draw_infos[draw_id].cluster_id;
 
-    mesh mesh = mesh::create(instance_id, scene);
-    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
+    mesh mesh = mesh::create(instance_id, scene, vertex_id);
 
     vs_output output;
-    output.position_cs = vertex.position_cs;
+    output.position_cs = mul(camera.matrix_vp, mul(mesh.get_model_matrix(), float4(mesh.vertex.position, 1.0)));
 
 #if DEBUG_MODE_CLUSTER
     output.cluster_id = cluster_id;
@@ -78,11 +77,11 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     }
 #endif
 
-    output.texcoord = vertex.texcoord;
+    output.uv = mesh.vertex.uv;
 
-    material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
-    output.opacity_mask = material_info.opacity_mask;
-    output.opacity_cutoff = material_info.opacity_cutoff;
+    material_common material = load_material<material_common>(scene.material_buffer, mesh.get_material_address());
+    output.opacity_mask = material.get_opacity_mask();
+    output.opacity_cutoff = material.get_opacity_cutoff();
 
     return output;
 }
@@ -92,7 +91,7 @@ float4 fs_main(vs_output input, uint primitive_id : SV_PrimitiveID) : SV_Target0
     Texture2D<float4> opacity_mask = ResourceDescriptorHeap[input.opacity_mask];
     SamplerState point_repeat_sampler = get_point_repeat_sampler();
 
-    float mask = opacity_mask.Sample(point_repeat_sampler, input.texcoord).a;
+    float mask = opacity_mask.Sample(point_repeat_sampler, input.uv).a;
     clip(mask * 255.0 - input.opacity_cutoff);
 
     float3 color;

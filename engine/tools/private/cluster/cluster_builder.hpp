@@ -66,7 +66,7 @@ public:
     void set_positions(std::span<const vec3f> positions);
     void set_normals(std::span<const vec3f> normals);
     void set_tangents(std::span<const vec4f> tangents);
-    void set_texcoords(std::span<const vec2f> texcoords);
+    void set_uvs(std::span<const vec2f> uvs);
     void set_indexes(std::span<const std::uint32_t> indexes);
 
     void build();
@@ -101,9 +101,9 @@ public:
         return m_tangents;
     }
 
-    const std::vector<vec2f>& get_texcoords() const noexcept
+    const std::vector<vec2f>& get_uvs() const noexcept
     {
-        return m_texcoords;
+        return m_uvs;
     }
 
     const std::vector<std::uint32_t>& get_indexes() const noexcept
@@ -129,7 +129,7 @@ private:
 
         attribute_count += m_normals.empty() ? 0 : 3;
         attribute_count += m_tangents.empty() ? 0 : 4;
-        attribute_count += m_texcoords.empty() ? 0 : 2;
+        attribute_count += m_uvs.empty() ? 0 : 2;
 
         return attribute_count;
     }
@@ -143,7 +143,7 @@ private:
     std::vector<vec3f> m_positions;
     std::vector<vec3f> m_normals;
     std::vector<vec4f> m_tangents;
-    std::vector<vec2f> m_texcoords;
+    std::vector<vec2f> m_uvs;
     std::vector<std::uint32_t> m_indexes;
 };
 } // namespace violet

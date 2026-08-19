@@ -3,6 +3,10 @@
 
 #include "common.hlsli"
 
+#ifndef USE_RASTER_INTERPOLATION
+#define USE_RASTER_INTERPOLATION 1
+#endif
+
 // http://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/
 struct barycentric_deriv
 {
@@ -62,186 +66,231 @@ float3 interpolate_with_deriv(barycentric_deriv deriv, float v0, float v1, float
     return ret;
 }
 
-struct vertex
+struct mesh_vertex
 {
     float3 position;
     float3 normal;
     float4 tangent;
-    float2 texcoord;
-
-    float3 position_ws;
-    float3 normal_ws;
-    float3 tangent_ws;
-    float3 bitangent_ws;
-
-    float4 position_cs;
+    float2 uv;
 };
 
 struct mesh
 {
-    uint instance_id;
+    geometry_data geometry;
+    instance_data instance;
+
     scene_data scene;
 
-    static mesh create(uint instance_id, scene_data scene)
-    {
-        mesh result;
-        result.instance_id = instance_id;
-        result.scene = scene;
-        return result;
-    }
+    mesh_vertex vertex;
 
-    vertex fetch_vertex(uint vertex_id, float4x4 matrix_vp)
-    {
-        StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        instance_data instance = instances[instance_id];
+#if USE_RASTER_INTERPOLATION
+    uint vertex_id;
 
-        StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-        geometry_data geometry = geometries[instance.geometry_index];
+    static mesh create(uint instance_id, scene_data scene, uint vertex_id);
+#else
+    uint3 triangle_indexes;
+    barycentric_deriv deriv;
 
-        StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-        mesh_data mesh = meshes[instance.mesh_index];
-
-        ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
-
-        vertex result;
-        result.position = vertex_buffer.Load<float3>(geometry.position_address + vertex_id * sizeof(float3));
-        result.position_ws = mul(mesh.matrix_m, float4(result.position, 1.0)).xyz;
-        result.position_cs = mul(matrix_vp, float4(result.position_ws, 1.0));
-
-        if (geometry.normal_address != 0)
-        {
-            result.normal = vertex_buffer.Load<float3>(geometry.normal_address + vertex_id * sizeof(float3));
-            result.normal_ws = mul((float3x3)mesh.matrix_m, result.normal);
-        }
-
-        if (geometry.tangent_address != 0)
-        {
-            result.tangent = vertex_buffer.Load<float4>(geometry.tangent_address + vertex_id * sizeof(float4));
-            result.tangent_ws = mul((float3x3)mesh.matrix_m, result.tangent.xyz);
-            result.bitangent_ws = normalize(cross(result.normal_ws, result.tangent_ws) * result.tangent.w);
-        }
-
-        if (geometry.texcoord_address != 0)
-        {
-            result.texcoord = vertex_buffer.Load<float2>(geometry.texcoord_address + vertex_id * sizeof(float2));
-        }
-
-        return result;
-    }
-
-    vertex fetch_vertex(uint primitive_id, float2 coord, float2 extent, out float2 ddx, out float2 ddy, float4x4 matrix_vp)
-    {
-        StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        instance_data instance = instances[instance_id];
-
-        StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-        geometry_data geometry = geometries[instance.geometry_index];
-
-        StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-        mesh_data mesh = meshes[instance.mesh_index];
-
-        ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
-        StructuredBuffer<uint> index_buffer = ResourceDescriptorHeap[scene.index_buffer];
-
-        uint index_offset = geometry.index_offset + primitive_id * 3;
-        uint3 triangle_indexes = uint3(
-            index_buffer[index_offset],
-            index_buffer[index_offset + 1],
-            index_buffer[index_offset + 2]);
-
-        float3 p0 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.x * sizeof(float3));
-        float4 p0_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p0, 1.0)));
-
-        float3 p1 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.y * sizeof(float3));
-        float4 p1_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p1, 1.0)));
-
-        float3 p2 = vertex_buffer.Load<float3>(geometry.position_address + triangle_indexes.z * sizeof(float3));
-        float4 p2_cs = mul(matrix_vp, mul(mesh.matrix_m, float4(p2, 1.0)));
-
-        float2 pixel_ndc = (coord + 0.5) / extent * float2(2.0, -2.0) + float2(-1.0, 1.0);
-        barycentric_deriv deriv = calculate_full_bary(p0_cs, p1_cs, p2_cs, pixel_ndc, extent);
-
-        vertex result;
-        result.position.x = interpolate_with_deriv(deriv, p0.x, p1.x, p2.x).x;
-        result.position.y = interpolate_with_deriv(deriv, p0.y, p1.y, p2.y).x;
-        result.position.z = interpolate_with_deriv(deriv, p0.z, p1.z, p2.z).x;
-        result.position_ws = mul(mesh.matrix_m, float4(result.position, 1.0)).xyz;
-        result.position_cs = mul(matrix_vp, float4(result.position_ws, 1.0));
-
-        if (geometry.normal_address != 0)
-        {
-            float3 p0_normal = vertex_buffer.Load<float3>(geometry.normal_address + triangle_indexes.x * sizeof(float3));
-            float3 p1_normal = vertex_buffer.Load<float3>(geometry.normal_address + triangle_indexes.y * sizeof(float3));
-            float3 p2_normal = vertex_buffer.Load<float3>(geometry.normal_address + triangle_indexes.z * sizeof(float3));
-
-            result.normal.x = interpolate_with_deriv(deriv, p0_normal.x, p1_normal.x, p2_normal.x).x;
-            result.normal.y = interpolate_with_deriv(deriv, p0_normal.y, p1_normal.y, p2_normal.y).x;
-            result.normal.z = interpolate_with_deriv(deriv, p0_normal.z, p1_normal.z, p2_normal.z).x;
-            result.normal_ws = normalize(mul((float3x3)mesh.matrix_m, result.normal));
-        }
-
-        if (geometry.tangent_address!= 0)
-        {
-            float4 p0_tangent = vertex_buffer.Load<float4>(geometry.tangent_address + triangle_indexes.x * sizeof(float4));
-            float4 p1_tangent = vertex_buffer.Load<float4>(geometry.tangent_address + triangle_indexes.y * sizeof(float4));
-            float4 p2_tangent = vertex_buffer.Load<float4>(geometry.tangent_address + triangle_indexes.z * sizeof(float4));
-
-            result.tangent.x = interpolate_with_deriv(deriv, p0_tangent.x, p1_tangent.x, p2_tangent.x).x;
-            result.tangent.y = interpolate_with_deriv(deriv, p0_tangent.y, p1_tangent.y, p2_tangent.y).x;
-            result.tangent.z = interpolate_with_deriv(deriv, p0_tangent.z, p1_tangent.z, p2_tangent.z).x;
-            result.tangent_ws = mul((float3x3)mesh.matrix_m, result.tangent.xyz);
-            result.bitangent_ws = normalize(cross(result.normal_ws, result.tangent_ws) * result.tangent.w);
-        }
-
-        if (geometry.texcoord_address != 0)
-        {
-            float2 p0_texcoord = vertex_buffer.Load<float2>(geometry.texcoord_address + triangle_indexes.x * sizeof(float2));
-            float2 p1_texcoord = vertex_buffer.Load<float2>(geometry.texcoord_address + triangle_indexes.y * sizeof(float2));
-            float2 p2_texcoord = vertex_buffer.Load<float2>(geometry.texcoord_address + triangle_indexes.z * sizeof(float2));
-
-            float3 interpolate_x = interpolate_with_deriv(deriv, p0_texcoord.x, p1_texcoord.x, p2_texcoord.x);
-            float3 interpolate_y = interpolate_with_deriv(deriv, p0_texcoord.y, p1_texcoord.y, p2_texcoord.y);
-
-            result.texcoord.x = interpolate_x.x;
-            result.texcoord.y = interpolate_y.x;
-
-            ddx = float2(interpolate_x.y, interpolate_y.y);
-            ddy = float2(interpolate_x.z, interpolate_y.z);
-        }
-
-        return result;
-    }
+    static mesh create(uint instance_id, scene_data scene, uint primitive_id, float2 coord, float2 extent, float4x4 matrix_vp, out float2 ddx, out float2 ddy);
+#endif
 
     template <typename T>
-    T fetch_custom_attribute(uint vertex_id, uint attribute_index)
+    T fetch_attribute(geometry_attribute attribute)
     {
-        StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        instance_data instance = instances[instance_id];
-
-        StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-        geometry_data geometry = geometries[instance.geometry_index];
+        if (geometry.attributes[attribute] == 0)
+        {
+            return (T)0;
+        }
 
         ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
 
-        return vertex_buffer.Load<T>(geometry.custom_addresses[attribute_index] + vertex_id * sizeof(T));
+#if USE_RASTER_INTERPOLATION
+        return vertex_buffer.Load<T>(geometry.attributes[attribute] + vertex_id * sizeof(T));
+#else
+        return vertex_buffer.Load<T>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(T));
+#endif
     }
 
     uint get_material_address()
     {
-        StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        return instances[instance_id].material_address;
+        return instance.material_address;
     }
 
     float4x4 get_model_matrix()
     {
-        StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        instance_data instance = instances[instance_id];
-
         StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
         mesh_data mesh = meshes[instance.mesh_index];
 
         return mesh.matrix_m;
     }
 };
+
+#if !USE_RASTER_INTERPOLATION
+template <>
+float mesh::fetch_attribute<float>(geometry_attribute attribute)
+{
+    if (geometry.attributes[attribute] == 0)
+    {
+        return (float)0;
+    }
+
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+
+    float p0 = vertex_buffer.Load<float>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float));
+    float p1 = vertex_buffer.Load<float>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float));
+    float p2 = vertex_buffer.Load<float>(geometry.attributes[attribute] + triangle_indexes.z * sizeof(float));
+
+    return interpolate_with_deriv(deriv, p0, p1, p2).x;
+}
+
+template <>
+float2 mesh::fetch_attribute<float2>(geometry_attribute attribute)
+{
+    if (geometry.attributes[attribute] == 0)
+    {
+        return (float2)0;
+    }
+
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+
+    float2 p0 = vertex_buffer.Load<float2>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float2));
+    float2 p1 = vertex_buffer.Load<float2>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float2));
+    float2 p2 = vertex_buffer.Load<float2>(geometry.attributes[attribute] + triangle_indexes.z * sizeof(float2));
+
+    float2 result;
+    result.x = interpolate_with_deriv(deriv, p0.x, p1.x, p2.x).x;
+    result.y = interpolate_with_deriv(deriv, p0.y, p1.y, p2.y).x;
+    return result;
+}
+
+template <>
+float3 mesh::fetch_attribute<float3>(geometry_attribute attribute)
+{
+    if (geometry.attributes[attribute] == 0)
+    {
+        return (float3)0;
+    }
+
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+
+    float3 p0 = vertex_buffer.Load<float3>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float3));
+    float3 p1 = vertex_buffer.Load<float3>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float3));
+    float3 p2 = vertex_buffer.Load<float3>(geometry.attributes[attribute] + triangle_indexes.z * sizeof(float3));
+
+    float3 result;
+    result.x = interpolate_with_deriv(deriv, p0.x, p1.x, p2.x).x;
+    result.y = interpolate_with_deriv(deriv, p0.y, p1.y, p2.y).x;
+    result.z = interpolate_with_deriv(deriv, p0.z, p1.z, p2.z).x;
+    
+    return result;
+}
+
+template <>
+float4 mesh::fetch_attribute<float4>(geometry_attribute attribute)
+{
+    if (geometry.attributes[attribute] == 0)
+    {
+        return (float4)0;
+    }
+
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+
+    float4 p0 = vertex_buffer.Load<float4>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float4));
+    float4 p1 = vertex_buffer.Load<float4>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float4));
+    float4 p2 = vertex_buffer.Load<float4>(geometry.attributes[attribute] + triangle_indexes.z * sizeof(float4));
+
+    float4 result;
+    result.x = interpolate_with_deriv(deriv, p0.x, p1.x, p2.x).x;
+    result.y = interpolate_with_deriv(deriv, p0.y, p1.y, p2.y).x;
+    result.z = interpolate_with_deriv(deriv, p0.z, p1.z, p2.z).x;
+    result.w = interpolate_with_deriv(deriv, p0.w, p1.w, p2.w).x;
+
+    return result;
+}
+#endif
+
+#if USE_RASTER_INTERPOLATION
+mesh mesh::create(uint instance_id, scene_data scene, uint vertex_id)
+{
+    mesh mesh;
+
+    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
+    mesh.instance = instances[instance_id];
+
+    StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
+    mesh.geometry = geometries[mesh.instance.geometry_index];
+
+    mesh.scene = scene;
+    mesh.vertex_id = vertex_id;
+
+    mesh.vertex.position = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_POSITION);
+    mesh.vertex.normal = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_NORMAL);
+    mesh.vertex.tangent = mesh.fetch_attribute<float4>(GEOMETRY_ATTRIBUTE_TANGENT);
+    mesh.vertex.uv = mesh.fetch_attribute<float2>(GEOMETRY_ATTRIBUTE_UV);
+
+    return mesh;
+}
+#else
+mesh mesh::create(uint instance_id, scene_data scene, uint primitive_id, float2 coord, float2 extent, float4x4 matrix_vp, out float2 ddx, out float2 ddy)
+{
+    mesh mesh;
+
+    StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
+    mesh.instance = instances[instance_id];
+
+    StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
+    mesh.geometry = geometries[mesh.instance.geometry_index];
+
+    mesh.scene = scene;
+
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+    StructuredBuffer<uint> index_buffer = ResourceDescriptorHeap[scene.index_buffer];
+
+    uint index_offset = mesh.geometry.index_offset + primitive_id * 3;
+    mesh.triangle_indexes = uint3(
+        index_buffer[index_offset],
+        index_buffer[index_offset + 1],
+        index_buffer[index_offset + 2]);
+
+    float4x4 matrix_m = mesh.get_model_matrix();
+
+    float3 p0 = vertex_buffer.Load<float3>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_POSITION] + mesh.triangle_indexes.x * sizeof(float3));
+    float4 p0_cs = mul(matrix_vp, mul(matrix_m, float4(p0, 1.0)));
+
+    float3 p1 = vertex_buffer.Load<float3>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_POSITION] + mesh.triangle_indexes.y * sizeof(float3));
+    float4 p1_cs = mul(matrix_vp, mul(matrix_m, float4(p1, 1.0)));
+
+    float3 p2 = vertex_buffer.Load<float3>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_POSITION] + mesh.triangle_indexes.z * sizeof(float3));
+    float4 p2_cs = mul(matrix_vp, mul(matrix_m, float4(p2, 1.0)));
+
+    float2 pixel_ndc = (coord + 0.5) / extent * float2(2.0, -2.0) + float2(-1.0, 1.0);
+    mesh.deriv = calculate_full_bary(p0_cs, p1_cs, p2_cs, pixel_ndc, extent);
+
+    mesh.vertex.position.x = interpolate_with_deriv(mesh.deriv, p0.x, p1.x, p2.x).x;
+    mesh.vertex.position.y = interpolate_with_deriv(mesh.deriv, p0.y, p1.y, p2.y).x;
+    mesh.vertex.position.z = interpolate_with_deriv(mesh.deriv, p0.z, p1.z, p2.z).x;
+
+    mesh.vertex.normal = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_NORMAL);
+    mesh.vertex.tangent = mesh.fetch_attribute<float4>(GEOMETRY_ATTRIBUTE_TANGENT);
+
+    if (mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_UV] != 0)
+    {
+        float2 p0_uv = vertex_buffer.Load<float2>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_UV] + mesh.triangle_indexes.x * sizeof(float2));
+        float2 p1_uv = vertex_buffer.Load<float2>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_UV] + mesh.triangle_indexes.y * sizeof(float2));
+        float2 p2_uv = vertex_buffer.Load<float2>(mesh.geometry.attributes[GEOMETRY_ATTRIBUTE_UV] + mesh.triangle_indexes.z * sizeof(float2));
+
+        float3 interpolate_x = interpolate_with_deriv(mesh.deriv, p0_uv.x, p1_uv.x, p2_uv.x);
+        float3 interpolate_y = interpolate_with_deriv(mesh.deriv, p0_uv.y, p1_uv.y, p2_uv.y);
+
+        mesh.vertex.uv.x = interpolate_x.x;
+        mesh.vertex.uv.y = interpolate_y.x;
+
+        ddx = float2(interpolate_x.y, interpolate_y.y);
+        ddy = float2(interpolate_x.z, interpolate_y.z);
+    }
+
+    return mesh;
+}
+#endif
 
 #endif

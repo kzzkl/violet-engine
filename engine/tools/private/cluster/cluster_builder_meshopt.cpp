@@ -76,14 +76,14 @@ void cluster_builder_meshopt::set_tangents(std::span<const vec4f> tangents)
     }
 }
 
-void cluster_builder_meshopt::set_texcoords(std::span<const vec2f> texcoords)
+void cluster_builder_meshopt::set_uvs(std::span<const vec2f> uvs)
 {
-    m_texcoords.resize(texcoords.size());
+    m_uvs.resize(uvs.size());
 
-    for (size_t i = 0; i < texcoords.size(); ++i)
+    for (size_t i = 0; i < uvs.size(); ++i)
     {
-        m_texcoords[i].x = std::isnan(texcoords[i].x) ? 0.0f : texcoords[i].x;
-        m_texcoords[i].y = std::isnan(texcoords[i].y) ? 0.0f : texcoords[i].y;
+        m_uvs[i].x = std::isnan(uvs[i].x) ? 0.0f : uvs[i].x;
+        m_uvs[i].y = std::isnan(uvs[i].y) ? 0.0f : uvs[i].y;
     }
 }
 
@@ -120,7 +120,7 @@ void cluster_builder_meshopt::build(const cluster_builder_meshopt_options& optio
             m_positions.size(),
             sizeof(vec3f));
 
-        if (m_texcoords.empty())
+        if (m_uvs.empty())
         {
             return;
         }
@@ -128,7 +128,7 @@ void cluster_builder_meshopt::build(const cluster_builder_meshopt_options& optio
         for (std::size_t i = 0; i < m_positions.size(); ++i)
         {
             std::uint32_t r = remap[i];
-            if (r != i && m_texcoords[i] != m_texcoords[r])
+            if (r != i && m_uvs[i] != m_uvs[r])
             {
                 locks[i] |= meshopt_SimplifyVertex_Protect;
             }
@@ -554,11 +554,11 @@ cluster_builder_meshopt::simplify_result cluster_builder_meshopt::simplify(
                 attributes.push_back(tangent.w);
             }
 
-            if (!m_texcoords.empty())
+            if (!m_uvs.empty())
             {
-                const vec2f& texcoord = m_texcoords[index];
-                attributes.push_back(texcoord.x);
-                attributes.push_back(texcoord.y);
+                const vec2f& uv = m_uvs[index];
+                attributes.push_back(uv.x);
+                attributes.push_back(uv.y);
             }
 
             local_locks.push_back(locks[index]);
@@ -706,9 +706,9 @@ cluster_builder_meshopt::simplify_result cluster_builder_meshopt::simplify(
                 attribute_offset += 4;
             }
 
-            if (!m_texcoords.empty())
+            if (!m_uvs.empty())
             {
-                m_texcoords.push_back({
+                m_uvs.push_back({
                     .x = attribute[attribute_offset + 0],
                     .y = attribute[attribute_offset + 1],
                 });

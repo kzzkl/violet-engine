@@ -80,7 +80,9 @@ public:
     rhi_parameter* get_bindless_parameter() const noexcept;
 
     template <typename T>
-    rhi_shader* get_shader(std::span<const std::wstring> defines = {})
+    rhi_shader* get_shader(
+        std::span<const std::wstring> defines = {},
+        std::size_t extra_constant_size = 0)
     {
         shader_key key = {
             .path = std::string(T::path),
@@ -120,6 +122,7 @@ public:
         {
             desc.push_constant_size = sizeof(T::constant_data);
         }
+        desc.push_constant_size += static_cast<std::uint32_t>(extra_constant_size);
 
         auto shader = rhi_ptr<rhi_shader>(m_rhi->create_shader(desc), m_rhi_deleter);
         shader->set_name(T::path.data());

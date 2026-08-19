@@ -1,21 +1,14 @@
 #pragma once
 
 #include "graphics/render_device.hpp"
+#include "graphics/render_graph/rdg_pipeline.hpp"
 #include "graphics/shading_model.hpp"
+#include <algorithm>
+#include <cassert>
 #include <functional>
 
 namespace violet
 {
-struct visibility_vs : public mesh_vs
-{
-    static constexpr std::string_view path = "assets/shaders/visibility/visibility.hlsl";
-};
-
-struct visibility_fs : public mesh_fs
-{
-    static constexpr std::string_view path = "assets/shaders/visibility/visibility.hlsl";
-};
-
 using surface_type = std::uint8_t;
 
 enum buildin_surface_type : std::uint8_t
@@ -27,10 +20,19 @@ enum buildin_surface_type : std::uint8_t
 
 enum material_path : std::uint8_t
 {
+    MATERIAL_PATH_AUTO,
     MATERIAL_PATH_FORWARD,
     MATERIAL_PATH_DEFERRED,
     MATERIAL_PATH_VISIBILITY,
 };
+
+enum material_flag : std::uint8_t
+{
+    MATERIAL_FLAG_NONE = 0,
+    MATERIAL_FLAG_OPACITY_CUTOFF = 1 << 0,
+    MATERIAL_FLAG_WORLD_POSITION_OFFSET = 1 << 1,
+};
+using material_flags = std::uint8_t;
 
 enum shadow_cull_mode : std::uint8_t
 {
@@ -40,9 +42,82 @@ enum shadow_cull_mode : std::uint8_t
     SHADOW_CULL_MODE_FRONT,
 };
 
+struct shading_model_index : public type_index<shading_model_index, std::uint32_t, 1>
+{
+};
+
 class material
 {
 public:
+    class header
+    {
+    public:
+        void set_shading_model(render_id shading_model_id)
+        {
+            m_data.x = (m_data.x & ~shading_model_mask) | (shading_model_id & shading_model_mask);
+        }
+
+        render_id get_shading_model() const
+        {
+            return m_data.x & shading_model_mask;
+        }
+
+        void set_shadow_cull_mode(rhi_cull_mode cull_mode)
+        {
+            m_data.x = (m_data.x & ~shadow_cull_mode_mask) |
+                       (static_cast<std::uint32_t>(cull_mode) << shadow_cull_mode_shift);
+        }
+
+        rhi_cull_mode get_shadow_cull_mode() const
+        {
+            return static_cast<rhi_cull_mode>(
+                (m_data.x & shadow_cull_mode_mask) >> shadow_cull_mode_shift);
+        }
+
+        void set_opacity_cutoff(float opacity_cutoff)
+        {
+            auto value = static_cast<std::uint32_t>(opacity_cutoff * 255.0f);
+            value = std::min(value, 0xFFu);
+
+            m_data.y = (m_data.y & ~opacity_cutoff_mask) | value;
+        }
+
+        float get_opacity_cutoff() const
+        {
+            return static_cast<float>(m_data.y & opacity_cutoff_mask) / 255.0f;
+        }
+
+        void set_opacity_mask(std::uint32_t opacity_mask)
+        {
+            m_data.y = (m_data.y & opacity_cutoff_mask) | (opacity_mask << opacity_mask_shift);
+        }
+
+        std::uint32_t get_opacity_mask() const
+        {
+            return (m_data.y & opacity_mask_mask) >> opacity_mask_shift;
+        }
+
+        void set_resolve_pipeline(render_id resolve_pipeline_id)
+        {
+            m_data.z = resolve_pipeline_id;
+        }
+
+        render_id get_resolve_pipeline() const
+        {
+            return m_data.z;
+        }
+
+    private:
+        static constexpr std::uint32_t shading_model_mask = 0x000000FF;
+        static constexpr std::uint32_t shadow_cull_mode_shift = 8;
+        static constexpr std::uint32_t shadow_cull_mode_mask = 0x00000F00;
+        static constexpr std::uint32_t opacity_cutoff_mask = 0x000000FF;
+        static constexpr std::uint32_t opacity_mask_shift = 8;
+        static constexpr std::uint32_t opacity_mask_mask = 0xFFFFFF00;
+
+        vec4u m_data;
+    };
+
     enum dirty_flag : std::uint8_t
     {
         DIRTY_FLAG_CONSTANT = 1 << 0,
@@ -52,12 +127,22 @@ public:
     };
     using dirty_flags = std::uint8_t;
 
-    material() noexcept;
+    material(std::string_view name, std::size_t constant_size, std::string_view shader_path = "");
     material(const material& other) = delete;
 
     virtual ~material();
 
     material& operator=(const material& other) = delete;
+
+    material_path get_material_path() const
+    {
+        if (m_material_path != MATERIAL_PATH_AUTO)
+        {
+            return m_material_path;
+        }
+
+        return MATERIAL_PATH_VISIBILITY;
+    }
 
     surface_type get_surface_type() const noexcept
     {
@@ -69,31 +154,39 @@ public:
         return m_raster_pipeline;
     }
 
-    virtual material_path get_material_path() const noexcept = 0;
-
-    render_id get_material_id() const noexcept
+    render_id get_material_id() const
     {
         return m_material_id;
     }
 
-    render_id get_raster_pipeline_id() const noexcept
+    render_id get_raster_pipeline_id() const
     {
         return m_raster_pipeline_id;
     }
 
-    render_id get_resolve_pipeline_id() const noexcept
+    render_id get_resolve_pipeline_id() const
     {
-        return m_resolve_pipeline_id;
+        return get_header().get_resolve_pipeline();
     }
 
-    render_id get_shading_model_id() const noexcept
+    render_id get_shading_model_id() const
     {
-        return m_shading_model_id;
+        return get_header().get_shading_model();
     }
 
-    virtual bool get_opacity_cutoff() const noexcept
+    bool get_opacity_cutoff() const
     {
-        return false;
+        return get_header().get_opacity_cutoff() != 0;
+    }
+
+    void set_opacity_cutoff(float opacity_cutoff)
+    {
+        get_header().set_opacity_cutoff(opacity_cutoff);
+    }
+
+    void set_opacity_mask(std::uint32_t opacity_mask)
+    {
+        get_header().set_opacity_mask(opacity_mask);
     }
 
     void set_cull_mode(rhi_cull_mode cull_mode);
@@ -110,7 +203,8 @@ public:
 
     std::uint32_t get_shadow_batch() const noexcept
     {
-        return m_shadow_batch;
+        const auto& header = get_header();
+        return header.get_shadow_cull_mode() << 1 | (header.get_opacity_cutoff() == 0.0f ? 0 : 1);
     }
 
     void update();
@@ -121,211 +215,106 @@ public:
     }
 
 protected:
+    void set_material_path(material_path path)
+    {
+        m_material_path = path;
+    }
+
     void set_surface_type(surface_type surface_type) noexcept
     {
         m_surface_type = surface_type;
     }
 
+    template <typename ShadingModel>
+    void set_shading_model()
+    {
+        set_shading_model_impl(
+            shading_model_index::value<ShadingModel>(),
+            []()
+            {
+                return std::make_unique<ShadingModel>();
+            });
+    }
+
     void set_shading_model_impl(
         render_id shading_model_id,
-        const std::function<std::unique_ptr<shading_model_base>()>& creator);
+        const std::function<std::unique_ptr<shading_model>()>& creator);
 
-    virtual rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const = 0;
-    virtual rhi_shader* get_geometry_shader(std::span<std::wstring> defines) const = 0;
-    virtual rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const = 0;
-    virtual rhi_shader* get_resolve_shader(std::span<std::wstring> defines) const = 0;
+    using material_header = header;
+
+    material_header& get_header()
+    {
+        material::mark_dirty(material::DIRTY_FLAG_CONSTANT);
+        return *reinterpret_cast<material_header*>(m_constant.data());
+    }
+
+    const material_header& get_header() const
+    {
+        return *reinterpret_cast<const material_header*>(m_constant.data());
+    }
+
+    template <typename T>
+    T& get_constant()
+    {
+        assert(m_constant.size() == sizeof(material_header) + sizeof(T));
+        material::mark_dirty(material::DIRTY_FLAG_CONSTANT);
+        return *reinterpret_cast<T*>(m_constant.data() + sizeof(material_header));
+    }
+
+    template <typename T>
+    const T& get_constant() const
+    {
+        assert(m_constant.size() == sizeof(material_header) + sizeof(T));
+        return *reinterpret_cast<const T*>(m_constant.data() + sizeof(material_header));
+    }
 
     void mark_dirty(dirty_flags dirty_flags);
 
 private:
-    virtual std::pair<const void*, std::size_t> get_constant_data(
-        std::uint32_t shading_model,
-        std::uint32_t resolve_pipeline,
-        std::uint32_t shadow_batch) noexcept
-    {
-        return {};
-    }
-
     surface_type m_surface_type;
 
     render_id m_material_id{INVALID_RENDER_ID};
+
+    material_path m_material_path{MATERIAL_PATH_AUTO};
 
     rdg_raster_pipeline m_raster_pipeline{};
     render_id m_raster_pipeline_id{0};
 
     rdg_compute_pipeline m_resolve_pipeline{};
-    render_id m_resolve_pipeline_id{0};
-
-    render_id m_shading_model_id{0};
 
     shadow_cull_mode m_shadow_cull_mode{SHADOW_CULL_MODE_AUTO};
-    std::uint32_t m_shadow_batch{0};
+
+    std::string m_name;
+    std::string m_shader_path;
+
+    std::vector<std::uint8_t> m_constant;
 
     dirty_flags m_dirty_flags{0};
 };
 
-struct shading_model_index : public type_index<shading_model_index, std::uint32_t, 1>
-{
-};
+using material_header = material::header;
 
-template <material_path Path>
-class material_variant : public material
-{
-};
-
-template <>
-class material_variant<MATERIAL_PATH_FORWARD> : public material
-{
-public:
-    material_path get_material_path() const noexcept final
-    {
-        return MATERIAL_PATH_FORWARD;
-    }
-
-private:
-    rhi_shader* get_geometry_shader(std::span<std::wstring> defines) const override
-    {
-        return nullptr;
-    }
-
-    rhi_shader* get_resolve_shader(std::span<std::wstring> defines) const override
-    {
-        return nullptr;
-    }
-
-    using material::set_shading_model_impl;
-};
-
-template <>
-class material_variant<MATERIAL_PATH_DEFERRED> : public material
-{
-public:
-    material_path get_material_path() const noexcept final
-    {
-        return MATERIAL_PATH_DEFERRED;
-    }
-
-protected:
-    template <typename ShadingModel>
-    void set_shading_model()
-    {
-        set_shading_model_impl(
-            shading_model_index::value<ShadingModel>(),
-            []()
-            {
-                return std::make_unique<ShadingModel>();
-            });
-    }
-
-private:
-    rhi_shader* get_geometry_shader(std::span<std::wstring> defines) const override
-    {
-        return nullptr;
-    }
-
-    rhi_shader* get_resolve_shader(std::span<std::wstring> defines) const override
-    {
-        return nullptr;
-    }
-
-    using material::set_shading_model_impl;
-};
-
-template <>
-class material_variant<MATERIAL_PATH_VISIBILITY> : public material
-{
-public:
-    material_path get_material_path() const noexcept final
-    {
-        return MATERIAL_PATH_VISIBILITY;
-    }
-
-protected:
-    template <typename ShadingModel>
-    void set_shading_model()
-    {
-        set_shading_model_impl(
-            shading_model_index::value<ShadingModel>(),
-            []()
-            {
-                return std::make_unique<ShadingModel>();
-            });
-    }
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override
-    {
-        return render_device::instance().get_shader<visibility_vs>(defines);
-    }
-
-    rhi_shader* get_geometry_shader(std::span<std::wstring> defines) const override
-    {
-        return nullptr;
-    }
-
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override
-    {
-        return render_device::instance().get_shader<visibility_fs>(defines);
-    }
-
-    using material::set_shading_model_impl;
-};
-
-template <typename Constant, material_path Path>
-class material_instance : public material_variant<Path>
+template <typename Constant>
+class material_instance : public material
 {
 public:
     using constant_type = Constant;
 
-    material_instance() = default;
-
-    void set_opacity_cutoff(float opacity_cutoff)
+    material_instance(std::string_view name)
+        : material(name, sizeof(Constant))
     {
-        m_wrapper.material_info.y &= 0xFFFFFF00;
-        m_wrapper.material_info.y |= static_cast<std::uint32_t>(opacity_cutoff * 255);
-        material::mark_dirty(material::DIRTY_FLAG_CONSTANT);
-    }
-
-    bool get_opacity_cutoff() const noexcept override
-    {
-        return (m_wrapper.material_info.y & 0xFF) != 0;
     }
 
 protected:
     constant_type& get_constant() noexcept
     {
         material::mark_dirty(material::DIRTY_FLAG_CONSTANT);
-        return m_wrapper.constant;
+        return material::get_constant<constant_type>();
     }
 
     const constant_type& get_constant() const noexcept
     {
-        return m_wrapper.constant;
+        return material::get_constant<constant_type>();
     }
-
-    void set_opacity_mask(std::uint32_t opacity_mask)
-    {
-        m_wrapper.material_info.y &= 0x000000FF;
-        m_wrapper.material_info.y |= opacity_mask << 8;
-        material::mark_dirty(material::DIRTY_FLAG_CONSTANT);
-    }
-
-private:
-    struct wrapper
-    {
-        vec2u material_info;
-        constant_type constant;
-    };
-
-    std::pair<const void*, std::size_t> get_constant_data(
-        std::uint32_t shading_model,
-        std::uint32_t resolve_pipeline,
-        std::uint32_t shadow_batch) noexcept override
-    {
-        m_wrapper.material_info.x = (resolve_pipeline << 16) | (shading_model << 8) | shadow_batch;
-        return {&m_wrapper, sizeof(wrapper)};
-    }
-
-    wrapper m_wrapper{};
 };
 } // namespace violet

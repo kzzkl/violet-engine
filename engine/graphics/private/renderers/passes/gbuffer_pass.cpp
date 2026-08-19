@@ -167,7 +167,7 @@ void gbuffer_pass::add_visibility_pass(
     render_targets.push_back({
         .texture = parameter.visibility_buffer,
         .store_op = RHI_ATTACHMENT_STORE_OP_STORE,
-        .load_op = load_op,
+        .load_op = RHI_ATTACHMENT_LOAD_OP_CLEAR,
         .clear_value = clear_value,
     });
 

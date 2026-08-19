@@ -1,5 +1,6 @@
 #include "common.hlsli"
 #include "cluster.hlsli"
+#include "material.hlsli"
 #include "virtual_shadow_map/vsm_cull.hlsli"
 
 struct constant_data
@@ -114,11 +115,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         RWStructuredBuffer<draw_command> draw_commands = ResourceDescriptorHeap[constant.draw_buffer];
         RWStructuredBuffer<vsm_draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
 
-        material_info material = load_material_info(scene.material_buffer, instance.material_address);
+        material_common material = load_material<material_common>(scene.material_buffer, instance.material_address);
 
         uint command_offset;
         uint count_offset;
-        get_shadow_draw_offset(static_mesh, material.shadow_batch, command_offset, count_offset);
+        get_shadow_draw_offset(static_mesh, material.get_shadow_batch(), command_offset, count_offset);
 
         uint draw_command_offset = 0;
         InterlockedAdd(draw_counts[count_offset], draw_queue_rear, draw_command_offset);

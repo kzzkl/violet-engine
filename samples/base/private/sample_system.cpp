@@ -150,7 +150,7 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         model_geometry->set_positions(geometry_data.positions);
         model_geometry->set_normals(geometry_data.normals);
         model_geometry->set_tangents(geometry_data.tangents);
-        model_geometry->set_texcoords(geometry_data.texcoords);
+        model_geometry->set_uvs(geometry_data.uvs);
         model_geometry->set_indexes(geometry_data.indexes);
 
         for (const auto& submesh_data : geometry_data.submeshes)

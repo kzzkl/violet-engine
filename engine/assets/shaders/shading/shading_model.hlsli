@@ -1,140 +1,14 @@
 #ifndef SHADING_MODEL_HLSLI
 #define SHADING_MODEL_HLSLI
 
-#include "common.hlsli"
-#include "gbuffer.hlsli"
-#include "virtual_shadow_map/vsm_common.hlsli"
-#include "atmosphere/atmosphere.hlsli"
-#include "spherical_harmonics.hlsli"
+#include "material.hlsli"
 
-struct constant_common
+struct shading_context
 {
-    uint gbuffers[8];
-    uint auxiliary_buffers[4];
-    uint render_target;
-    uint shading_model;
-    uint worklist_buffer;
-    uint worklist_offset;
-    uint shadow_light_index;
-    uint shadow_mask;
-    uint stage;
+    uint ao_buffer;
+
+    uint2 coord;
     uint prefilter_map;
-    uint irradiance_sh;
-    uint sun_index;
-    float planet_radius;
-    float atmosphere_radius;
-    uint transmittance_lut;
-    uint indirect_diffuse;
-    uint padding0;
-    uint padding1;
 };
-
-static const uint LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED = 0;
-static const uint LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED = 1;
-static const uint LIGHTING_STAGE_INDIRECT_LIGHTING = 2;
-
-float3 get_sun_transmittance(constant_common constant, float3 position, float3 sun_direction)
-{
-    position += float3(0.0, constant.planet_radius, 0.0);
-    position.y = max(position.y, constant.planet_radius + 1.0);
-
-    if (ray_sphere_intersection(position, -sun_direction, 0.0, constant.planet_radius) > 0.0)
-    {
-        return 0.0;
-    }
-
-    float r = length(position);
-    float mu = -sun_direction.y;
-
-    float2 uv;
-    get_transmittance_lut_uv(constant.planet_radius, constant.atmosphere_radius, r, mu, uv);
-
-    Texture2D<float3> transmittance_lut = ResourceDescriptorHeap[constant.transmittance_lut];
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-    float3 transmittance = transmittance_lut.SampleLevel(linear_clamp_sampler, uv, 0.0);
-    return transmittance;
-}
-
-template <typename ShadingModel>
-void evaluate_lighting(constant_common constant, scene_data scene, camera_data camera, uint3 gtid, uint3 gid)
-{
-    StructuredBuffer<uint> worklist = ResourceDescriptorHeap[constant.worklist_buffer];
-
-    RWTexture2D<float4> render_target = ResourceDescriptorHeap[constant.render_target];
-    uint width;
-    uint height;
-    render_target.GetDimensions(width, height);
-
-    uint tile_index = worklist[constant.worklist_offset + gid.x];
-    uint2 coord = uint2(tile_index >> 16, tile_index & 0xFFFF) * SHADING_TILE_SIZE + gtid.xy;
-    if (coord.x >= width || coord.y >= height)
-    {
-        return;
-    }
-
-    gbuffer gbuffer = gbuffer::unpack(constant.gbuffers, coord);
-    if (gbuffer.shading_model != constant.shading_model)
-    {
-        return;
-    }
-
-    float2 texcoord = get_compute_texcoord(coord, width, height);
-    gbuffer.position = reconstruct_position(constant.auxiliary_buffers[0], texcoord, camera.matrix_vp_inv).xyz;
-
-    ShadingModel shading_model = ShadingModel::create(gbuffer, coord);
-    float3 lighting = 0.0;
-
-    if (constant.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
-    {
-        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
-        Texture2D<float> shadow_mask = ResourceDescriptorHeap[constant.shadow_mask];
-
-        light_data light = lights[constant.shadow_light_index];
-        if (constant.shadow_light_index == constant.sun_index)
-        {
-            light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
-        }
-
-        lighting = shading_model.evaluate_direct_lighting(light, shadow_mask[coord]);
-    }
-    else if (constant.stage == LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED)
-    {
-        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
-        for (int i = 0; i < scene.light_count; ++i)
-        {
-            light_data light = lights[i];
-            if (light.cast_shadow)
-            {
-                continue;
-            }
-
-            if (i == constant.sun_index)
-            {
-                light.color *= get_sun_transmittance(constant, gbuffer.position, light.direction);
-            }
-
-            lighting += shading_model.evaluate_direct_lighting(light, 1.0);
-        }
-    }
-    else if (constant.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
-    {
-        float3 irradiance = 0.0;
-        if (constant.indirect_diffuse != 0)
-        {
-            Texture2D<float3> indirect_diffuse = ResourceDescriptorHeap[constant.indirect_diffuse];
-            irradiance = indirect_diffuse.SampleLevel(get_linear_clamp_sampler(), texcoord, 0.0);
-        }
-        else
-        {
-            StructuredBuffer<sh9> irradiance_sh = ResourceDescriptorHeap[constant.irradiance_sh];
-            sh9 sh = irradiance_sh[0];
-            irradiance = sh.evaluate(gbuffer.normal);
-        }
-
-        lighting = shading_model.evaluate_indirect_lighting(irradiance);
-    }
-
-    render_target[coord] += float4(lighting, 0.0);
-}
 
 #endif

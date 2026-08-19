@@ -32,7 +32,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     atmosphere_data atmosphere = constant.atmosphere;
 
-    float2 uv = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
     float3 view = get_sky_view_lut_direction(uv);
 
     float3 eye = camera.position + float3(0.0, atmosphere.planet_radius, 0.0);

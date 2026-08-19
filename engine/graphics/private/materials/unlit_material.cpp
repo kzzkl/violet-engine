@@ -3,22 +3,8 @@
 
 namespace violet
 {
-struct unlit_material_vs : public mesh_vs
-{
-    static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
-};
-
-struct unlit_material_fs : public mesh_fs
-{
-    static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
-};
-
-struct unlit_material_cs : public material_resolve_cs
-{
-    static constexpr std::string_view path = "assets/shaders/materials/unlit_material.hlsl";
-};
-
-unlit_material_deferred::unlit_material_deferred()
+unlit_material::unlit_material()
+    : material_instance("unlit_material")
 {
     set_cull_mode(RHI_CULL_MODE_BACK);
     set_polygon_mode(RHI_POLYGON_MODE_FILL);
@@ -30,40 +16,30 @@ unlit_material_deferred::unlit_material_deferred()
     set_color({1.0f, 1.0f, 1.0f});
 }
 
-void unlit_material_deferred::set_color(const vec3f& color)
+void unlit_material::set_color(const vec3f& color)
 {
     get_constant().color = color;
 }
 
-rhi_shader* unlit_material_deferred::get_vertex_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<unlit_material_vs>(defines);
-}
+// unlit_material_visibility::unlit_material_visibility()
+// {
+//     set_cull_mode(RHI_CULL_MODE_BACK);
+//     set_polygon_mode(RHI_POLYGON_MODE_FILL);
+//     set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-rhi_shader* unlit_material_deferred::get_fragment_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<unlit_material_fs>(defines);
-}
+//     set_shading_model<unlit_shading_model>();
+//     set_surface_type(SURFACE_TYPE_OPAQUE);
 
-unlit_material_visibility::unlit_material_visibility()
-{
-    set_cull_mode(RHI_CULL_MODE_BACK);
-    set_polygon_mode(RHI_POLYGON_MODE_FILL);
-    set_primitive_topology(RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+//     set_color({1.0f, 1.0f, 1.0f});
+// }
 
-    set_shading_model<unlit_shading_model>();
-    set_surface_type(SURFACE_TYPE_OPAQUE);
+// void unlit_material_visibility::set_color(const vec3f& color)
+// {
+//     get_constant().color = color;
+// }
 
-    set_color({1.0f, 1.0f, 1.0f});
-}
-
-void unlit_material_visibility::set_color(const vec3f& color)
-{
-    get_constant().color = color;
-}
-
-rhi_shader* unlit_material_visibility::get_resolve_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<unlit_material_cs>(defines);
-}
+// rhi_shader* unlit_material_visibility::get_resolve_shader(std::span<std::wstring> defines) const
+// {
+//     return render_device::instance().get_shader<unlit_material_cs>(defines);
+// }
 } // namespace violet

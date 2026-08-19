@@ -26,7 +26,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     atmosphere_data atmosphere = constant.atmosphere;
 
-    float2 uv = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
     float r;
     float mu;

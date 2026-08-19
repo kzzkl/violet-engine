@@ -359,9 +359,9 @@ public:
 
     std::vector<vec3f> position;
     std::vector<vec3f> normal;
-    std::vector<vec2f> texcoord;
+    std::vector<vec2f> uv;
     std::vector<float> outline;
-    std::vector<std::vector<vec4f>> add_texcoord;
+    std::vector<std::vector<vec4f>> add_uv;
 
     std::vector<vec2u> skin; // first: skin type(0: BDEF, 1: SDEF), second: skin data index
     std::vector<bdef_data> bdef;

@@ -76,23 +76,19 @@ std::span<const vec4f> geometry::get_tangents() const noexcept
     return get_buffer<vec4f>(GEOMETRY_BUFFER_TANGENT);
 }
 
-void geometry::set_texcoords(std::span<const vec2f> texcoord)
+void geometry::set_uvs(std::span<const vec2f> uv)
 {
-    set_buffer(
-        GEOMETRY_BUFFER_TEXCOORD,
-        texcoord.data(),
-        texcoord.size() * sizeof(vec2f),
-        sizeof(vec2f));
+    set_buffer(GEOMETRY_BUFFER_UV, uv.data(), uv.size() * sizeof(vec2f), sizeof(vec2f));
 }
 
-void geometry::set_texcoords_shared(geometry* src_geometry)
+void geometry::set_uvs_shared(geometry* src_geometry)
 {
-    set_buffer_shared(GEOMETRY_BUFFER_TEXCOORD, src_geometry);
+    set_buffer_shared(GEOMETRY_BUFFER_UV, src_geometry);
 }
 
-std::span<const vec2f> geometry::get_texcoords() const noexcept
+std::span<const vec2f> geometry::get_uvs() const noexcept
 {
-    return get_buffer<vec2f>(GEOMETRY_BUFFER_TEXCOORD);
+    return get_buffer<vec2f>(GEOMETRY_BUFFER_UV);
 }
 
 void geometry::set_custom_shared(std::size_t index, geometry* src_geometry)

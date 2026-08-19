@@ -1,4 +1,4 @@
-#include "mesh.hlsli"
+#include "material.hlsli"
 #include "virtual_shadow_map/vsm_common.hlsli"
 
 struct constant_data
@@ -20,7 +20,7 @@ struct vs_output
     float3 position_ndc : POSITION_NDC;
     uint vsm_id : VSM_ID;
 
-    float2 texcoord : TEXCOORD;
+    float2 uv : TEXCOORD;
 
 #ifdef VIOLET_OPACITY_CUTOFF
     uint opacity_mask : OPACITY_MASK;
@@ -37,20 +37,22 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     vsm_data vsm = vsms[vsm_id];
 
-    mesh mesh = mesh::create(instance_id, scene);
-    vertex vertex = mesh.fetch_vertex(vertex_id, vsm.matrix_vp);
+    mesh mesh = mesh::create(instance_id, scene, vertex_id);
+    mesh.vertex_id = vertex_id;
+
+    float4 position_cs = mul(vsm.matrix_vp, mul(mesh.get_model_matrix(), float4(mesh.vertex.position, 1.0)));
 
     vs_output output;
-    output.position_cs = vertex.position_cs;
-    output.position_ndc = vertex.position_cs.xyz / vertex.position_cs.w;
+    output.position_cs = position_cs;
+    output.position_ndc = position_cs.xyz / position_cs.w;
     output.vsm_id = vsm_id;
 
-    output.texcoord = vertex.texcoord;
+    output.uv = mesh.vertex.uv;
 
 #ifdef VIOLET_OPACITY_CUTOFF
-    material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
-    output.opacity_mask = material_info.opacity_mask;
-    output.opacity_cutoff = material_info.opacity_cutoff;
+    material_common material = load_material<material_common>(scene.material_buffer, mesh.get_material_address());
+    output.opacity_mask = material.get_opacity_mask();
+    output.opacity_cutoff = material.get_opacity_cutoff();
 #endif
 
     return output;
@@ -62,7 +64,7 @@ void fs_main(vs_output input)
     Texture2D<float4> opacity_mask = ResourceDescriptorHeap[input.opacity_mask];
     SamplerState point_repeat_sampler = get_point_repeat_sampler();
 
-    float mask = opacity_mask.Sample(point_repeat_sampler, input.texcoord).a;
+    float mask = opacity_mask.Sample(point_repeat_sampler, input.uv).a;
     clip(mask * 255.0 - input.opacity_cutoff);
 #endif
 

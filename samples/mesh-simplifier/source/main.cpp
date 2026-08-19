@@ -56,7 +56,7 @@ private:
                 m_original_geometry->set_positions(geometry_data.positions);
                 m_original_geometry->set_normals(geometry_data.normals);
                 m_original_geometry->set_tangents(geometry_data.tangents);
-                m_original_geometry->set_texcoords(geometry_data.texcoords);
+                m_original_geometry->set_uvs(geometry_data.uvs);
                 m_original_geometry->set_indexes(geometry_data.indexes);
                 for (const auto& submesh : geometry_data.submeshes)
                 {
@@ -136,7 +136,7 @@ private:
         m_simplified_geometry->set_positions(m_original_geometry->get_positions());
         m_simplified_geometry->set_normals(m_original_geometry->get_normals());
         m_simplified_geometry->set_tangents(m_original_geometry->get_tangents());
-        m_simplified_geometry->set_texcoords(m_original_geometry->get_texcoords());
+        m_simplified_geometry->set_uvs(m_original_geometry->get_uvs());
         m_simplified_geometry->set_indexes(m_original_geometry->get_indexes());
         m_simplified_geometry->add_submesh(0, 0, m_original_geometry->get_indexes().size());
 
@@ -188,9 +188,9 @@ private:
             std::vector<vec4f> tangents(
                 m_original_geometry->get_tangents().begin(),
                 m_original_geometry->get_tangents().end());
-            std::vector<vec2f> texcoords(
-                m_original_geometry->get_texcoords().begin(),
-                m_original_geometry->get_texcoords().end());
+            std::vector<vec2f> uvs(
+                m_original_geometry->get_uvs().begin(),
+                m_original_geometry->get_uvs().end());
             std::vector<std::uint32_t> indexes(
                 m_original_geometry->get_indexes().begin(),
                 m_original_geometry->get_indexes().end());
@@ -199,7 +199,7 @@ private:
                 .positions = positions,
                 .normals = normals,
                 .tangents = tangents,
-                .texcoords = texcoords,
+                .uvs = uvs,
                 .indexes = indexes,
                 .target_triangle_count = target_triangle_count,
             });
@@ -211,7 +211,7 @@ private:
             m_simplified_geometry->set_positions(positions);
             m_simplified_geometry->set_normals(normals);
             m_simplified_geometry->set_tangents(tangents);
-            m_simplified_geometry->set_texcoords(texcoords);
+            m_simplified_geometry->set_uvs(uvs);
             m_simplified_geometry->set_indexes(indexes);
             m_simplified_geometry->clear_submeshes();
             m_simplified_geometry->add_submesh(0, 0, indexes.size());

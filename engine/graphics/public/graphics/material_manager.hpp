@@ -4,6 +4,7 @@
 #include "graphics/material.hpp"
 #include "graphics/resources/persistent_buffer.hpp"
 #include "graphics/shading_model.hpp"
+#include <array>
 #include <mutex>
 
 namespace violet
@@ -38,8 +39,8 @@ public:
 
     void set_shading_model(
         render_id shading_model_id,
-        std::unique_ptr<shading_model_base>&& shading_model);
-    shading_model_base* get_shading_model(render_id shading_model_id) const noexcept;
+        std::unique_ptr<shading_model>&& shading_model);
+    shading_model* get_shading_model(render_id shading_model_id) const noexcept;
 
     render_id get_max_shading_model_id() const noexcept
     {
@@ -93,7 +94,7 @@ private:
     index_allocator m_resolve_pipeline_id_allocator;
     render_id m_max_resolve_pipeline_id{0};
 
-    std::vector<std::unique_ptr<shading_model_base>> m_shading_models;
+    std::vector<std::unique_ptr<shading_model>> m_shading_models;
 
     std::unique_ptr<persistent_buffer> m_material_buffer;
 

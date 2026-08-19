@@ -51,70 +51,34 @@ struct gbuffer
     float metallic;
     float3 emissive;
     float3 normal;
-    float3 position;
     uint shading_model;
 
-    static gbuffer unpack(uint gbuffers[8], uint2 coord)
+    static gbuffer unpack(float4 gbuffer_albedo, float2 gbuffer_material, uint gbuffer_normal, float3 gbuffer_emissive)
     {
         gbuffer result;
 
-        Texture2D<float4> gbuffer_albbedo = ResourceDescriptorHeap[gbuffers[GBUFFER_ALBEDO]];
-        result.albedo = gbuffer_albbedo[coord].rgb;
+        result.albedo = gbuffer_albedo.rgb;
+        result.roughness = max(gbuffer_material.x, 0.03);
+        result.metallic = gbuffer_material.y;
 
-        Texture2D<float2> gbuffer_material = ResourceDescriptorHeap[gbuffers[GBUFFER_MATERIAL]];
-        result.roughness = max(gbuffer_material[coord].x, 0.03);
-        result.metallic = gbuffer_material[coord].y;
-
-        Texture2D<uint> gbuffer_normal = ResourceDescriptorHeap[gbuffers[GBUFFER_NORMAL]];
-        uint normal = gbuffer_normal[coord];
+        uint normal = gbuffer_normal;
         result.shading_model = normal & 0xFF;
 
         float2 oct = float2(float(normal >> 20) / 4095.0, float((normal & 0x000FFF00) >> 8) / 4095.0);
         result.normal = octahedron_to_normal(oct);
 
-        Texture2D<float3> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
-        result.emissive = gbuffer_emissive[coord];
+        result.emissive = gbuffer_emissive;
 
         return result;
     }
 
-    void pack(uint gbuffers[8], uint2 coord)
+    void pack(out float4 gbuffer_albedo, out float2 gbuffer_material, out uint gbuffer_normal, out float3 gbuffer_emissive)
     {
-        RWTexture2D<float4> gbuffer_albedo = ResourceDescriptorHeap[gbuffers[GBUFFER_ALBEDO]];
-        gbuffer_albedo[coord] = float4(albedo, 1.0);
-
-        RWTexture2D<float2> gbuffer_material = ResourceDescriptorHeap[gbuffers[GBUFFER_MATERIAL]];
-        gbuffer_material[coord] = float2(roughness, metallic);
-
-        RWTexture2D<float3> gbuffer_emissive = ResourceDescriptorHeap[gbuffers[GBUFFER_EMISSIVE]];
-        gbuffer_emissive[coord] = emissive;
-
-        RWTexture2D<uint> gbuffer_normal = ResourceDescriptorHeap[gbuffers[GBUFFER_NORMAL]];
+        gbuffer_albedo = float4(albedo, 1.0);
+        gbuffer_material = float2(roughness, metallic);
+        gbuffer_emissive = emissive;
         float2 oct = normal_to_octahedron(normal);
-        gbuffer_normal[coord] = (uint(oct.x * 4095.0) << 20) | (uint(oct.y * 4095.0) << 8) | shading_model;
-    }
-};
-
-struct fs_output
-{
-    float4 albedo : SV_TARGET0;
-    float2 material : SV_TARGET1;
-    uint normal : SV_TARGET2;
-    float3 emissive : SV_TARGET3;
-
-    static fs_output create(gbuffer gbuffer)
-    {
-        fs_output result;
-
-        result.albedo = float4(gbuffer.albedo, 1.0);
-        result.material = float2(gbuffer.roughness, gbuffer.metallic);
-
-        float2 oct = normal_to_octahedron(gbuffer.normal);
-        result.normal = (uint(oct.x * 4095.0) << 20) | (uint(oct.y * 4095.0) << 8) | gbuffer.shading_model;
-
-        result.emissive = gbuffer.emissive;
-
-        return result;
+        gbuffer_normal = (uint(oct.x * 4095.0) << 20) | (uint(oct.y * 4095.0) << 8) | shading_model;
     }
 };
 

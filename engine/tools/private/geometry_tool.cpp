@@ -32,14 +32,14 @@ using cluster_flags = std::uint32_t;
 std::vector<vec4f> geometry_tool::generate_tangents(
     std::span<const vec3f> positions,
     std::span<const vec3f> normals,
-    std::span<const vec2f> texcoords,
+    std::span<const vec2f> uvs,
     std::span<const std::uint32_t> indexes)
 {
     struct tangent_context : public SMikkTSpaceContext
     {
         std::span<const vec3f> positions;
         std::span<const vec3f> normals;
-        std::span<const vec2f> texcoords;
+        std::span<const vec2f> uvs;
         std::span<const std::uint32_t> indexes;
 
         std::vector<vec4f>& tangents;
@@ -77,9 +77,9 @@ std::vector<vec4f> geometry_tool::generate_tangents(
         [](const SMikkTSpaceContext* context, float* out, const int face, const int vert)
     {
         const auto* ctx = static_cast<const tangent_context*>(context);
-        const vec2f& texcoord = ctx->texcoords[ctx->indexes[(face * 3) + vert]];
-        out[0] = texcoord.x;
-        out[1] = texcoord.y;
+        const vec2f& uv = ctx->uvs[ctx->indexes[(face * 3) + vert]];
+        out[0] = uv.x;
+        out[1] = uv.y;
     };
     interface.m_setTSpaceBasic = [](const SMikkTSpaceContext* context,
                                     const float* in,
@@ -100,7 +100,7 @@ std::vector<vec4f> geometry_tool::generate_tangents(
     tangent_context context = {
         .positions = positions,
         .normals = normals,
-        .texcoords = texcoords,
+        .uvs = uvs,
         .indexes = indexes,
         .tangents = result,
     };
@@ -210,9 +210,9 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
         attribute_weights.insert(attribute_weights.end(), {0.0625f, 0.0625f, 0.0625f, 0.5f});
     }
 
-    if (!input.texcoords.empty())
+    if (!input.uvs.empty())
     {
-        attribute_list.emplace_back(reinterpret_cast<const float*>(input.texcoords.data()), 2);
+        attribute_list.emplace_back(reinterpret_cast<const float*>(input.uvs.data()), 2);
         attribute_weights.insert(attribute_weights.end(), 2, 1.0f / 128.0f);
     }
 
@@ -294,9 +294,9 @@ geometry_tool::simplify_output geometry_tool::simplify(const simplify_input& inp
                 attribute_data += 4;
             }
 
-            if (!input.texcoords.empty())
+            if (!input.uvs.empty())
             {
-                std::memcpy(input.texcoords.data() + i, attribute_data, sizeof(vec2f));
+                std::memcpy(input.uvs.data() + i, attribute_data, sizeof(vec2f));
                 attribute_data += 2;
             }
         }
@@ -318,7 +318,7 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
         std::vector<vec3f> positions;
         std::vector<vec3f> normals;
         std::vector<vec4f> tangents;
-        std::vector<vec2f> texcoords;
+        std::vector<vec2f> uvs;
 
         std::vector<std::uint32_t> indexes;
         indexes.reserve(submesh.index_count);
@@ -343,9 +343,9 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
                     tangents.push_back(input.tangents[vertex_index]);
                 }
 
-                if (!input.texcoords.empty())
+                if (!input.uvs.empty())
                 {
-                    texcoords.push_back(input.texcoords[vertex_index]);
+                    uvs.push_back(input.uvs[vertex_index]);
                 }
 
                 vertex_remap[vertex_index] = static_cast<std::uint32_t>(positions.size() - 1);
@@ -378,9 +378,9 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             builder.set_tangents(tangents);
         }
 
-        if (!texcoords.empty())
+        if (!uvs.empty())
         {
-            builder.set_texcoords(texcoords);
+            builder.set_uvs(uvs);
         }
 
         builder.build();
@@ -400,10 +400,7 @@ geometry_tool::cluster_output geometry_tool::generate_clusters(const cluster_inp
             output.tangents.end(),
             builder.get_tangents().begin(),
             builder.get_tangents().end());
-        output.texcoords.insert(
-            output.texcoords.end(),
-            builder.get_texcoords().begin(),
-            builder.get_texcoords().end());
+        output.uvs.insert(output.uvs.end(), builder.get_uvs().begin(), builder.get_uvs().end());
 
         output.indexes.insert(
             output.indexes.end(),

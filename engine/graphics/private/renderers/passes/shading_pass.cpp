@@ -4,6 +4,7 @@
 #include "graphics/render_scene/render_scene_light.hpp"
 #include "graphics/render_scene/render_scene_mesh.hpp"
 #include "graphics/render_scene/render_scene_shadow.hpp"
+#include "graphics/renderers/gbuffer.hpp"
 #include <algorithm>
 #include <format>
 
@@ -81,6 +82,38 @@ struct shading_debug_shadow_mask_cs : public shader_cs
 
     static constexpr parameter_layout parameters = {
         {.space = 0, .desc = bindless},
+    };
+};
+
+struct shading_model_cs : public shader_cs
+{
+    static constexpr std::string_view path = "assets/shaders/shading/shading_deferred.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t gbuffers[8];
+        std::uint32_t ao_buffer;
+        std::uint32_t depth_buffer;
+        std::uint32_t render_target;
+        std::uint32_t shading_model;
+        std::uint32_t worklist_buffer;
+        std::uint32_t worklist_offset;
+        std::uint32_t shadow_light_index;
+        std::uint32_t shadow_mask;
+        std::uint32_t stage;
+        std::uint32_t prefilter_map;
+        std::uint32_t irradiance_sh;
+        std::uint32_t sun_index;
+        float planet_radius;
+        float atmosphere_radius;
+        std::uint32_t transmittance_lut;
+        std::uint32_t indirect_diffuse;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = scene},
+        {.space = 2, .desc = camera},
     };
 };
 
@@ -223,7 +256,7 @@ void shading_pass::add_tile_classify_pass(render_graph& graph, const parameter& 
         [&](build_data& data, rdg_pass& pass)
         {
             data.gbuffer_normal = pass.add_texture_srv(
-                parameter.gbuffers[SHADING_GBUFFER_NORMAL],
+                parameter.gbuffers[GBUFFER_NORMAL],
                 RHI_PIPELINE_STAGE_COMPUTE);
             data.worklist_buffer =
                 pass.add_buffer_uav(m_worklist_buffer, RHI_PIPELINE_STAGE_COMPUTE);
@@ -268,8 +301,11 @@ void shading_pass::add_tile_shading_pass(
     struct pass_data
     {
         std::vector<rdg_texture_srv> gbuffers;
-        std::vector<rdg_texture_srv> auxiliary_buffers;
+
+        rdg_texture_srv ao_buffer;
+        rdg_texture_srv depth_buffer;
         rdg_texture_uav render_target;
+
         rdg_buffer_srv worklist_buffer;
         rdg_buffer_ref shading_dispatch_buffer;
         rdg_texture_srv shadow_mask;
@@ -284,141 +320,150 @@ void shading_pass::add_tile_shading_pass(
         rdg_texture_srv indirect_diffuse;
 
         lighting_stage stage;
+
+        const render_scene_mesh* mesh_module;
     };
 
     const auto& context = graph.get_context();
 
-    context.get_module<render_scene_mesh>().each_shading_model(
-        [&](std::uint32_t shading_model_id, shading_model_base* shading_model)
+    graph.add_pass<pass_data>(
+        "Tile Shading",
+        RDG_PASS_COMPUTE,
+        [&](pass_data& data, rdg_pass& pass)
         {
-            graph.add_pass<pass_data>(
-                shading_model->get_name(),
-                RDG_PASS_COMPUTE,
-                [&](pass_data& data, rdg_pass& pass)
+            data.gbuffers.resize(parameter.gbuffers.size());
+            std::ranges::transform(
+                parameter.gbuffers,
+                data.gbuffers.begin(),
+                [&](rdg_texture* gbuffer)
                 {
-                    data.gbuffers.resize(parameter.gbuffers.size());
-                    std::ranges::fill(data.gbuffers, rdg_texture_srv{});
+                    return gbuffer == nullptr ?
+                               rdg_texture_srv{} :
+                               pass.add_texture_srv(gbuffer, RHI_PIPELINE_STAGE_COMPUTE);
+                });
 
-                    for (auto gbuffer : shading_model->get_required_gbuffers())
-                    {
-                        data.gbuffers[gbuffer] = pass.add_texture_srv(
-                            parameter.gbuffers[gbuffer],
-                            RHI_PIPELINE_STAGE_COMPUTE);
-                    }
+            data.ao_buffer =
+                parameter.ao_buffer == nullptr ?
+                    rdg_texture_srv{} :
+                    pass.add_texture_srv(parameter.ao_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.depth_buffer =
+                pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_COMPUTE);
 
-                    data.auxiliary_buffers.resize(parameter.auxiliary_buffers.size());
-                    std::ranges::fill(data.auxiliary_buffers, rdg_texture_srv{});
+            data.render_target =
+                pass.add_texture_uav(parameter.render_target, RHI_PIPELINE_STAGE_COMPUTE);
+            data.worklist_buffer =
+                pass.add_buffer_srv(m_worklist_buffer, RHI_PIPELINE_STAGE_COMPUTE);
+            data.shading_dispatch_buffer = pass.add_buffer(
+                m_shading_dispatch_buffer,
+                RHI_PIPELINE_STAGE_DRAW_INDIRECT,
+                RHI_ACCESS_INDIRECT_COMMAND_READ);
 
-                    for (auto auxiliary_buffer : shading_model->get_required_auxiliary_buffers())
-                    {
-                        if (parameter.auxiliary_buffers[auxiliary_buffer] != nullptr)
-                        {
-                            data.auxiliary_buffers[auxiliary_buffer] = pass.add_texture_srv(
-                                parameter.auxiliary_buffers[auxiliary_buffer],
-                                RHI_PIPELINE_STAGE_COMPUTE);
-                        }
-                    }
+            if (stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
+            {
+                data.shadow_mask = pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
+                data.shadow_light_index = shadow_light_index;
+            }
+            else if (stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
+            {
+                data.prefilter_map = pass.add_texture_srv(
+                    parameter.prefilter_map,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_CUBE);
+                data.irradiance_sh =
+                    pass.add_buffer_srv(parameter.irradiance_sh, RHI_PIPELINE_STAGE_COMPUTE);
 
-                    data.render_target =
-                        pass.add_texture_uav(parameter.render_target, RHI_PIPELINE_STAGE_COMPUTE);
-                    data.worklist_buffer =
-                        pass.add_buffer_srv(m_worklist_buffer, RHI_PIPELINE_STAGE_COMPUTE);
-                    data.shading_dispatch_buffer = pass.add_buffer(
-                        m_shading_dispatch_buffer,
-                        RHI_PIPELINE_STAGE_DRAW_INDIRECT,
-                        RHI_ACCESS_INDIRECT_COMMAND_READ);
-
-                    if (stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
-                    {
-                        data.shadow_mask =
-                            pass.add_texture_srv(m_shadow_mask, RHI_PIPELINE_STAGE_COMPUTE);
-                        data.shadow_light_index = shadow_light_index;
-                    }
-                    else if (stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
-                    {
-                        data.prefilter_map = pass.add_texture_srv(
-                            parameter.prefilter_map,
-                            RHI_PIPELINE_STAGE_COMPUTE,
-                            RHI_TEXTURE_DIMENSION_CUBE);
-                        data.irradiance_sh = pass.add_buffer_srv(
-                            parameter.irradiance_sh,
-                            RHI_PIPELINE_STAGE_COMPUTE);
-
-                        if (parameter.indirect_diffuse != nullptr)
-                        {
-                            data.indirect_diffuse = pass.add_texture_srv(
-                                parameter.indirect_diffuse,
-                                RHI_PIPELINE_STAGE_COMPUTE);
-                        }
-                        else
-                        {
-                            data.indirect_diffuse.reset();
-                        }
-                    }
-
-                    if (context.get_camera().background == BACKGROUND_TYPE_ATMOSPHERE)
-                    {
-                        const auto& scene = context.get_scene();
-
-                        data.sun_index = m_sun_index;
-                        data.planet_radius = scene.atmosphere.planet_radius;
-                        data.atmosphere_radius =
-                            scene.atmosphere.planet_radius + scene.atmosphere.atmosphere_height;
-                        data.transmittance_lut = scene.transmittance_lut->get_srv();
-                    }
-                    else
-                    {
-                        data.sun_index = 0xFFFFFFFF;
-                        data.transmittance_lut = nullptr;
-                    }
-
-                    data.stage = stage;
-                },
-                [=, tile_count = m_tile_count](const pass_data& data, rdg_command& command)
+                if (parameter.indirect_diffuse != nullptr)
                 {
-                    shading_model->bind(data.auxiliary_buffers, command);
+                    data.indirect_diffuse = pass.add_texture_srv(
+                        parameter.indirect_diffuse,
+                        RHI_PIPELINE_STAGE_COMPUTE);
+                }
+                else
+                {
+                    data.indirect_diffuse.reset();
+                }
+            }
 
-                    shading_model_cs::constant_data constant = {
-                        .render_target = data.render_target.get_bindless(),
-                        .shading_model = shading_model_id,
-                        .worklist_buffer = data.worklist_buffer.get_bindless(),
-                        .worklist_offset = shading_model_id * tile_count,
-                        .stage = static_cast<std::uint32_t>(data.stage),
-                        .sun_index = data.sun_index,
-                        .planet_radius = data.planet_radius,
-                        .atmosphere_radius = data.atmosphere_radius,
-                        .transmittance_lut = data.transmittance_lut == nullptr ?
-                                                 0 :
-                                                 data.transmittance_lut->get_bindless(),
+            if (context.get_camera().background == BACKGROUND_TYPE_ATMOSPHERE)
+            {
+                const auto& scene = context.get_scene();
+
+                data.sun_index = m_sun_index;
+                data.planet_radius = scene.atmosphere.planet_radius;
+                data.atmosphere_radius =
+                    scene.atmosphere.planet_radius + scene.atmosphere.atmosphere_height;
+                data.transmittance_lut = scene.transmittance_lut->get_srv();
+            }
+            else
+            {
+                data.sun_index = 0xFFFFFFFF;
+                data.transmittance_lut = nullptr;
+            }
+
+            data.stage = stage;
+
+            data.mesh_module = &context.get_module<render_scene_mesh>();
+        },
+        [tile_count = m_tile_count](const pass_data& data, rdg_command& command)
+        {
+            auto& device = render_device::instance();
+
+            shading_model_cs::constant_data constant = {
+                .render_target = data.render_target.get_bindless(),
+                .worklist_buffer = data.worklist_buffer.get_bindless(),
+                .stage = static_cast<std::uint32_t>(data.stage),
+                .sun_index = data.sun_index,
+                .planet_radius = data.planet_radius,
+                .atmosphere_radius = data.atmosphere_radius,
+                .transmittance_lut =
+                    data.transmittance_lut == nullptr ? 0 : data.transmittance_lut->get_bindless(),
+            };
+
+            if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
+            {
+                constant.shadow_light_index = data.shadow_light_index;
+                constant.shadow_mask = data.shadow_mask.get_bindless();
+            }
+            else if (data.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
+            {
+                constant.prefilter_map = data.prefilter_map.get_bindless();
+                constant.irradiance_sh = data.irradiance_sh.get_bindless();
+                constant.indirect_diffuse =
+                    data.indirect_diffuse ? data.indirect_diffuse.get_bindless() : 0;
+            }
+
+            for (std::uint32_t i = 0; i < data.gbuffers.size(); ++i)
+            {
+                auto srv = data.gbuffers[i];
+                constant.gbuffers[i] = srv ? srv.get_bindless() : 0;
+            }
+
+            constant.ao_buffer = data.ao_buffer ? data.ao_buffer.get_bindless() : 0;
+            constant.depth_buffer = data.depth_buffer.get_bindless();
+
+            data.mesh_module->each_shading_model(
+                [&](std::uint32_t shading_model_id, shading_model* shading_model)
+                {
+                    rdg_compute_pipeline pipeline = {
+                        .compute_shader = device.get_shader<shading_model_cs>(
+                            shading_model->get_defines(),
+                            shading_model->get_constant_size()),
                     };
 
-                    if (data.stage == LIGHTING_STAGE_DIRECT_LIGHTING_SHADOWED)
-                    {
-                        constant.shadow_light_index = data.shadow_light_index;
-                        constant.shadow_mask = data.shadow_mask.get_bindless();
-                    }
-                    else if (data.stage == LIGHTING_STAGE_INDIRECT_LIGHTING)
-                    {
-                        constant.prefilter_map = data.prefilter_map.get_bindless();
-                        constant.irradiance_sh = data.irradiance_sh.get_bindless();
-                        constant.indirect_diffuse =
-                            data.indirect_diffuse ? data.indirect_diffuse.get_bindless() : 0;
-                    }
+                    constant.shading_model = shading_model_id;
+                    constant.worklist_offset = shading_model_id * tile_count;
 
-                    for (std::uint32_t gbuffer : shading_model->get_required_gbuffers())
-                    {
-                        constant.gbuffers[gbuffer] = data.gbuffers[gbuffer].get_bindless();
-                    }
-
-                    const auto& required_auxiliary_buffers =
-                        shading_model->get_required_auxiliary_buffers();
-                    for (std::uint32_t i = 0; i < required_auxiliary_buffers.size(); ++i)
-                    {
-                        auto srv = data.auxiliary_buffers[required_auxiliary_buffers[i]];
-                        constant.auxiliary_buffers[i] = srv ? srv.get_bindless() : 0;
-                    }
-
+                    command.set_pipeline(pipeline);
                     command.set_constant(constant);
+
+                    if (shading_model->get_constant_size() != 0)
+                    {
+                        command.set_constant(
+                            shading_model->get_constant_data(),
+                            shading_model->get_constant_size(),
+                            sizeof(shading_model_cs::constant_data));
+                    }
+
                     command.set_parameter(0, RDG_PARAMETER_BINDLESS);
                     command.set_parameter(1, RDG_PARAMETER_SCENE);
                     command.set_parameter(2, RDG_PARAMETER_CAMERA);
@@ -457,11 +502,10 @@ void shading_pass::add_shadow_mask_pass(
         RDG_PASS_RASTER,
         [&](pass_data& data, rdg_pass& pass)
         {
-            data.depth_buffer = pass.add_texture_srv(
-                parameter.auxiliary_buffers[SHADING_AUXILIARY_BUFFER_DEPTH],
-                RHI_PIPELINE_STAGE_FRAGMENT);
+            data.depth_buffer =
+                pass.add_texture_srv(parameter.depth_buffer, RHI_PIPELINE_STAGE_FRAGMENT);
             data.normal_buffer = pass.add_texture_srv(
-                parameter.gbuffers[SHADING_GBUFFER_NORMAL],
+                parameter.gbuffers[GBUFFER_NORMAL],
                 RHI_PIPELINE_STAGE_FRAGMENT);
             data.vsm_buffer =
                 pass.add_buffer_srv(parameter.vsm_buffer, RHI_PIPELINE_STAGE_FRAGMENT);

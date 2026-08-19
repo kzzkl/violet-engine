@@ -1,4 +1,4 @@
-#include "common.hlsli"
+#include "material.hlsli"
 #include "visibility/visibility_utils.hlsli"
 
 static const uint TILE_SIZE = 8;
@@ -58,11 +58,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
     if (instance_id != 0xFFFFFFFF)
     {
         StructuredBuffer<instance_data> instances = ResourceDescriptorHeap[scene.instance_buffer];
-        material_info material_info = load_material_info(scene.material_buffer, instances[instance_id].material_address);
-        if (material_info.resolve_pipeline != 0)
+        material_common material = load_material<material_common>(scene.material_buffer, instances[instance_id].material_address);
+
+        uint resolve_pipeline = material.get_resolve_pipeline();
+        if (resolve_pipeline != 0)
         {
-            uint flag_index = material_info.resolve_pipeline / 32;
-            uint flag_bit = material_info.resolve_pipeline % 32;
+            uint flag_index = resolve_pipeline / 32;
+            uint flag_bit = resolve_pipeline % 32;
             uint flag = 0;
             InterlockedOr(gs_material_flags[flag_index], 1u << flag_bit, flag);
 
@@ -70,7 +72,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
             {
                 uint material_list_index = 0;
                 InterlockedAdd(gs_material_count, 1, material_list_index);
-                gs_material_list[material_list_index] = material_info.resolve_pipeline;
+                gs_material_list[material_list_index] = resolve_pipeline;
             }
         }
     }

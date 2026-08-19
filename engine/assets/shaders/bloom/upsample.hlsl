@@ -36,16 +36,16 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint prev_height;
     prev_src.GetDimensions(prev_width, prev_height);
 
-    float2 prev_texcoord = get_compute_texcoord(dtid.xy * 0.5, prev_width, prev_height);
+    float2 prev_uv = get_compute_uv(dtid.xy * 0.5, prev_width, prev_height);
     float3 prev_color = 0.0;
-    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_texcoord + offset, 0.0);
-    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_texcoord + float2(offset.x, -offset.y), 0.0);
-    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_texcoord + float2(-offset.x, offset.y), 0.0);
-    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_texcoord - offset, 0.0);
+    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_uv + offset, 0.0);
+    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_uv + float2(offset.x, -offset.y), 0.0);
+    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_uv + float2(-offset.x, offset.y), 0.0);
+    prev_color += prev_src.SampleLevel(linear_clamp_sampler, prev_uv - offset, 0.0);
     prev_color *= 0.25;
 
-    float2 curr_texcoord = get_compute_texcoord(dtid.xy, width, height);
-    float3 curr_color = curr_src.SampleLevel(linear_clamp_sampler, curr_texcoord, 0.0);
+    float2 curr_uv = get_compute_uv(dtid.xy, width, height);
+    float3 curr_color = curr_src.SampleLevel(linear_clamp_sampler, curr_uv, 0.0);
 
     dst[dtid.xy] = curr_color + prev_color * constant.radius;
 }

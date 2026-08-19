@@ -105,7 +105,7 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     auto tangents = geometry_tool::generate_tangents(
         m_pmx.position,
         m_pmx.normal,
-        m_pmx.texcoord,
+        m_pmx.uv,
         m_pmx.indexes);
     assert(!tangents.empty());
 
@@ -129,11 +129,11 @@ void mmd_loader::load_mesh(scene_data& scene, world& world)
     mesh_geometry->set_positions(m_pmx.position);
     mesh_geometry->set_normals(m_pmx.normal);
     mesh_geometry->set_tangents(tangents);
-    mesh_geometry->set_texcoords(m_pmx.texcoord);
+    mesh_geometry->set_uvs(m_pmx.uv);
     mesh_geometry->set_custom(0, smooth_normal_and_outline);
-    for (std::size_t i = 0; i < m_pmx.add_texcoord.size(); ++i)
+    for (std::size_t i = 0; i < m_pmx.add_uv.size(); ++i)
     {
-        mesh_geometry->set_custom(i + 1, m_pmx.add_texcoord[i]);
+        mesh_geometry->set_custom(i + 1, m_pmx.add_uv[i]);
     }
 
     mesh_geometry->set_additional_buffer(

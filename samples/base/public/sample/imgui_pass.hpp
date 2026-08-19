@@ -26,7 +26,7 @@ private:
     struct imgui_geometry
     {
         rhi_ptr<rhi_buffer> position;
-        rhi_ptr<rhi_buffer> texcoord;
+        rhi_ptr<rhi_buffer> uv;
         rhi_ptr<rhi_buffer> color;
         rhi_ptr<rhi_buffer> index;
     };

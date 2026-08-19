@@ -24,7 +24,7 @@ fs_output fs_main(vs_output input)
     Texture2D<float4> sdf_texture = ResourceDescriptorHeap[material.sdf_texture];
     Texture2D<float4> ramp_texture = ResourceDescriptorHeap[material.ramp_texture];
     
-    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.texcoord).rgb;
+    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
     float roughness = 1.0;
     float metallic = 0.0;
 
@@ -66,7 +66,7 @@ fs_output fs_main(vs_output input)
         threshold = 1.0 - (threshold * 0.5 + 0.5);
 
         float sign = dot(left_dir, projected_light) > 0.0 ? 1.0 : -1.0;
-        float4 sdf = sdf_texture.Sample(linear_repeat_sampler, float2(input.texcoord2.x * sign, input.texcoord2.y));
+        float4 sdf = sdf_texture.Sample(linear_repeat_sampler, float2(input.uv2.x * sign, input.uv2.y));
         float shadow = step(threshold, sdf.r);
 
         direct_lighting += (specular * specular_ramp + diffuse * diffuse_ramp) * light.color * shadow;

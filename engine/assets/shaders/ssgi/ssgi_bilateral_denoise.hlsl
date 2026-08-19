@@ -38,8 +38,8 @@ float bilateral_weight(bilateral_data center, bilateral_data tap)
 
 void bilateral_blur(
     bilateral_data center,
-    float2 texcoord,
-    float2 texcoord_delta,
+    float2 uv,
+    float2 uv_delta,
     Texture2D<float4> src,
     SamplerState sampler,
     Texture2D<uint> normal_buffer,
@@ -51,11 +51,11 @@ void bilateral_blur(
 
     for (; r < BLUR_RADIUS * 0.5; r += 1.0)
     {
-        float4 sample_value = src.SampleLevel(sampler, texcoord + r * texcoord_delta, 0.0);
+        float4 sample_value = src.SampleLevel(sampler, uv + r * uv_delta, 0.0);
 
         bilateral_data tap;
         tap.depth = sample_value.a;
-        tap.normal = unpack_gbuffer_normal(normal_buffer, (texcoord + r * texcoord_delta) * normal_buffer_extent);
+        tap.normal = unpack_gbuffer_normal(normal_buffer, (uv + r * uv_delta) * normal_buffer_extent);
 
         float weight = sample_value.a < 0.0 ? 0.0 : gaussian_weight(r, BLUR_SIGMA) * bilateral_weight(center, tap);
 
@@ -65,11 +65,11 @@ void bilateral_blur(
 
     for (; r < BLUR_RADIUS; r += 2.0)
     {
-        float4 sample_value = src.SampleLevel(sampler, texcoord + r * texcoord_delta, 0.0);
+        float4 sample_value = src.SampleLevel(sampler, uv + r * uv_delta, 0.0);
 
         bilateral_data tap;
         tap.depth = sample_value.a;
-        tap.normal = unpack_gbuffer_normal(normal_buffer, (texcoord + r * texcoord_delta) * normal_buffer_extent);
+        tap.normal = unpack_gbuffer_normal(normal_buffer, (uv + r * uv_delta) * normal_buffer_extent);
 
         float weight = sample_value.a < 0.0 ? 0.0 : gaussian_weight(r, BLUR_SIGMA) * bilateral_weight(center, tap);
 
@@ -96,9 +96,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     RWTexture2D<float4> dst = ResourceDescriptorHeap[constant.dst];
     SamplerState point_clamp_sampler = get_point_clamp_sampler();
 
-    float2 texcoord = get_compute_texcoord(dtid.xy, width, height);
+    float2 uv = get_compute_uv(dtid.xy, width, height);
 
-    float4 src_value = src.SampleLevel(point_clamp_sampler, texcoord, 0.0);
+    float4 src_value = src.SampleLevel(point_clamp_sampler, uv, 0.0);
     if (src_value.a < 0.0)
     {
         dst[dtid.xy] = src_value;
@@ -112,19 +112,19 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint2 normal_buffer_extent;
     normal_buffer.GetDimensions(normal_buffer_extent.x, normal_buffer_extent.y);
 
-    center.normal = unpack_gbuffer_normal(normal_buffer, texcoord * normal_buffer_extent);
+    center.normal = unpack_gbuffer_normal(normal_buffer, uv * normal_buffer_extent);
 
     float3 total_color = src_value.rgb;
     float total_weight = 1.0;
 
 #ifdef BLUR_HORIZONTAL
-    float2 texcoord_delta = float2(constant.texel_size.x, 0.0);
+    float2 uv_delta = float2(constant.texel_size.x, 0.0);
 #else
-    float2 texcoord_delta = float2(0.0, constant.texel_size.y);
+    float2 uv_delta = float2(0.0, constant.texel_size.y);
 #endif
 
-    bilateral_blur(center, texcoord, texcoord_delta, src, point_clamp_sampler, normal_buffer, normal_buffer_extent, total_color, total_weight);
-    bilateral_blur(center, texcoord, -texcoord_delta, src, point_clamp_sampler, normal_buffer, normal_buffer_extent, total_color, total_weight);
+    bilateral_blur(center, uv, uv_delta, src, point_clamp_sampler, normal_buffer, normal_buffer_extent, total_color, total_weight);
+    bilateral_blur(center, uv, -uv_delta, src, point_clamp_sampler, normal_buffer, normal_buffer_extent, total_color, total_weight);
 
     dst[dtid.xy] = float4(total_color / max(total_weight, 1e-6), src_value.a);
 }
