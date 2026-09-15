@@ -94,7 +94,8 @@ void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_
         .layer_count = data.layer_count,
     };
 
-    std::vector<rhi_buffer_texture_copy> copy_regions;
+    std::vector<rhi_buffer_region> buffer_regions;
+    std::vector<rhi_texture_region> texture_regions;
 
     rhi_format_block_size format_size = rhi_get_format_block_size(data.format);
     std::size_t buffer_offset = 0;
@@ -105,6 +106,7 @@ void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_
         {
             std::uint32_t width = std::max(data.extent.width >> level, 1u);
             std::uint32_t height = std::max(data.extent.height >> level, 1u);
+            std::uint32_t depth = std::max(data.extent.depth >> level, 1u);
 
             auto block_count_x = static_cast<std::uint32_t>(
                 std::ceil(static_cast<float>(width) / static_cast<float>(format_size.block_width)));
@@ -114,24 +116,22 @@ void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_
                 static_cast<float>(height) / static_cast<float>(format_size.block_height)));
             block_count_y = std::max(block_count_y, 1u);
 
-            std::uint32_t buffer_size = block_count_x * block_count_y * format_size.block_size;
+            std::uint32_t buffer_size =
+                block_count_x * block_count_y * depth * format_size.block_size;
 
-            rhi_buffer_texture_copy copy_region = {
-                .buffer_region =
-                    {
-                        .offset = buffer_offset,
-                        .size = buffer_size,
-                    },
-                .texture_region = {
-                    .extent = {.width = width, .height = height, .depth = 1},
-                    .level = level,
-                    .layer = layer,
-                    .layer_count = 1,
-                }};
+            buffer_regions.push_back({
+                .offset = buffer_offset,
+                .size = buffer_size,
+            });
+
+            texture_regions.push_back({
+                .extent = {.width = width, .height = height, .depth = depth},
+                .level = level,
+                .layer = layer,
+                .layer_count = 1,
+            });
 
             buffer_offset += buffer_size;
-
-            copy_regions.push_back(copy_region);
         }
     }
 
@@ -139,8 +139,9 @@ void texture_loader::upload(rhi_command* command, const texture_data& data, rhi_
 
     command->copy_buffer_to_texture(
         staging_buffer.get(),
+        buffer_regions.data(),
         texture,
-        copy_regions.data(),
-        static_cast<std::uint32_t>(copy_regions.size()));
+        texture_regions.data(),
+        buffer_regions.size());
 }
 } // namespace violet

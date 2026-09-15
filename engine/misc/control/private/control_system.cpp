@@ -10,9 +10,7 @@ namespace violet
 static const float EPSILON = 0.00001f;
 
 control_system::control_system()
-    : system("control"),
-      m_mouse_position{},
-      m_mouse_position_delta{}
+    : system("control")
 {
 }
 
@@ -135,12 +133,8 @@ void control_system::update_first_person_control()
         {
             float move_speed = first_person_control.move_speed * delta_time;
 
-            auto forward = quaternion::mul_vec(
-                transform.get_rotation(),
-                vec3f{.x = 0.0f, .y = 0.0f, .z = 1.0f});
-            auto right = quaternion::mul_vec(
-                transform.get_rotation(),
-                vec3f{.x = 1.0f, .y = 0.0f, .z = 0.0f});
+            auto forward = quaternion::mul_vec(transform.get_rotation(), vec3f(0.0f, 0.0f, 1.0f));
+            auto right = quaternion::mul_vec(transform.get_rotation(), vec3f(1.0f, 0.0f, 0.0f));
 
             vec3f position = transform.get_position();
             position += move_speed * forward_input * forward;

@@ -52,11 +52,16 @@ void render_scene_light::update(render_scene_context& context, gpu_buffer_upload
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
             uploader.upload(
                 buffer,
                 data,
                 size,
-                offset,
+                region,
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT |
                     RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);

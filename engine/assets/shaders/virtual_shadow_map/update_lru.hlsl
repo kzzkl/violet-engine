@@ -3,7 +3,7 @@
 
 struct constant_data
 {
-    uint vsm_physical_page_table;
+    uint physical_page_table;
     uint lru_state;
     uint lru_buffer;
     uint lru_curr_index;
@@ -18,7 +18,7 @@ static const uint VSM_LRU_INVALID_MASK = 1 << 31;
 [numthreads(64, 1, 1)]
 void mark_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
     
     StructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
     RWStructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
@@ -88,7 +88,7 @@ void remove_invalid_pages(uint3 dtid : SV_DispatchThreadID)
 [numthreads(64, 1, 1)]
 void append_unused_pages(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
     RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
     RWStructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 

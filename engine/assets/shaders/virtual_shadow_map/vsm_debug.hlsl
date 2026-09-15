@@ -9,7 +9,7 @@ struct constant_data
     uint debug_output;
     uint depth_buffer;
     uint vsm_buffer;
-    uint vsm_virtual_page_table;
+    uint virtual_page_table;
     uint vsm_directional_buffer;
     uint draw_count_buffer;
     uint light_id;
@@ -57,7 +57,7 @@ void debug_info(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     // StructuredBuffer<uint2> shadow_lights = ResourceDescriptorHeap[constant.shadow_light_buffer];
 
@@ -147,10 +147,10 @@ void debug_page(uint3 dtid : SV_DispatchThreadID)
     float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
-    // if (light.vsm_address == 0xFFFFFFFF)
-    // {
-    //     return;
-    // }
+    if (light.cast_shadow == 0)
+    {
+        return;
+    }
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
@@ -195,17 +195,17 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
     StructuredBuffer<uint> directional_vsms = ResourceDescriptorHeap[constant.vsm_directional_buffer];
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
     RWTexture2D<float4> debug_output = ResourceDescriptorHeap[constant.debug_output];
 
     float2 uv = get_compute_uv(dtid.xy, width, height);
     float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);
 
     light_data light = lights[constant.light_id];
-    // if (light.vsm_address == 0xFFFFFFFF)
-    // {
-    //     return;
-    // }
+    if (light.cast_shadow == 0)
+    {
+        return;
+    }
 
     if (light.type == LIGHT_DIRECTIONAL)
     {
@@ -220,10 +220,16 @@ void debug_page_cache(uint3 dtid : SV_DispatchThreadID)
         uint2 virtual_page_coord = floor((position_ls.xy * 0.5 + 0.5) * VIRTUAL_PAGE_TABLE_SIZE);
         uint virtual_page_index = get_virtual_page_index(vsm_id, virtual_page_coord);
 
+        int2 global_page_index = virtual_page_coord + vsm.page_coord;
+
+        float3 cascade_color = cascade_colors[cascade];
+        float3 page_color = to_color(global_page_index.y * VIRTUAL_PAGE_TABLE_SIZE + global_page_index.x);
+        page_color = lerp(cascade_color, page_color, 0.5);
+
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
         if (virtual_page.flags & VIRTUAL_PAGE_FLAG_RESIDENT)
         {
-            debug_output[dtid.xy] = float4(0.0, 1.0, 0.0, 1.0);
+            debug_output[dtid.xy] = float4(lerp(float3(0.0, 1.0, 0.0), page_color, 0.5), 1.0);
         }
         else
         {

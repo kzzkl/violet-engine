@@ -4,8 +4,8 @@
 struct constant_data
 {
     uint vsm_buffer;
-    uint vsm_virtual_page_table;
-    uint vsm_physical_shadow_map;
+    uint virtual_page_table;
+    uint physical_shadow_map;
     uint draw_info_buffer;
     float slope_scale_depth_bias;
     uint render_static_pages;
@@ -76,7 +76,7 @@ void fs_main(vs_output input)
     uint2 virtual_page_coord = floor(virtual_page_coord_f);
     float2 virtual_page_local_uv = frac(virtual_page_coord_f);
 
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
     uint virtual_page_index = get_virtual_page_index(input.vsm_id, virtual_page_coord);
     vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[virtual_page_index]);
 
@@ -90,6 +90,6 @@ void fs_main(vs_output input)
     }
 
     uint2 physical_texel = virtual_page.get_physical_texel(virtual_page_local_uv);
-    RWTexture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.vsm_physical_shadow_map];
+    RWTexture2D<uint> physical_shadow_map = ResourceDescriptorHeap[constant.physical_shadow_map];
     InterlockedMax(physical_shadow_map[physical_texel], asuint(position_ndc.z));
 }

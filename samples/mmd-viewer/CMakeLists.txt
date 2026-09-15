@@ -6,7 +6,6 @@ add_executable(mmd-viewer
     source/mmd_animation.cpp
     source/mmd_loader.cpp
     source/mmd_material.cpp
-    source/mmd_renderer.cpp
     source/mmd_viewer.cpp
     source/pmx.cpp
     source/vmd.cpp)

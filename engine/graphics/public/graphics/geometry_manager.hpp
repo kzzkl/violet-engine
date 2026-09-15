@@ -13,6 +13,8 @@ namespace violet
 class gpu_buffer_uploader;
 class gpu_geometry_buffer;
 
+class distance_field_manager;
+
 class geometry_manager
 {
 public:
@@ -32,9 +34,9 @@ public:
         std::span<const cluster> clusters,
         std::span<const cluster_node> cluster_nodes);
     void remove_submesh(render_id submesh_id);
-    sphere3f get_bounding_sphere(render_id submesh_id) const;
 
-    void update(gpu_buffer_uploader* uploader);
+    box3f get_bounding_box(render_id submesh_id) const;
+    sphere3f get_bounding_sphere(render_id submesh_id) const;
 
     void set_buffer(
         render_id geometry_id,
@@ -46,6 +48,13 @@ public:
         render_id dst_geometry_id,
         render_id src_geometry_id,
         geometry_buffer_type type);
+
+    render_id add_distance_field(render_id geometry_id, const distance_field& distance_field);
+    void remove_distance_field(render_id distance_field_id);
+
+    box3f get_distance_field_bounds(render_id distance_field_id) const;
+
+    void update(gpu_buffer_uploader* uploader);
 
     void mark_dirty(render_id geometry_id);
 
@@ -98,7 +107,12 @@ public:
 
         if (buffer.src_geometry_id != INVALID_RENDER_ID)
         {
-            return geometry_manager::get_buffer_address(buffer.src_geometry_id, type, offset);
+            return get_buffer_address(buffer.src_geometry_id, type, offset);
+        }
+
+        if (buffer.size == 0)
+        {
+            return 0xFFFFFFFF;
         }
 
         return static_cast<std::uint32_t>(buffer.offset + (buffer.stride * offset));
@@ -209,6 +223,8 @@ private:
     gpu_block_sparse_array<gpu_cluster> m_clusters;
     gpu_block_sparse_array<gpu_cluster_node> m_cluster_nodes;
     std::uint32_t m_cluster_node_depth{0};
+
+    std::unique_ptr<distance_field_manager> m_distance_field_manager;
 
     std::mutex m_mutex;
 };

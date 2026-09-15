@@ -12,8 +12,7 @@ struct gf2_material_base_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_base
-    : public material_instance<gf2_material_base_constant, MATERIAL_PATH_DEFERRED>
+class gf2_material_base : public material_instance<gf2_material_base_constant>
 {
 public:
     gf2_material_base();
@@ -22,10 +21,6 @@ public:
     void set_normal(const texture_2d* texture);
     void set_rmo(const texture_2d* texture);
     void set_ramp(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct gf2_material_face_constant
@@ -41,8 +36,7 @@ struct gf2_material_face_constant
     std::uint32_t padding1;
 };
 
-class gf2_material_face
-    : public material_instance<gf2_material_face_constant, MATERIAL_PATH_DEFERRED>
+class gf2_material_face : public material_instance<gf2_material_face_constant>
 {
 public:
     gf2_material_face();
@@ -52,10 +46,6 @@ public:
     void set_ramp(const texture_2d* texture);
 
     void set_face_dir(const vec3f& face_front_dir, const vec3f& face_left_dir);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct gf2_material_eye_constant
@@ -63,16 +53,12 @@ struct gf2_material_eye_constant
     std::uint32_t diffuse_texture;
 };
 
-class gf2_material_eye : public material_instance<gf2_material_eye_constant, MATERIAL_PATH_DEFERRED>
+class gf2_material_eye : public material_instance<gf2_material_eye_constant>
 {
 public:
     gf2_material_eye();
 
     void set_diffuse(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct gf2_material_eye_blend_constant
@@ -80,17 +66,12 @@ struct gf2_material_eye_blend_constant
     std::uint32_t blend_texture;
 };
 
-class gf2_material_eye_blend
-    : public material_instance<gf2_material_eye_blend_constant, MATERIAL_PATH_FORWARD>
+class gf2_material_eye_blend : public material_instance<gf2_material_eye_blend_constant>
 {
 public:
     gf2_material_eye_blend(bool is_add);
 
     void set_blend(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct gf2_material_hair_constant
@@ -101,8 +82,7 @@ struct gf2_material_hair_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_hair
-    : public material_instance<gf2_material_hair_constant, MATERIAL_PATH_DEFERRED>
+class gf2_material_hair : public material_instance<gf2_material_hair_constant>
 {
 public:
     gf2_material_hair();
@@ -110,10 +90,6 @@ public:
     void set_diffuse(const texture_2d* texture);
     void set_specular(const texture_2d* texture);
     void set_ramp(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct gf2_material_plush_constant
@@ -125,8 +101,7 @@ struct gf2_material_plush_constant
     std::uint32_t brdf_lut;
 };
 
-class gf2_material_plush
-    : public material_instance<gf2_material_plush_constant, MATERIAL_PATH_DEFERRED>
+class gf2_material_plush : public material_instance<gf2_material_plush_constant>
 {
 public:
     gf2_material_plush();
@@ -135,9 +110,5 @@ public:
     void set_normal(const texture_2d* texture);
     void set_noise(const texture_2d* texture);
     void set_ramp(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 } // namespace violet

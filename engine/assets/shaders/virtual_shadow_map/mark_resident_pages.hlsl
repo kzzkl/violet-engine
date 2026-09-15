@@ -3,8 +3,8 @@
 
 struct constant_data
 {
-    uint vsm_virtual_page_table;
-    uint vsm_physical_page_table;
+    uint virtual_page_table;
+    uint physical_page_table;
     uint vsm_buffer;
     uint frame;
 };
@@ -14,7 +14,7 @@ PushConstant(constant_data, constant);
 [numthreads(64, 1, 1)]
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
-    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
 
     uint physical_page_index = dtid.x;
 
@@ -45,7 +45,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     }
     else
     {
-        RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+        RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
         uint page_index = get_virtual_page_index(physical_page.vsm_id, virtual_page_coord);
 
         vsm_virtual_page virtual_page = vsm_virtual_page::unpack(virtual_page_table[page_index]);

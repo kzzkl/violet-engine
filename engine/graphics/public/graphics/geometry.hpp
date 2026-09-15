@@ -2,9 +2,9 @@
 
 #include "common/container.hpp"
 #include "graphics/cluster.hpp"
+#include "graphics/distance_field/distance_field.hpp"
 #include "graphics/morph_target.hpp"
 #include "graphics/render_device.hpp"
-#include "graphics/resources/texture.hpp"
 #include <array>
 
 namespace violet
@@ -119,9 +119,20 @@ public:
         return m_submeshes;
     }
 
-    void set_distance_field(std::unique_ptr<texture_3d>&& distance_field)
+    void set_distance_field(const distance_field& distance_field)
     {
-        m_distance_field = std::move(distance_field);
+        m_distance_field = distance_field;
+        mark_dirty(DIRTY_FLAG_DISTANCE_FIELD);
+    }
+
+    bool has_distance_field() const noexcept
+    {
+        return m_distance_field_id != INVALID_RENDER_ID;
+    }
+
+    render_id get_distance_field_id() const noexcept
+    {
+        return m_distance_field_id;
     }
 
     void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
@@ -166,11 +177,22 @@ public:
         return m_submesh_ids[submesh_index];
     }
 
+    box3f get_bounding_box(std::uint32_t submesh_index) const;
+
     sphere3f get_bounding_sphere(std::uint32_t submesh_index) const;
 
     void update();
 
 private:
+    enum dirty_flag
+    {
+        DIRTY_FLAG_NONE = 0,
+        DIRTY_FLAG_BUFFER = 1 << 0,
+        DIRTY_FLAG_SUBMESH = 1 << 1,
+        DIRTY_FLAG_DISTANCE_FIELD = 1 << 2,
+    };
+    using dirty_flags = std::uint32_t;
+
     struct geometry_buffer
     {
         std::vector<std::uint8_t> buffer;
@@ -204,10 +226,11 @@ private:
         };
     }
 
-    void update_submesh();
     void update_buffer();
+    void update_submesh();
+    void update_distance_field();
 
-    void mark_dirty();
+    void mark_dirty(dirty_flags dirty_flags);
 
     std::array<geometry_buffer, GEOMETRY_BUFFER_COUNT> m_geometry_buffers;
 
@@ -219,13 +242,14 @@ private:
     std::vector<submesh> m_submeshes;
     std::vector<render_id> m_submesh_ids;
 
-    std::unique_ptr<texture_3d> m_distance_field;
+    distance_field m_distance_field;
+    render_id m_distance_field_id{INVALID_RENDER_ID};
 
     string_map<std::size_t> m_morph_name_to_index;
     std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
 
     render_id m_geometry_id{INVALID_RENDER_ID};
 
-    bool m_dirty{false};
+    dirty_flags m_dirty_flags{DIRTY_FLAG_NONE};
 };
 } // namespace violet

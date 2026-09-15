@@ -148,7 +148,7 @@ void shading_pass::add(render_graph& graph, const parameter& parameter)
     }
 
     // Non-shadow casting lights.
-    if (light_module.get_light_count() > 0)
+    if (light_module.get_light_count() - shadow_module.get_shadow_light_count() > 0)
     {
         add_tile_shading_pass(graph, parameter, LIGHTING_STAGE_DIRECT_LIGHTING_UNSHADOWED);
     }
@@ -296,8 +296,6 @@ void shading_pass::add_tile_shading_pass(
         "Indirect Lighting",
     };
 
-    rdg_scope scope(graph, std::format("Tile Shading: {}", stage_names[stage]));
-
     struct pass_data
     {
         std::vector<rdg_texture_srv> gbuffers;
@@ -327,7 +325,7 @@ void shading_pass::add_tile_shading_pass(
     const auto& context = graph.get_context();
 
     graph.add_pass<pass_data>(
-        "Tile Shading",
+        std::format("Tile Shading: {}", stage_names[stage]),
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
@@ -386,13 +384,13 @@ void shading_pass::add_tile_shading_pass(
 
             if (context.get_camera().background == BACKGROUND_TYPE_ATMOSPHERE)
             {
-                const auto& scene = context.get_scene();
+                const auto& environment_module = context.get_module<render_scene_environment>();
+                const auto& atmosphere = environment_module.get_atmosphere();
 
                 data.sun_index = m_sun_index;
-                data.planet_radius = scene.atmosphere.planet_radius;
-                data.atmosphere_radius =
-                    scene.atmosphere.planet_radius + scene.atmosphere.atmosphere_height;
-                data.transmittance_lut = scene.transmittance_lut->get_srv();
+                data.planet_radius = atmosphere.planet_radius;
+                data.atmosphere_radius = atmosphere.planet_radius + atmosphere.atmosphere_height;
+                data.transmittance_lut = environment_module.get_transmittance_lut()->get_srv();
             }
             else
             {

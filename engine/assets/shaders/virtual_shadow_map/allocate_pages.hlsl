@@ -6,8 +6,8 @@ struct constant_data
     uint vsm_info;
     uint visible_virtual_page_list;
     uint vsm_buffer;
-    uint vsm_virtual_page_table;
-    uint vsm_physical_page_table;
+    uint virtual_page_table;
+    uint physical_page_table;
     uint vsm_bounds_buffer;
     uint lru_state;
     uint lru_buffer;
@@ -37,7 +37,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     GroupMemoryBarrierWithGroupSync();
 
     StructuredBuffer<uint> visible_virtual_page_list = ResourceDescriptorHeap[constant.visible_virtual_page_list];
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     uint virtual_page_index = 0;
     uint vsm_id = 0;
@@ -54,7 +54,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         {
             StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
-            RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+            RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
             RWStructuredBuffer<vsm_lru_state> lru_states = ResourceDescriptorHeap[constant.lru_state];
             StructuredBuffer<uint> lru_buffer = ResourceDescriptorHeap[constant.lru_buffer];
 
@@ -84,10 +84,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                     vsm_data old_vsm = vsms[physical_page.vsm_id];
                     uint2 old_virtual_page_coord = physical_page.virtual_page_coord - old_vsm.page_coord;
 
-                    if (old_virtual_page_coord.x < VIRTUAL_PAGE_TABLE_SIZE ||
-                        old_virtual_page_coord.y < VIRTUAL_PAGE_TABLE_SIZE ||
-                        old_virtual_page_coord.x >= 0 ||
-                        old_virtual_page_coord.y >= 0)
+                    if (old_virtual_page_coord.x >= 0 &&
+                        old_virtual_page_coord.x < VIRTUAL_PAGE_TABLE_SIZE &&
+                        old_virtual_page_coord.y >= 0 &&
+                        old_virtual_page_coord.y < VIRTUAL_PAGE_TABLE_SIZE)
                     {
                         uint old_virtual_page_index = get_virtual_page_index(physical_page.vsm_id, old_virtual_page_coord);
 
@@ -96,7 +96,6 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                         virtual_page_table[old_virtual_page_index] = old_virtual_page.pack();
                     }
                 }
-
 
                 virtual_page.physical_page_coord = get_physical_page_coord(free_physical_page_index);
                 virtual_page.flags |= VIRTUAL_PAGE_FLAG_RENDERING;

@@ -1,4 +1,5 @@
 add_library(violet-graphics STATIC
+    private/distance_field/distance_field_manager.cpp
     private/geometries/box_geometry.cpp
     private/geometries/plane_geometry.cpp
     private/geometries/sphere_geometry.cpp
@@ -13,6 +14,7 @@ add_library(violet-graphics STATIC
     private/render_scene/render_scene_light.cpp
     private/render_scene/render_scene_manager.cpp
     private/render_scene/render_scene_mesh.cpp
+    private/render_scene/render_scene_sdf.cpp
     private/render_scene/render_scene_shadow.cpp
     private/render_scene/render_scene.cpp
     private/renderers/features/vsm_feature.cpp
@@ -25,6 +27,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/depth_only_pass.cpp
     private/renderers/passes/dithering_pass.cpp
     private/renderers/passes/eye_adaptation_pass.cpp
+    private/renderers/passes/forward_pass.cpp
     private/renderers/passes/gbuffer_pass.cpp
     private/renderers/passes/gtao_pass.cpp
     private/renderers/passes/hzb_pass.cpp
@@ -32,6 +35,7 @@ add_library(violet-graphics STATIC
     private/renderers/passes/mesh_pass.cpp
     private/renderers/passes/motion_vector_pass.cpp
     private/renderers/passes/scan_pass.cpp
+    private/renderers/passes/sdf_pass.cpp
     private/renderers/passes/shading_pass.cpp
     private/renderers/passes/shadow_pass.cpp
     private/renderers/passes/skybox_pass.cpp

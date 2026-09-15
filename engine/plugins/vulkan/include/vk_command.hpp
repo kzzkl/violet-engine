@@ -90,15 +90,17 @@ public:
 
     void copy_buffer(
         rhi_buffer* src,
-        const rhi_buffer_region& src_region,
+        const rhi_buffer_region* src_regions,
         rhi_buffer* dst,
-        const rhi_buffer_region& dst_region) override;
+        const rhi_buffer_region* dst_regions,
+        std::size_t region_count) override;
 
     void copy_buffer_to_texture(
         rhi_buffer* buffer,
+        const rhi_buffer_region* src_regions,
         rhi_texture* texture,
-        const rhi_buffer_texture_copy* regions,
-        std::uint32_t region_count) override;
+        const rhi_texture_region* dst_regions,
+        std::size_t region_count) override;
 
     void begin_label(const char* label) const override
     {

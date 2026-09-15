@@ -105,7 +105,7 @@ struct vsm_virtual_page
 
     bool resident()
     {
-        return (flags & VIRTUAL_PAGE_FLAG_RESIDENT) != 0;
+        return flags & VIRTUAL_PAGE_FLAG_RESIDENT;
     }
 
     bool valid()
@@ -115,7 +115,7 @@ struct vsm_virtual_page
 
     bool visible()
     {
-        return (flags & VIRTUAL_PAGE_FLAG_VISIBLE) != 0;
+        return flags & VIRTUAL_PAGE_FLAG_VISIBLE;
     }
 };
 

@@ -122,12 +122,17 @@ void skinning_system::update_skin()
             {
                 if (mesh_meta.scene != nullptr)
                 {
+                    auto& mesh_module = mesh_meta.scene->get_module<render_scene_mesh>();
+
+                    mesh_module.set_mesh_geometry(
+                        mesh_meta.mesh,
+                        skinned_meta.skinned_geometry.get());
+
                     for (std::uint32_t submesh_index = 0; submesh_index < mesh.submeshes.size();
                          ++submesh_index)
                     {
-                        mesh_meta.scene->get_module<render_scene_mesh>().set_instance_geometry(
+                        mesh_module.set_instance_geometry(
                             mesh_meta.instances[submesh_index],
-                            skinned_meta.skinned_geometry.get(),
                             mesh.submeshes[submesh_index].index);
                     }
                 }

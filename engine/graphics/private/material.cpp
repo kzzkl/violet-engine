@@ -5,6 +5,16 @@
 
 namespace violet
 {
+struct material_forward_vs : public mesh_vs
+{
+    static constexpr std::string_view path = "assets/shaders/materials/material_forward.hlsl";
+};
+
+struct material_forward_fs : public mesh_fs
+{
+    static constexpr std::string_view path = "assets/shaders/materials/material_forward.hlsl";
+};
+
 struct material_deferred_vs : public mesh_vs
 {
     static constexpr std::string_view path = "assets/shaders/materials/material_deferred.hlsl";
@@ -150,6 +160,8 @@ void material::update()
         {
         case MATERIAL_PATH_FORWARD: {
             defines.emplace_back(L"-DVIOLET_MATERIAL_PATH=MATERIAL_PATH_FORWARD");
+            vertex_shader = device.get_shader<material_forward_vs>(defines);
+            fragment_shader = device.get_shader<material_forward_fs>(defines);
             break;
         }
         case MATERIAL_PATH_DEFERRED: {

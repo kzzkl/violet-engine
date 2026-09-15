@@ -50,7 +50,7 @@ void cluster_builder_meshopt::set_normals(std::span<const vec3f> normals)
     {
         if (std::isnan(normals[i].x) || std::isnan(normals[i].y) || std::isnan(normals[i].z))
         {
-            m_normals[i] = {.x = 0.0f, .y = 1.0f, .z = 0.0f};
+            m_normals[i] = {0.0f, 1.0f, 0.0f};
         }
         else
         {
@@ -67,7 +67,7 @@ void cluster_builder_meshopt::set_tangents(std::span<const vec4f> tangents)
     {
         if (std::isnan(tangents[i].x) || std::isnan(tangents[i].y) || std::isnan(tangents[i].z))
         {
-            m_tangents[i] = {.x = 0.0f, .y = 1.0f, .z = 0.0f, .w = tangents[i].w};
+            m_tangents[i] = {0.0f, 1.0f, 0.0f, tangents[i].w};
         }
         else
         {
@@ -335,7 +335,7 @@ void cluster_builder_meshopt::compute_cluster_bounds(meshopt_cluster& cluster, f
         sizeof(vec3f));
 
     cluster.bounding_sphere = {
-        .center = {.x = bounds.center[0], .y = bounds.center[1], .z = bounds.center[2]},
+        .center = {bounds.center[0], bounds.center[1], bounds.center[2]},
         .radius = bounds.radius,
     };
 
@@ -696,22 +696,20 @@ cluster_builder_meshopt::simplify_result cluster_builder_meshopt::simplify(
                 };
                 tangent = vector::length_sq(tangent) > 1e-8f ? vector::normalize(tangent) :
                                                                vec3f{1.0f, 0.0f, 0.0f};
-                m_tangents.push_back({
-                    .x = tangent.x,
-                    .y = tangent.y,
-                    .z = tangent.z,
-                    .w = attribute[attribute_offset + 3] < 0.0f ? -1.0f : 1.0f,
-                });
+                m_tangents.emplace_back(
+                    tangent.x,
+                    tangent.y,
+                    tangent.z,
+                    attribute[attribute_offset + 3] < 0.0f ? -1.0f : 1.0f);
 
                 attribute_offset += 4;
             }
 
             if (!m_uvs.empty())
             {
-                m_uvs.push_back({
-                    .x = attribute[attribute_offset + 0],
-                    .y = attribute[attribute_offset + 1],
-                });
+                m_uvs.emplace_back(
+                    attribute[attribute_offset + 0],
+                    attribute[attribute_offset + 1]);
 
                 attribute_offset += 2;
             }

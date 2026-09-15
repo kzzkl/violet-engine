@@ -258,6 +258,151 @@ private:
 };
 
 template <typename T>
+class gpu_append_array
+{
+public:
+    using cpu_type = T;
+    using gpu_type = T::gpu_type;
+
+    gpu_append_array()
+    {
+        m_object_buffer = std::make_unique<structured_buffer>(
+            64 * sizeof(gpu_type),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+    }
+
+    render_id add()
+    {
+        auto id = static_cast<render_id>(m_objects.size());
+
+        m_objects.emplace_back();
+
+        return id;
+    }
+
+    T& operator[](render_id id)
+    {
+        return m_objects[id];
+    }
+
+    const T& operator[](render_id id) const
+    {
+        return m_objects[id];
+    }
+
+    template <typename GetDataFunctor, typename UploadFunctor>
+    bool update(GetDataFunctor&& get_data, UploadFunctor&& upload, bool update_all = false)
+    {
+        bool need_resize = false;
+
+        if (get_size() > get_capacity())
+        {
+            reserve(get_size());
+            need_resize = true;
+        }
+
+        if (update_all || need_resize)
+        {
+            m_uploaded_size = 0;
+        }
+
+        if (m_uploaded_size == get_size())
+        {
+            return need_resize;
+        }
+
+        std::vector<gpu_type> gpu_datas;
+        gpu_datas.reserve(get_size() - m_uploaded_size);
+
+        for (std::uint32_t i = m_uploaded_size; i < get_size(); ++i)
+        {
+            gpu_datas.push_back(get_data(m_objects[i]));
+        }
+
+        upload(
+            m_object_buffer->get_rhi(),
+            gpu_datas.data(),
+            gpu_datas.size() * sizeof(gpu_type),
+            m_uploaded_size * sizeof(gpu_type));
+
+        m_uploaded_size = get_size();
+
+        return need_resize;
+    }
+
+    std::uint32_t get_size() const noexcept
+    {
+        return static_cast<std::uint32_t>(m_objects.size());
+    }
+
+    std::uint32_t get_capacity() const noexcept
+    {
+        return static_cast<std::uint32_t>(m_object_buffer->get_size() / sizeof(gpu_type));
+    }
+
+    structured_buffer* get_buffer() const noexcept
+    {
+        return m_object_buffer.get();
+    }
+
+    template <typename Functor>
+    void each(Functor&& functor)
+    {
+        for (render_id id = 0; id < m_objects.size(); ++id)
+        {
+            functor(id, m_objects[id]);
+        }
+    }
+
+    template <typename Functor>
+    void each(Functor&& functor) const
+    {
+        for (render_id id = 0; id < m_objects.size(); ++id)
+        {
+            functor(id, m_objects[id]);
+        }
+    }
+
+    void set_name(std::string_view name)
+    {
+        m_name = name;
+        m_object_buffer->get_rhi()->set_name(m_name.c_str());
+    }
+
+    void clear()
+    {
+        m_objects.clear();
+        m_uploaded_size = 0;
+    }
+
+private:
+    void reserve(std::uint32_t object_count)
+    {
+        std::uint32_t capacity = get_capacity();
+        while (capacity < object_count)
+        {
+            capacity += capacity / 2;
+        }
+
+        m_object_buffer = std::make_unique<structured_buffer>(
+            capacity * sizeof(gpu_type),
+            RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+
+        if (!m_name.empty())
+        {
+            m_object_buffer->get_rhi()->set_name(m_name.c_str());
+        }
+    }
+
+    std::vector<T> m_objects;
+    std::uint32_t m_uploaded_size{0};
+
+    std::unique_ptr<structured_buffer> m_object_buffer;
+
+    std::string m_name;
+};
+
+template <typename T>
 class gpu_sparse_array
 {
 public:
@@ -334,6 +479,18 @@ public:
         for (render_id id = 0; id < m_objects.size(); ++id)
         {
             if (m_objects[id].valid)
+            {
+                functor(id, m_objects[id].cpu_data);
+            }
+        }
+    }
+
+    template <typename Functor>
+    void each_dirty(Functor&& functor)
+    {
+        for (render_id id : m_dirty_objects)
+        {
+            if (m_objects[id].valid && m_objects[id].dirty)
             {
                 functor(id, m_objects[id].cpu_data);
             }

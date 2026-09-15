@@ -6,8 +6,8 @@ struct constant_data
 {
     uint vsm_buffer;
     uint vsm_bounds_buffer;
-    uint vsm_virtual_page_table;
-    uint vsm_physical_page_table;
+    uint virtual_page_table;
+    uint physical_page_table;
     
     uint hzb;
     uint hzb_sampler;
@@ -117,13 +117,13 @@ void process_cluster_node(uint group_index)
     cluster_node_data cluster_node = cluster_nodes[cluster_node_id];
 
     instance_data instance = instances[instance_id];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh_data mesh = meshes[instance.mesh_id];
 
     bool is_static = (mesh.flags & MESH_STATIC) != 0;
 
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     uint vsm_id = gs_vsms[parent_index];
     vsm_data vsm = vsms[vsm_id];
@@ -142,7 +142,7 @@ void process_cluster_node(uint group_index)
     if (visible)
     {
 #ifdef USE_OCCLUSION
-        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
         if (!vsm_cull(vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))
@@ -199,8 +199,8 @@ void process_cluster(uint3 dtid)
     cluster_item item = cluster_item::unpack(cluster_queue[dtid.x + get_cluster_offset()]);
 
     instance_data instance = instances[item.instance_id];
-    mesh_data mesh = meshes[instance.mesh_index];
-    geometry_data geometry = geometries[instance.geometry_index];
+    mesh_data mesh = meshes[instance.mesh_id];
+    geometry_data geometry = geometries[instance.submesh_id];
 
     cluster_data cluster = clusters[item.cluster_id];
     if (cluster.index_count == 0)
@@ -212,7 +212,7 @@ void process_cluster(uint3 dtid)
 
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
     StructuredBuffer<vsm_bounds> vsm_bounds = ResourceDescriptorHeap[constant.vsm_bounds_buffer];
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     vsm_data vsm = vsms[item.vsm_id];
     uint4 page_bounds = is_static ? vsm_bounds[item.vsm_id].invalidated_bounds : vsm_bounds[item.vsm_id].required_bounds;
@@ -230,7 +230,7 @@ void process_cluster(uint3 dtid)
     if (visible)
     {
 #ifdef USE_OCCLUSION
-        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
         if (!vsm_cull(item.vsm_id, page_bounds, sphere_vs, is_static, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))

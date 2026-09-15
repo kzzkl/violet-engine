@@ -1,5 +1,9 @@
 #include "graphics/renderers/deferred_renderer.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/render_scene/render_scene_camera.hpp"
+#include "graphics/render_scene/render_scene_environment.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
+#include "graphics/render_scene/render_scene_shadow.hpp"
 #include "graphics/renderers/features/atmosphere_feature.hpp"
 #include "graphics/renderers/features/bloom_feature.hpp"
 #include "graphics/renderers/features/cluster_feature.hpp"
@@ -21,6 +25,7 @@
 #include "graphics/renderers/passes/gtao_pass.hpp"
 #include "graphics/renderers/passes/hzb_pass.hpp"
 #include "graphics/renderers/passes/motion_vector_pass.hpp"
+#include "graphics/renderers/passes/sdf_pass.hpp"
 #include "graphics/renderers/passes/shading_pass.hpp"
 #include "graphics/renderers/passes/shadow_pass.hpp"
 #include "graphics/renderers/passes/skybox_pass.hpp"
@@ -74,7 +79,7 @@ void deferred_renderer::on_render(render_graph& graph)
         rdg_scope scope(graph, "Post Pass");
         add_cull_pass(graph, false);
         add_gbuffer_pass(graph, false);
-        add_tracing_hzb_pass(graph);
+        add_culling_hzb_pass(graph);
     }
 
     add_tracing_hzb_pass(graph);
@@ -96,6 +101,8 @@ void deferred_renderer::on_render(render_graph& graph)
     {
         add_motion_vector_pass(graph);
     }
+
+    add_sdf_pass(graph);
 
     if (get_feature<ssgi_feature>(true))
     {
@@ -247,24 +254,24 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
         6 * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 
-    const auto& scene = context.get_scene();
+    const auto& mesh_module = context.get_module<render_scene_mesh>();
 
     m_draw_buffer = graph.add_buffer(
         "Draw Buffer",
-        scene.draw_call_capacity * sizeof(shader::draw_command),
+        mesh_module.get_draw_call_capacity() * sizeof(shader::draw_command),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT);
     m_draw_count_buffer = graph.add_buffer(
         "Draw Count Buffer",
-        scene.batch_capacity * sizeof(std::uint32_t),
+        mesh_module.get_batch_capacity() * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE | RHI_BUFFER_INDIRECT | RHI_BUFFER_TRANSFER_DST);
     m_draw_info_buffer = graph.add_buffer(
         "Draw Info Buffer",
-        scene.draw_call_capacity * sizeof(shader::draw_info),
+        mesh_module.get_draw_call_capacity() * sizeof(shader::draw_info),
         RHI_BUFFER_STORAGE);
 
     m_recheck_instances = graph.add_buffer(
         "Recheck Instances",
-        math::next_power_of_two(scene.instance_count) * sizeof(std::uint32_t),
+        math::next_power_of_two(mesh_module.get_instance_count()) * sizeof(std::uint32_t),
         RHI_BUFFER_STORAGE);
     m_recheck_count = graph.add_buffer(
         "Recheck Count",
@@ -309,29 +316,34 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
         RHI_FORMAT_D32_FLOAT,
         RHI_TEXTURE_DEPTH_STENCIL | RHI_TEXTURE_SHADER_RESOURCE);
 
-    m_shadow_light_buffer = graph.add_buffer("Shadow Light Buffer", scene.shadow_light_buffer);
+    const auto& shadow_module = context.get_module<render_scene_shadow>();
 
-    m_vsm_buffer = graph.add_buffer("VSM Buffer", scene.vsm_buffer);
-    m_vsm_virtual_page_table = graph.add_buffer("VSM Page Table", scene.vsm_virtual_page_table);
+    m_shadow_light_buffer =
+        graph.add_buffer("Shadow Light Buffer", shadow_module.get_shadow_light_buffer());
+
+    m_vsm_buffer = graph.add_buffer("VSM Buffer", shadow_module.get_vsm_buffer());
+    m_vsm_virtual_page_table =
+        graph.add_buffer("VSM Page Table", shadow_module.get_virtual_page_table());
     m_vsm_physical_page_table =
-        graph.add_buffer("VSM Physical Page Table", scene.vsm_physical_page_table);
+        graph.add_buffer("VSM Physical Page Table", shadow_module.get_physical_page_table());
     m_vsm_physical_shadow_map_static = graph.add_texture(
         "VSM Physical Shadow Map Static",
-        scene.vsm_physical_shadow_map_static,
+        shadow_module.get_physical_shadow_map_static(),
         RHI_TEXTURE_LAYOUT_GENERAL,
         RHI_TEXTURE_LAYOUT_GENERAL);
     m_vsm_physical_shadow_map_final = graph.add_texture(
         "VSM Physical Shadow Map Final",
-        scene.vsm_physical_shadow_map_final,
+        shadow_module.get_physical_shadow_map_final(),
         RHI_TEXTURE_LAYOUT_GENERAL,
         RHI_TEXTURE_LAYOUT_GENERAL);
-    m_vsm_directional_buffer = graph.add_buffer("VSM Directional Buffer", scene.vsm_clipmap_buffer);
+    m_vsm_directional_buffer =
+        graph.add_buffer("VSM Directional Buffer", shadow_module.get_clipmap_buffer());
 
-    if (scene.vsm_hzb != nullptr)
+    if (shadow_module.get_hzb() != nullptr)
     {
         m_vsm_hzb = graph.add_texture(
             "VSM HZB",
-            scene.vsm_hzb,
+            shadow_module.get_hzb(),
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
     }
@@ -484,11 +496,11 @@ void deferred_renderer::add_shadow_pass(render_graph& graph)
         .depth_buffer = m_depth_buffer,
         .shadow_light_buffer = m_shadow_light_buffer,
         .vsm_buffer = m_vsm_buffer,
-        .vsm_virtual_page_table = m_vsm_virtual_page_table,
-        .vsm_physical_page_table = m_vsm_physical_page_table,
-        .vsm_physical_shadow_map_static = m_vsm_physical_shadow_map_static,
-        .vsm_physical_shadow_map_final = m_vsm_physical_shadow_map_final,
-        .vsm_hzb = m_vsm_hzb,
+        .virtual_page_table = m_vsm_virtual_page_table,
+        .physical_page_table = m_vsm_physical_page_table,
+        .physical_shadow_map_static = m_vsm_physical_shadow_map_static,
+        .physical_shadow_map_final = m_vsm_physical_shadow_map_final,
+        .hzb = m_vsm_hzb,
         .vsm_directional_buffer = m_vsm_directional_buffer,
         .lru_state = graph.add_buffer("VSM LRU State", vsm->get_lru_state()),
         .lru_buffer = graph.add_buffer("VSM LRU Buffer", vsm->get_lru_buffer()),
@@ -570,6 +582,28 @@ void deferred_renderer::add_tracing_hzb_pass(render_graph& graph)
     });
 }
 
+void deferred_renderer::add_sdf_pass(render_graph& graph)
+{
+    sdf_pass::debug_mode debug_mode = sdf_pass::DEBUG_MODE_NONE;
+    switch (m_debug_mode)
+    {
+    case DEBUG_MODE_SDF_PAGE:
+        debug_mode = sdf_pass::DEBUG_MODE_PAGE;
+        break;
+    case DEBUG_MODE_SDF_MESH_SDF:
+        debug_mode = sdf_pass::DEBUG_MODE_MESH_SDF;
+        break;
+    default:
+        break;
+    }
+
+    graph.add_pass<sdf_pass>({
+        .depth_buffer = m_depth_buffer,
+        .debug_mode = debug_mode,
+        .debug_output = m_debug_output,
+    });
+}
+
 void deferred_renderer::add_ssgi_pass(render_graph& graph)
 {
     auto* ssgi = get_feature<ssgi_feature>();
@@ -615,18 +649,17 @@ void deferred_renderer::add_ssgi_pass(render_graph& graph)
 void deferred_renderer::add_sky_lut_pass(render_graph& graph)
 {
     const auto& context = graph.get_context();
-
+    const auto& environment_module = context.get_module<render_scene_environment>();
     const auto& camera = context.get_camera();
-    const auto& scene = context.get_scene();
 
     if (camera.background == BACKGROUND_TYPE_SKYBOX)
     {
         m_prefilter_map = graph.add_texture(
             "Prefilter Map",
-            scene.prefilter_map,
+            environment_module.get_prefilter_map(),
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
             RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-        m_irradiance_sh = graph.add_buffer("Irradiance SH", scene.irradiance_sh);
+        m_irradiance_sh = graph.add_buffer("Irradiance SH", environment_module.get_irradiance_sh());
     }
     else if (camera.background == BACKGROUND_TYPE_ATMOSPHERE)
     {
@@ -654,7 +687,7 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
             RHI_FORMAT_R16G16B16A16_FLOAT,
             RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_STORAGE);
 
-        if (scene.atmosphere_diry)
+        if (environment_module.is_atmosphere_dirty())
         {
             m_ibl_dirty = true;
         }
@@ -672,15 +705,17 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
             parameter.vsm_physical_shadow_map = m_vsm_physical_shadow_map_final;
         }
 
+        const auto& camera_module = context.get_module<render_scene_camera>();
+        const auto& camera_data = camera_module.get_camera(camera.id);
+
         if (m_ibl_dirty && get_frame() % atmosphere->ibl_update_interval == 0)
         {
             m_prefilter_map = graph.add_texture(
                 "Prefilter Map",
-                scene.prefilter_map,
+                camera_data.prefilter_map.get(),
                 RHI_TEXTURE_LAYOUT_UNDEFINED,
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-
-            m_irradiance_sh = graph.add_buffer("Irradiance SH", scene.irradiance_sh);
+            m_irradiance_sh = graph.add_buffer("Irradiance SH", camera_data.irradiance_sh.get());
 
             parameter.prefilter_map = m_prefilter_map;
             parameter.irradiance_sh = m_irradiance_sh;
@@ -691,11 +726,10 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
         {
             m_prefilter_map = graph.add_texture(
                 "Prefilter Map",
-                scene.prefilter_map,
+                camera_data.prefilter_map.get(),
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
                 RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
-
-            m_irradiance_sh = graph.add_buffer("Irradiance SH", scene.irradiance_sh);
+            m_irradiance_sh = graph.add_buffer("Irradiance SH", camera_data.irradiance_sh.get());
         }
 
         graph.add_pass<atmosphere_lut_pass>(parameter);
@@ -705,16 +739,15 @@ void deferred_renderer::add_sky_lut_pass(render_graph& graph)
 void deferred_renderer::add_sky_pass(render_graph& graph)
 {
     const auto& context = graph.get_context();
-    const auto& camera = context.get_camera();
-    const auto& scene = context.get_scene();
+    const auto& mesh_module = context.get_module<render_scene_mesh>();
 
-    switch (camera.background)
+    switch (context.get_camera().background)
     {
     case BACKGROUND_TYPE_SKYBOX: {
         graph.add_pass<skybox_pass>({
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
-            .clear = scene.instance_count == 0,
+            .clear = mesh_module.get_instance_count() == 0,
         });
         break;
     }
@@ -724,7 +757,7 @@ void deferred_renderer::add_sky_pass(render_graph& graph)
             .aerial_perspective_lut = m_aerial_perspective_lut,
             .render_target = m_render_target,
             .depth_buffer = m_depth_buffer,
-            .clear = scene.instance_count == 0,
+            .clear = mesh_module.get_instance_count() == 0,
         });
         break;
     }

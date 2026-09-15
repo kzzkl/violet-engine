@@ -81,8 +81,8 @@ struct mesh_data
 
 struct instance_data
 {
-    uint mesh_index;
-    uint geometry_index;
+    uint mesh_id;
+    uint submesh_id;
     uint batch_index;
     uint material_address;
 };
@@ -232,12 +232,9 @@ float2 get_compute_uv(uint2 texel_coord, uint width, uint height)
     return (float2(texel_coord) + 0.5) / float2(width, height);
 }
 
-#define MATERIAL_PATH_FORWARD 1
-#define MATERIAL_PATH_DEFERRED 2
-#define MATERIAL_PATH_VISIBILITY 3
-
-#ifndef VIOLET_MATERIAL_PATH
-#define VIOLET_MATERIAL_PATH MATERIAL_PATH_VISIBILITY
-#endif
+uint get_dispatch_group_count(uint offset, uint count, uint group_size)
+{
+    return (offset + count + group_size - 1) / group_size - (offset + group_size - 1) / group_size;
+}
 
 #endif

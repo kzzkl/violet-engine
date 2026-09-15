@@ -75,9 +75,9 @@ struct symmetric_matrix
     operator mat3f() const noexcept
     {
         return {
-            {.x = xx, .y = xy, .z = xz},
-            {.x = xy, .y = yy, .z = yz},
-            {.x = xz, .y = yz, .z = zz},
+            {xx, xy, xz},
+            {xy, yy, yz},
+            {xz, yz, zz},
         };
     }
 };

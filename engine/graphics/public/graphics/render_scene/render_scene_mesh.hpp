@@ -17,19 +17,17 @@ public:
     void remove_mesh(render_id mesh_id);
     void set_mesh_flags(render_id mesh_id, std::uint32_t flags);
     void set_mesh_matrix(render_id mesh_id, const mat4f& matrix_m, const vec3f& scale);
+    void set_mesh_geometry(render_id mesh_id, geometry* geometry);
 
     render_id add_instance(render_id mesh_id);
     void remove_instance(render_id instance_id);
-    void set_instance_geometry(
-        render_id instance_id,
-        geometry* geometry,
-        std::uint32_t submesh_index);
+    void set_instance_geometry(render_id instance_id, std::uint32_t submesh_index);
     void set_instance_material(render_id instance_id, material* material);
 
     void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
     void reset() override
     {
-        m_invalidation_bounds.clear();
+        m_invalidation_regions.clear();
     }
 
     std::uint32_t get_mesh_count() const noexcept
@@ -67,9 +65,9 @@ public:
         return m_material_path_mask & (1 << static_cast<std::uint32_t>(material_path));
     }
 
-    const std::vector<sphere3f>& get_invalidation_bounds() const noexcept
+    const std::vector<sphere3f>& get_invalidation_regions() const noexcept
     {
-        return m_invalidation_bounds;
+        return m_invalidation_regions;
     }
 
     template <typename Functor>
@@ -148,6 +146,8 @@ private:
         vec4f scale;
         std::uint32_t flags;
         std::vector<render_id> instances;
+
+        render_id geometry_id{INVALID_RENDER_ID};
     };
 
     struct instance_data
@@ -155,9 +155,7 @@ private:
         using gpu_type = shader::instance_data;
 
         render_id material_id{INVALID_RENDER_ID};
-
-        render_id geometry_id{INVALID_RENDER_ID};
-        std::uint32_t submesh_index;
+        std::uint32_t submesh_index{0xFFFFFFFF};
 
         render_id mesh_id{INVALID_RENDER_ID};
         render_id batch_id{INVALID_RENDER_ID};
@@ -256,7 +254,7 @@ private:
     void update_instances(render_scene_context& context, gpu_buffer_uploader& uploader);
     void update_batch(render_scene_context& context, gpu_buffer_uploader& uploader);
 
-    gpu_dense_array<mesh_data> m_meshes;
+    gpu_sparse_array<mesh_data> m_meshes;
     std::vector<render_id> m_matrix_dirty_meshes;
 
     gpu_dense_array<instance_data> m_instances;
@@ -291,6 +289,6 @@ private:
 
     dirty_flags m_dirty_flags{0};
 
-    std::vector<sphere3f> m_invalidation_bounds;
+    std::vector<sphere3f> m_invalidation_regions;
 };
 } // namespace violet

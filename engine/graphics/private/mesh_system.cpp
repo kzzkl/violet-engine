@@ -2,6 +2,7 @@
 #include "components/mesh_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/render_scene/render_scene_sdf.hpp"
 
 namespace violet
 {
@@ -40,14 +41,14 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 {
                     if (mesh_meta.scene != nullptr)
                     {
-                        for (render_id instance : mesh_meta.instances)
-                        {
-                            mesh_meta.scene->get_module<render_scene_mesh>().remove_instance(
-                                instance);
-                        }
-
                         mesh_meta.scene->get_module<render_scene_mesh>().remove_mesh(
                             mesh_meta.mesh);
+
+                        if (mesh_meta.mesh_sdf != INVALID_RENDER_ID)
+                        {
+                            mesh_meta.scene->get_module<render_scene_sdf>().remove_mesh(
+                                mesh_meta.mesh_sdf);
+                        }
                     }
 
                     mesh_meta.mesh = render_scene->get_module<render_scene_mesh>().add_mesh();
@@ -66,51 +67,71 @@ void mesh_system::update(render_scene_manager& scene_manager)
                        view.template is_updated<transform_world_component>(m_system_version);
             });
 
-    world.get_view().read<mesh_component>().write<mesh_component_meta>().each(
-        [](const mesh_component& mesh, mesh_component_meta& mesh_meta)
-        {
-            if (mesh_meta.scene == nullptr)
+    world.get_view()
+        .read<mesh_component>()
+        .read<transform_world_component>()
+        .write<mesh_component_meta>()
+        .each(
+            [](const mesh_component& mesh,
+               const transform_world_component& transform,
+               mesh_component_meta& mesh_meta)
             {
-                return;
-            }
+                if (mesh_meta.scene == nullptr)
+                {
+                    return;
+                }
 
-            auto& mesh_module = mesh_meta.scene->get_module<render_scene_mesh>();
+                auto& mesh_module = mesh_meta.scene->get_module<render_scene_mesh>();
 
-            mesh_module.set_mesh_flags(mesh_meta.mesh, mesh.flags);
+                mesh_module.set_mesh_flags(mesh_meta.mesh, mesh.flags);
+                mesh_module.set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
 
-            std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;
-            std::size_t instance_count = std::min(submesh_count, mesh_meta.instances.size());
+                if (mesh.geometry->has_distance_field())
+                {
+                    auto& sdf_module = mesh_meta.scene->get_module<render_scene_sdf>();
 
-            for (std::size_t i = 0; i < instance_count; ++i)
+                    if (mesh_meta.mesh_sdf == INVALID_RENDER_ID)
+                    {
+                        mesh_meta.mesh_sdf = sdf_module.add_mesh();
+                    }
+
+                    sdf_module.set_mesh_distance_field(
+                        mesh_meta.mesh_sdf,
+                        mesh.geometry->get_distance_field_id());
+                    sdf_module.set_mesh_matrix(mesh_meta.mesh_sdf, transform.matrix);
+                }
+
+                std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;
+                std::size_t instance_count = std::min(submesh_count, mesh_meta.instances.size());
+
+                for (std::size_t i = 0; i < instance_count; ++i)
+                {
+                    mesh_module.set_instance_geometry(
+                        mesh_meta.instances[i],
+                        mesh.submeshes[i].index);
+                    mesh_module.set_instance_material(
+                        mesh_meta.instances[i],
+                        mesh.submeshes[i].material);
+                }
+
+                for (std::size_t i = instance_count; i < submesh_count; ++i)
+                {
+                    render_id instance = mesh_module.add_instance(mesh_meta.mesh);
+                    mesh_module.set_instance_geometry(instance, mesh.submeshes[i].index);
+                    mesh_module.set_instance_material(instance, mesh.submeshes[i].material);
+                    mesh_meta.instances.push_back(instance);
+                }
+
+                while (mesh_meta.instances.size() > submesh_count)
+                {
+                    mesh_module.remove_instance(mesh_meta.instances.back());
+                    mesh_meta.instances.pop_back();
+                }
+            },
+            [this](auto& view)
             {
-                mesh_module.set_instance_geometry(
-                    mesh_meta.instances[i],
-                    mesh.geometry,
-                    mesh.submeshes[i].index);
-
-                mesh_module.set_instance_material(
-                    mesh_meta.instances[i],
-                    mesh.submeshes[i].material);
-            }
-
-            for (std::size_t i = instance_count; i < submesh_count; ++i)
-            {
-                render_id instance = mesh_module.add_instance(mesh_meta.mesh);
-                mesh_module.set_instance_geometry(instance, mesh.geometry, mesh.submeshes[i].index);
-                mesh_module.set_instance_material(instance, mesh.submeshes[i].material);
-                mesh_meta.instances.push_back(instance);
-            }
-
-            while (mesh_meta.instances.size() > submesh_count)
-            {
-                mesh_module.remove_instance(mesh_meta.instances.back());
-                mesh_meta.instances.pop_back();
-            }
-        },
-        [this](auto& view)
-        {
-            return view.template is_updated<mesh_component>(m_system_version);
-        });
+                return view.template is_updated<mesh_component>(m_system_version);
+            });
 
     m_system_version = world.get_version();
 }

@@ -389,11 +389,11 @@ std::vector<std::uint8_t> render_device::compile_shader(
         L"assets/shaders",
         L"-Wno-ignored-attributes",
         L"-all-resources-bound",
-#ifndef NDEBUG
+// #ifndef NDEBUG
         L"-Zi",
         L"-Qembed_debug",
         L"-O0",
-#endif
+// #endif
     };
 
     if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)

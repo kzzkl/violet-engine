@@ -67,10 +67,10 @@ sphere_geometry::sphere_geometry(
 
             // tangent
             float phi = phi_start + (u * phi_length);
-            tangents.push_back({.x = std::sin(phi), .y = 0.0f, .z = std::cos(phi), .w = 1.0f});
+            tangents.emplace_back(std::sin(phi), 0.0f, std::cos(phi), 1.0f);
 
             // uv
-            uvs.push_back({.x = u + u_offset, .y = 1 - v});
+            uvs.emplace_back(u + u_offset, 1 - v);
 
             vertices_row.push_back(index++);
         }

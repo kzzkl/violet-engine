@@ -171,7 +171,7 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         if (geometry_data.distance_field != -1)
         {
             auto& distance_field = scene_data.distance_fields[geometry_data.distance_field];
-            model_geometry->set_distance_field(std::make_unique<texture_3d>(distance_field));
+            model_geometry->set_distance_field(distance_field);
         }
 
         m_geometries.push_back(std::move(model_geometry));
@@ -343,7 +343,7 @@ void sample_system::initialize_scene(std::string_view skybox_path)
 
     auto& main_light = world.get_component<light_component>(m_sky);
     main_light.type = LIGHT_DIRECTIONAL;
-    main_light.color = {.x = 10.0f, .y = 10.0f, .z = 10.0f};
+    main_light.color = 10.0f;
     main_light.cast_shadow = true;
 
     m_camera = world.create();

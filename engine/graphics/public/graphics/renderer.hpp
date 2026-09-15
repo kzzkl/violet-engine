@@ -114,14 +114,14 @@ protected:
         return static_cast<T*>(m_features[id].get());
     }
 
-    virtual void on_render(render_graph& graph) = 0;
-
     float get_delta_time() const noexcept
     {
         return m_delta_time;
     }
 
 private:
+    virtual void on_render(render_graph& graph) = 0;
+
     std::vector<std::unique_ptr<render_feature_base>> m_features;
     std::unique_ptr<rdg_profiling> m_profiling;
 

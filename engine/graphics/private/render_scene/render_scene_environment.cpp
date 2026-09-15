@@ -34,7 +34,7 @@ void render_scene_environment::update(render_scene_context& context, gpu_buffer_
         return;
     }
 
-    const auto& light = context.light_module->get_light(m_sun_id);
+    const auto& light = context.get_module<render_scene_light>().get_light(m_sun_id);
 
     if (m_sun_direction != light.direction || m_sun_irradiance != light.color)
     {

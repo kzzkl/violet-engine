@@ -40,6 +40,11 @@ protected:
         return m_camera;
     }
 
+    geometry* get_geometry(std::size_t index) const noexcept
+    {
+        return m_geometries[index].get();
+    }
+
     void imgui_profiling(rdg_profiling* profiling);
 
 private:

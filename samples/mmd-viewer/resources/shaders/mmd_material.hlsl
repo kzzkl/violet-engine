@@ -1,54 +1,6 @@
-#include "mesh.hlsli"
 #include "color.hlsli"
 #include "brdf.hlsli"
-#include "shading/shading_model.hlsli"
-
-struct constant_data
-{
-    uint draw_info_buffer;
-};
-PushConstant(constant_data, constant);
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-struct vs_output
-{
-    float4 position_cs : SV_POSITION;
-    float3 normal_ws : NORMAL_WS;
-    float2 uv : TEXCOORD;
-    uint material_address : MATERIAL_ADDRESS;
-};
-
-vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
-{
-    StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
-    uint instance_id = draw_infos[draw_id].instance_id;
-
-    mesh mesh = mesh::create(instance_id, scene);
-    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
-
-    vs_output output;
-    output.position_cs = vertex.position_cs;
-    output.normal_ws = vertex.normal_ws;
-    output.uv = vertex.uv;
-    output.material_address = mesh.get_material_address();
-
-    return output;
-}
-
-struct mmd_material
-{
-    float4 diffuse;
-    float3 specular;
-    float specular_strength;
-    float3 ambient;
-    uint diffuse_texture;
-    uint toon_texture;
-    uint environment_texture;
-    uint environment_blend_mode;
-    uint ramp_texture;
-};
+#include "material.hlsli"
 
 float3 multiply_rgb(float3 a, float3 b, float factor)
 {
@@ -60,80 +12,108 @@ float3 screen_rgb(float3 a, float3 b, float factor)
     return (1.0 - factor) * a + factor * (1.0 - (1.0 - a) * (1.0 - b));
 }
 
-fs_output fs_main(vs_output input)
+struct mmd_material
 {
-    SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-    
-    mmd_material material = load_material<mmd_material>(scene.material_buffer, input.material_address);
-
-    Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[material.diffuse_texture];
-    Texture2D<float4> environment_texture = ResourceDescriptorHeap[material.environment_texture];
-
-    float4 color = material.diffuse * diffuse_texture.Sample(linear_repeat_sampler, input.uv);
-
-    float3 rgb = color.rgb;
-    float3 hsv = rgb_to_hsv(rgb);
-    color.rgb = multiply_rgb(rgb, rgb, saturate(hsv.z + 0.5));
-
-    // if (material.environment_blend_mode != 0)
-    // {
-    //     float3 normal_vs = normalize(input.normal_vs);
-
-    //     float2 environment_uv = float2(normal_vs.x * 0.5 + 0.5, 1.0 - (normal_vs.y * 0.5 + 0.5));
-    //     float4 environment_color = environment_texture.Sample(linear_clamp_sampler, environment_uv);
-
-    //     if (material.environment_blend_mode == 1)
-    //     {
-    //         color *= float4(environment_color.rgb, 1.0);
-    //     }
-    //     else if (material.environment_blend_mode == 2)
-    //     {
-    //         color += float4(environment_color.rgb, 0.0);
-    //     }
-    // }
-
-    float3 N = normalize(input.normal_ws);
-
-    float3 toon = 0.0;
-    if (scene.light_count > 0)
+    struct varying
     {
-        StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
-        light_data light = lights[0];
+        float4 position_cs : SV_POSITION;
+        float3 normal_ws : NORMAL_WS;
+        float2 uv : TEXCOORD;
+    };
 
-        float3 L = -light.direction;
-        float NdotL = saturate(dot(N, L));
+    float4 diffuse;
+    float3 specular;
+    float specular_strength;
+    float3 ambient;
+    uint diffuse_texture_id;
+    uint toon_texture_id;
+    uint environment_texture_id;
+    uint environment_blend_mode;
+    uint ramp_texture_id;
 
-        if (material.toon_texture != 0)
-        {
-            Texture2D<float4> toon_texture = ResourceDescriptorHeap[material.toon_texture];
-            toon = toon_texture.Sample(linear_clamp_sampler, float2(0.0, 1.0 - NdotL)).rgb * light.color;
-        }
-        else
-        {
-            toon = 1.0;
-        }
-        toon = float3(0.988,0.393,0.282);
-        
-        float3 diffuse_color = 1.0;
-        float3 diffuse_brdf = diffuse_color / PI * NdotL * light.color;
+    varying evaluate_varying(material_context context, mesh mesh)
+    {
+        varying varying;
 
-        Texture2D<float3> ramp_texture = ResourceDescriptorHeap[material.ramp_texture];
-        float position = diffuse_brdf.r * 0.2126 + diffuse_brdf.g * 0.7152 + diffuse_brdf.b * 0.0722;
-        float3 ramp_color = ramp_texture.Sample(linear_clamp_sampler, float2(position, 0.0)).rgb;
-        color.rgb = multiply_rgb(color.rgb, screen_rgb(ramp_color, toon, 1.0), 0.5);
+        float4x4 matrix_m = mesh.get_model_matrix();
+
+        varying.position_cs = mul(context.camera.matrix_vp, mul(matrix_m, float4(mesh.vertex.position, 1.0)));
+        varying.normal_ws = mul((float3x3)matrix_m, mesh.vertex.normal);
+        varying.uv = mesh.vertex.uv;
+
+        return varying;
     }
-    // color.rgb = multiply_rgb(color.rgb, toon, saturate((1.0 - hsv.z) * hsv.z + 0.6));
 
-    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
+    surface evaluate_surface(material_context context, varying varying)
+    {
+        SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
+        SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    gbuffer gbuffer;
-    gbuffer.albedo = color.rgb;
-    gbuffer.roughness = 0.0;
-    gbuffer.metallic = 0.0;
-    gbuffer.emissive = 0.0;
-    gbuffer.normal = N;
-    gbuffer.shading_model = material_info.shading_model;
+        Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[diffuse_texture_id];
+        Texture2D<float4> environment_texture = ResourceDescriptorHeap[environment_texture_id];
 
-    return fs_output::create(gbuffer);
-}
+        float4 color = diffuse * context.sample_texture(diffuse_texture, linear_repeat_sampler, varying.uv);
+
+        float3 rgb = color.rgb;
+        float3 hsv = rgb_to_hsv(rgb);
+        color.rgb = multiply_rgb(rgb, rgb, saturate(hsv.z + 0.5));
+
+        // if (material.environment_blend_mode != 0)
+        // {
+        //     float3 normal_vs = normalize(varying.normal_vs);
+
+        //     float2 environment_uv = float2(normal_vs.x * 0.5 + 0.5, 1.0 - (normal_vs.y * 0.5 + 0.5));
+        //     float4 environment_color = environment_texture.Sample(linear_clamp_sampler, environment_uv);
+
+        //     if (material.environment_blend_mode == 1)
+        //     {
+        //         color *= float4(environment_color.rgb, 1.0);
+        //     }
+        //     else if (material.environment_blend_mode == 2)
+        //     {
+        //         color += float4(environment_color.rgb, 0.0);
+        //     }
+        // }
+
+        float3 N = normalize(varying.normal_ws);
+
+        float3 toon = 0.0;
+        if (context.scene.light_count > 0)
+        {
+            StructuredBuffer<light_data> lights = ResourceDescriptorHeap[context.scene.light_buffer];
+            light_data light = lights[0];
+
+            float3 L = -light.direction;
+            float NdotL = saturate(dot(N, L));
+
+            if (toon_texture_id != 0)
+            {
+                Texture2D<float4> toon_texture = ResourceDescriptorHeap[toon_texture_id];
+                toon = context.sample_texture(toon_texture, linear_clamp_sampler, float2(0.0, 1.0 - NdotL), 0.0).rgb * light.color;
+            }
+            else
+            {
+                toon = 1.0;
+            }
+            toon = float3(0.988,0.393,0.282);
+
+            float3 diffuse_color = 1.0;
+            float3 diffuse_brdf = diffuse_color / PI * NdotL * light.color;
+
+            Texture2D<float3> ramp_texture = ResourceDescriptorHeap[ramp_texture_id];
+            float position = diffuse_brdf.r * 0.2126 + diffuse_brdf.g * 0.7152 + diffuse_brdf.b * 0.0722;
+            float3 ramp_color = context.sample_texture(ramp_texture, linear_clamp_sampler, float2(position, 0.0), 0.0);
+            color.rgb = multiply_rgb(color.rgb, screen_rgb(ramp_color, toon, 1.0), 0.5);
+        }
+        // color.rgb = multiply_rgb(color.rgb, toon, saturate((1.0 - hsv.z) * hsv.z + 0.6));
+
+        surface surface;
+        surface.albedo = color.rgb;
+        surface.roughness = 0.0;
+        surface.metallic = 0.0;
+        surface.emissive = 0.0;
+        surface.normal_ws = N;
+
+        return surface;
+    }
+};

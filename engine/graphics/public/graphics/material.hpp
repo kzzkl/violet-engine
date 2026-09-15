@@ -300,8 +300,8 @@ class material_instance : public material
 public:
     using constant_type = Constant;
 
-    material_instance(std::string_view name)
-        : material(name, sizeof(Constant))
+    material_instance(std::string_view name, std::string_view shader_path = "")
+        : material(name, sizeof(Constant), shader_path)
     {
     }
 

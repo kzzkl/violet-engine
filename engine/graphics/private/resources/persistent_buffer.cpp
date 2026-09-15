@@ -53,7 +53,12 @@ void persistent_buffer::upload(
     rhi_buffer* buffer = get_rhi();
     for (auto& command : m_copy_queue)
     {
-        uploader->upload(buffer, command.data, command.size, command.offset, stages, access);
+        rhi_buffer_region region = {
+            .offset = command.offset,
+            .size = command.size,
+        };
+
+        uploader->upload(buffer, command.data, command.size, region, stages, access);
     }
 
     m_copy_queue.clear();
@@ -82,7 +87,7 @@ void persistent_buffer::reserve()
         .offset = 0,
         .size = old_buffer->get_size(),
     };
-    command->copy_buffer(old_buffer, region, new_buffer.get(), region);
+    command->copy_buffer(old_buffer, &region, new_buffer.get(), &region, 1);
 
     rhi_buffer_barrier barrier = {
         .buffer = new_buffer.get(),

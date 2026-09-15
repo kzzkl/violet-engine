@@ -183,9 +183,7 @@ public:
 
     VkImageAspectFlags get_aspect_mask() const noexcept
     {
-        return m_flags & RHI_TEXTURE_DEPTH_STENCIL ?
-                   VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
-                   VK_IMAGE_ASPECT_COLOR_BIT;
+        return m_aspect_mask;
     }
 
 private:
@@ -230,6 +228,9 @@ private:
 
     rhi_format m_format{RHI_FORMAT_UNDEFINED};
     rhi_sample_count m_samples{RHI_SAMPLE_COUNT_1};
+
+    VkImageAspectFlags m_aspect_mask{0};
+
     rhi_extent m_extent;
     std::uint32_t m_level_count{0};
     std::uint32_t m_layer_count{0};

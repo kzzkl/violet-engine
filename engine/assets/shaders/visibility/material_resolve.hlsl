@@ -54,6 +54,8 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
     
     material_context context;
+    context.camera = camera;
+    context.scene = scene;
 
     mesh mesh = mesh::create(instance_id, scene, primitive_id, float2(coord), float2(width, height), camera.matrix_vp, context.ddx, context.ddy);
 
@@ -63,8 +65,8 @@ void cs_main(uint3 gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         return;
     }
 
-    material::varying varying = material.data.evaluate_varying(context, mesh, camera);
-    surface surface = material.data.evaluate_surface(context, varying, camera);
+    material::varying varying = material.data.evaluate_varying(context, mesh);
+    surface surface = material.data.evaluate_surface(context, varying);
 
     gbuffer gbuffer;
     gbuffer.albedo = surface.albedo;

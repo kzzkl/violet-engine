@@ -7,6 +7,7 @@
 #include "graphics/render_scene/render_scene_environment.hpp"
 #include "graphics/render_scene/render_scene_light.hpp"
 #include "graphics/render_scene/render_scene_mesh.hpp"
+#include "graphics/render_scene/render_scene_sdf.hpp"
 #include "graphics/render_scene/render_scene_shadow.hpp"
 
 namespace violet
@@ -17,19 +18,12 @@ render_scene::render_scene(vsm_manager* vsm_manager)
 
     m_scene_parameter = device.create_parameter(shader::scene);
 
-    m_camera_module = std::make_unique<render_scene_camera>();
-    m_mesh_module = std::make_unique<render_scene_mesh>();
-    m_light_module = std::make_unique<render_scene_light>();
-    m_shadow_module = std::make_unique<render_scene_shadow>(vsm_manager);
-    m_environment_module = std::make_unique<render_scene_environment>();
-
-    m_context = {
-        .camera_module = m_camera_module.get(),
-        .mesh_module = m_mesh_module.get(),
-        .light_module = m_light_module.get(),
-        .shadow_module = m_shadow_module.get(),
-        .environment_module = m_environment_module.get(),
-    };
+    m_context.add_module<render_scene_camera>();
+    m_context.add_module<render_scene_mesh>();
+    m_context.add_module<render_scene_light>();
+    m_context.add_module<render_scene_shadow>(vsm_manager);
+    m_context.add_module<render_scene_environment>();
+    m_context.add_module<render_scene_sdf>();
 }
 
 render_scene::~render_scene() {}
@@ -38,11 +32,7 @@ void render_scene::end_frame(gpu_buffer_uploader* uploader)
 {
     shader::scene_data scene_data = m_context.scene_data;
 
-    m_camera_module->update(m_context, *uploader);
-    m_mesh_module->update(m_context, *uploader);
-    m_light_module->update(m_context, *uploader);
-    m_shadow_module->update(m_context, *uploader);
-    m_environment_module->update(m_context, *uploader);
+    m_context.update(*uploader);
 
     auto* material_manager = render_device::instance().get_material_manager();
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -66,11 +56,7 @@ void render_scene::end_frame(gpu_buffer_uploader* uploader)
 
 void render_scene::reset_states()
 {
-    m_camera_module->reset();
-    m_mesh_module->reset();
-    m_light_module->reset();
-    m_shadow_module->reset();
-    m_environment_module->reset();
+    m_context.reset();
 }
 
 render_context::render_context(
@@ -138,52 +124,6 @@ render_context::render_context(
     m_camera_info.matrix_vp_no_jitter = camera_meta->matrix_vp_no_jitter;
     m_camera_info.background = camera->background;
     m_camera_info.parameter = camera_meta->parameter.get();
-
-    auto& mesh_module = camera_meta->scene->get_module<render_scene_mesh>();
-    m_scene_info.instance_count = mesh_module.get_instance_count();
-    m_scene_info.draw_call_capacity = mesh_module.get_draw_call_capacity();
-    m_scene_info.draw_call_count = mesh_module.get_draw_call_count();
-    m_scene_info.batch_capacity = mesh_module.get_batch_capacity();
-
-    auto& light_module = camera_meta->scene->get_module<render_scene_light>();
-    m_scene_info.light_count = light_module.get_light_count();
-
-    auto& shadow_module = camera_meta->scene->get_module<render_scene_shadow>();
-    m_scene_info.shadow_light_buffer = shadow_module.get_shadow_light_buffer();
-    m_scene_info.shadow_light_count = shadow_module.get_shadow_light_count();
-    m_scene_info.vsm_buffer = shadow_module.get_vsm_buffer();
-    m_scene_info.vsm_count = shadow_module.get_vsm_count();
-    m_scene_info.vsm_clipmap_buffer = shadow_module.get_vsm_clipmap_buffer();
-    m_scene_info.vsm_hzb = shadow_module.get_vsm_hzb();
-    m_scene_info.vsm_virtual_page_table = shadow_module.get_vsm_virtual_page_table();
-    m_scene_info.vsm_physical_page_table = shadow_module.get_vsm_physical_page_table();
-    m_scene_info.vsm_physical_shadow_map_static =
-        shadow_module.get_vsm_physical_shadow_map_static();
-    m_scene_info.vsm_physical_shadow_map_final = shadow_module.get_vsm_physical_shadow_map_final();
-
-    auto& environment_module = camera_meta->scene->get_module<render_scene_environment>();
-    m_scene_info.atmosphere = environment_module.get_atmosphere();
-    m_scene_info.sun_direction = environment_module.get_sun_direction();
-    m_scene_info.sun_irradiance = environment_module.get_sun_irradiance();
-    m_scene_info.transmittance_lut = environment_module.get_transmittance_lut();
-    m_scene_info.multi_scattering_lut = environment_module.get_multi_scattering_lut();
-    m_scene_info.atmosphere_diry = environment_module.is_atmosphere_dirty();
-
-    if (camera->background == BACKGROUND_TYPE_SKYBOX)
-    {
-        m_scene_info.environment_map = environment_module.get_environment_map();
-        m_scene_info.irradiance_sh = environment_module.get_irradiance_sh();
-        m_scene_info.prefilter_map = environment_module.get_prefilter_map();
-    }
-    else if (camera->background == BACKGROUND_TYPE_ATMOSPHERE)
-    {
-        const auto& camera_module = camera_meta->scene->get_module<render_scene_camera>();
-        const auto& camera_data = camera_module.get_camera(camera_meta->id);
-
-        m_scene_info.environment_map = camera_data.environment_map.get();
-        m_scene_info.irradiance_sh = camera_data.irradiance_sh.get();
-        m_scene_info.prefilter_map = camera_data.prefilter_map.get();
-    }
 
     m_scene_info.parameter = m_scene->m_scene_parameter.get();
 }

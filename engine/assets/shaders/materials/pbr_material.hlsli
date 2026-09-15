@@ -8,9 +8,10 @@ struct pbr_material
     struct varying
     {
         float4 position_cs : SV_POSITION;
+        float3 position_ws : POSITION;
         float3 normal_ws : NORMAL;
         float4 tangent_ws : TANGENT;
-        float2 uv : TEXCOORD1;
+        float2 uv : TEXCOORD0;
     };
 
     float3 albedo;
@@ -22,19 +23,15 @@ struct pbr_material
     float3 emissive;
     uint emissive_texture;
 
-    float4 evaluate_position_cs(material_context context, mesh mesh, camera_data camera)
-    {
-        float3 position = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_POSITION);
-        float4 position_cs = mul(camera.matrix_vp, mul(mesh.get_model_matrix(), float4(position, 1.0)));
-        return position_cs;
-    }
-
-    varying evaluate_varying(material_context context, mesh mesh, camera_data camera)
+    varying evaluate_varying(material_context context, mesh mesh)
     {
         varying varying;
-        varying.position_cs = evaluate_position_cs(context, mesh, camera);
 
         float4x4 matrix_m = mesh.get_model_matrix();
+
+        float3 position = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_POSITION);
+        varying.position_ws = mul(matrix_m, float4(position, 1.0)).xyz;
+        varying.position_cs = mul(context.camera.matrix_vp, float4(varying.position_ws, 1.0));
 
         float3 normal = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_NORMAL);
         varying.normal_ws = mul((float3x3)matrix_m, normal);
@@ -47,7 +44,7 @@ struct pbr_material
         return varying;
     }
 
-    surface evaluate_surface(material_context context, varying varying, camera_data camera)
+    surface evaluate_surface(material_context context, varying varying)
     {
         surface surface;
 

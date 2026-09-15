@@ -6,6 +6,9 @@
 
 struct material_context
 {
+    scene_data scene;
+    camera_data camera;
+
 #if !USE_RASTER_INTERPOLATION
     float2 ddx;
     float2 ddy;
@@ -19,6 +22,12 @@ struct material_context
 #else
         return texture.SampleGrad(sampler, uv, ddx, ddy);
 #endif
+    }
+
+    template <typename T>
+    T sample_texture(Texture2D<T> texture, SamplerState sampler, float2 uv, float level)
+    {
+        return texture.SampleLevel(sampler, uv, level);
     }
 };
 

@@ -16,16 +16,12 @@ void render_scene_mesh::remove_mesh(render_id mesh_id)
 {
     auto& mesh = m_meshes[mesh_id];
 
-    assert(mesh.instances.empty() && "Mesh has instances");
-
-    render_id last_mesh_id = m_meshes.remove(mesh_id);
-    if (last_mesh_id != mesh_id)
+    while (!mesh.instances.empty())
     {
-        for (render_id instance_id : m_meshes[last_mesh_id].instances)
-        {
-            m_instances.mark_dirty(instance_id);
-        }
+        remove_instance(mesh.instances.back());
     }
+
+    m_meshes.remove(mesh_id);
 }
 
 void render_scene_mesh::set_mesh_flags(render_id mesh_id, std::uint32_t flags)
@@ -49,15 +45,37 @@ void render_scene_mesh::set_mesh_matrix(
 {
     auto& mesh = m_meshes[mesh_id];
     mesh.matrix_m = matrix_m;
-    mesh.scale = {
-        .x = scale.x,
-        .y = scale.y,
-        .z = scale.z,
-        .w = std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}),
-    };
+    mesh.scale = vec4f(scale.x, scale.y, scale.z, vector::max(scale));
     m_meshes.mark_dirty(mesh_id);
 
     m_matrix_dirty_meshes.push_back(mesh_id);
+}
+
+void render_scene_mesh::set_mesh_geometry(render_id mesh_id, geometry* geometry)
+{
+    auto& mesh = m_meshes[mesh_id];
+
+    if (mesh.geometry_id == geometry->get_geometry_id())
+    {
+        return;
+    }
+
+    if (m_geometries.size() <= geometry->get_geometry_id())
+    {
+        m_geometries.resize(geometry->get_geometry_id() + 1);
+    }
+    m_geometries[geometry->get_geometry_id()] = geometry;
+
+    mesh.geometry_id = geometry->get_geometry_id();
+
+    for (auto instance_id : mesh.instances)
+    {
+        if (m_instances[instance_id].submesh_index >= geometry->get_submeshes().size())
+        {
+            m_instances[instance_id].submesh_index = 0xFFFFFFFF;
+            m_instances.mark_dirty(instance_id);
+        }
+    }
 }
 
 render_id render_scene_mesh::add_instance(render_id mesh_id)
@@ -80,13 +98,11 @@ void render_scene_mesh::remove_instance(render_id instance_id)
     auto& instance = m_instances[instance_id];
     auto& mesh = m_meshes[instance.mesh_id];
 
-    if (mesh.flags & MESH_STATIC && instance.geometry_id != INVALID_RENDER_ID)
+    if (mesh.flags & MESH_STATIC)
     {
-        m_invalidation_bounds.push_back(
+        m_invalidation_regions.push_back(
             sphere::transform(
-                m_geometries[instance.geometry_id]
-                    .submeshes[instance.submesh_index]
-                    .bounding_sphere,
+                m_geometries[mesh.geometry_id].submeshes[instance.submesh_index].bounding_sphere,
                 mesh.matrix_m,
                 mesh.scale.w));
     }
@@ -99,60 +115,46 @@ void render_scene_mesh::remove_instance(render_id instance_id)
     m_instances.remove(instance_id);
 }
 
-void render_scene_mesh::set_instance_geometry(
-    render_id instance_id,
-    geometry* geometry,
-    std::uint32_t submesh_index)
+void render_scene_mesh::set_instance_geometry(render_id instance_id, std::uint32_t submesh_index)
 {
-    assert(geometry != nullptr && submesh_index < geometry->get_submeshes().size());
-
-    if (m_geometries.size() <= geometry->get_geometry_id())
-    {
-        m_geometries.resize(geometry->get_geometry_id() + 1);
-    }
-    m_geometries[geometry->get_geometry_id()] = geometry;
-
     auto& instance = m_instances[instance_id];
 
-    if (instance.geometry_id == geometry->get_geometry_id() &&
-        instance.submesh_index == submesh_index)
+    if (instance.submesh_index == submesh_index)
     {
         return;
     }
 
     const auto& mesh = m_meshes[instance.mesh_id];
+    const auto& geometry = m_geometries[mesh.geometry_id];
+
     if (mesh.flags & MESH_STATIC)
     {
-        if (instance.geometry_id != INVALID_RENDER_ID)
+        if (instance.submesh_index != 0xFFFFFFFF)
         {
-            m_invalidation_bounds.push_back(
+            m_invalidation_regions.push_back(
                 sphere::transform(
-                    m_geometries[instance.geometry_id]
-                        .submeshes[instance.submesh_index]
-                        .bounding_sphere,
+                    geometry.submeshes[instance.submesh_index].bounding_sphere,
                     mesh.matrix_m,
                     mesh.scale.w));
         }
 
-        m_invalidation_bounds.push_back(
+        m_invalidation_regions.push_back(
             sphere::transform(
-                m_geometries[geometry->get_geometry_id()].submeshes[submesh_index].bounding_sphere,
+                geometry.submeshes[submesh_index].bounding_sphere,
                 mesh.matrix_m,
                 mesh.scale.w));
     }
 
-    if (instance.geometry_id != INVALID_RENDER_ID &&
-        m_geometries[instance.geometry_id].submeshes[instance.submesh_index].draw_call_count !=
-            geometry->get_submeshes()[submesh_index].get_draw_call_count())
+    if (instance.submesh_index != 0xFFFFFFFF &&
+        geometry.submeshes[instance.submesh_index].draw_call_count !=
+            geometry.submeshes[submesh_index].draw_call_count)
     {
         remove_instance_from_batch(instance_id);
-        instance.geometry_id = geometry->get_geometry_id();
         instance.submesh_index = submesh_index;
         add_instance_to_batch(instance_id);
     }
     else
     {
-        instance.geometry_id = geometry->get_geometry_id();
         instance.submesh_index = submesh_index;
     }
 
@@ -221,8 +223,9 @@ void render_scene_mesh::add_instance_to_batch(render_id instance_id)
     auto& batch = m_batches[batch_id];
     batch.flags |= material.opacity_cutoff ? BATCH_FLAG_OPACITY_CUTOFF : BATCH_FLAG_NONE;
 
+    const auto& mesh = m_meshes[instance.mesh_id];
     batch.draw_call_count +=
-        m_geometries[instance.geometry_id].submeshes[instance.submesh_index].draw_call_count;
+        m_geometries[mesh.geometry_id].submeshes[instance.submesh_index].draw_call_count;
 
     render_id shading_model_id = material.shading_model;
     if (m_shading_model_reference_counts.size() <= shading_model_id)
@@ -257,8 +260,9 @@ void render_scene_mesh::remove_instance_from_batch(render_id instance_id)
 
     auto& batch = m_batches[instance.batch_id];
 
+    const auto& mesh = m_meshes[instance.mesh_id];
     batch.draw_call_count -=
-        m_geometries[instance.geometry_id].submeshes[instance.submesh_index].draw_call_count;
+        m_geometries[mesh.geometry_id].submeshes[instance.submesh_index].draw_call_count;
 
     if (batch.draw_call_count == 0)
     {
@@ -328,11 +332,16 @@ void render_scene_mesh::update_meshes(render_scene_context& context, gpu_buffer_
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
             uploader.upload(
                 buffer,
                 data,
                 size,
-                offset,
+                region,
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
@@ -358,11 +367,12 @@ void render_scene_mesh::update_instances(
     m_instances.update(
         [&](const instance_data& instance) -> shader::instance_data
         {
-            const auto& geometry = m_geometries[instance.geometry_id];
+            const auto& mesh = m_meshes[instance.mesh_id];
+            const auto& geometry = m_geometries[mesh.geometry_id];
 
             return {
-                .mesh_index = m_meshes.get_index(instance.mesh_id),
-                .geometry_index = static_cast<std::uint32_t>(
+                .mesh_id = instance.mesh_id,
+                .submesh_id = static_cast<std::uint32_t>(
                     geometry.submeshes[instance.submesh_index].submesh_id),
                 .batch_index = static_cast<std::uint32_t>(instance.batch_id),
                 .material_address =
@@ -371,11 +381,16 @@ void render_scene_mesh::update_instances(
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
             uploader.upload(
                 buffer,
                 data,
                 size,
-                offset,
+                region,
                 RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
@@ -421,11 +436,16 @@ void render_scene_mesh::update_batch(render_scene_context& context, gpu_buffer_u
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
             uploader.upload(
                 buffer,
                 data,
                 size,
-                offset,
+                region,
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         },

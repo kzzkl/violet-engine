@@ -32,6 +32,8 @@ concept bvh_distance_sq_computable = requires(const T& p, const vec3f& position)
     { p.get_distance_sq(position) } -> std::same_as<float>;
 };
 
+static constexpr std::size_t BVH_INVALID_PRIMITIVE_INDEX = std::numeric_limits<std::size_t>::max();
+
 template <typename T>
     requires bvh_primitive<T>
 class bvh
@@ -41,8 +43,7 @@ public:
 
     bvh(std::size_t primitive_count = 0)
     {
-        m_primitives.reserve(primitive_count);
-        m_nodes.reserve(primitive_count * 2);
+        reserve(primitive_count);
         m_nodes.resize(1);
     }
 
@@ -52,10 +53,21 @@ public:
         box::expand(m_nodes[0].bounds, primitive.bounds);
     }
 
+    void reserve(std::size_t primitive_count)
+    {
+        m_primitives.reserve(primitive_count);
+        m_nodes.reserve(primitive_count * 2);
+    }
+
     const primitive_type& get_primitive(std::size_t index) const
     {
         assert(index < m_primitives.size());
         return m_primitives[index];
+    }
+
+    const box3f& get_bounds() const noexcept
+    {
+        return m_nodes[0].bounds;
     }
 
     void build()
@@ -88,7 +100,9 @@ public:
         }
     }
 
-    std::vector<std::pair<std::size_t, ray3f::hit_result>> intersect(const ray3f& ray) const
+    std::vector<std::pair<std::size_t, ray3f::hit_result>> intersect(
+        const ray3f& ray,
+        float max_distance = std::numeric_limits<float>::infinity()) const
         requires bvh_intersectable<primitive_type>
     {
         std::vector<std::pair<std::size_t, ray3f::hit_result>> result;
@@ -101,7 +115,8 @@ public:
             const node& n = m_nodes[queue.front()];
             queue.pop();
 
-            if (!ray.intersect(n.bounds))
+            auto hit = ray.intersect(n.bounds);
+            if (!hit || hit.enter >= max_distance)
             {
                 continue;
             }
@@ -109,7 +124,7 @@ public:
             if (n.is_leaf())
             {
                 auto hit_result = m_primitives[n.offset].intersect(ray);
-                if (hit_result)
+                if (hit_result && hit_result.enter < max_distance)
                 {
                     result.push_back({n.offset, hit_result});
                 }
@@ -124,15 +139,17 @@ public:
         return result;
     }
 
-    std::pair<std::size_t, float> get_distance(const vec3f& position) const
+    std::pair<std::size_t, float> get_distance(
+        const vec3f& position,
+        float max_distance = std::numeric_limits<float>::infinity()) const
         requires bvh_distance_computable<primitive_type> ||
                  bvh_distance_sq_computable<primitive_type>
     {
         std::vector<std::size_t> stack;
         stack.push_back(0);
 
-        float min_distance_sq = std::numeric_limits<float>::infinity();
-        std::size_t primitive_index = 0;
+        float min_distance_sq = max_distance * max_distance;
+        std::size_t primitive_index = BVH_INVALID_PRIMITIVE_INDEX;
 
         auto process_node = [&](std::size_t index, const node& n)
         {
@@ -204,7 +221,11 @@ public:
             }
         }
 
-        return {primitive_index, std::sqrt(min_distance_sq)};
+        return {
+            primitive_index,
+            primitive_index == BVH_INVALID_PRIMITIVE_INDEX ? max_distance :
+                                                             std::sqrt(min_distance_sq),
+        };
     }
 
 private:

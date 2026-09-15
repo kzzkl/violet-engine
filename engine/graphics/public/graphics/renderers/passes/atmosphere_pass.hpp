@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/atmosphere.hpp"
 #include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
@@ -30,6 +31,13 @@ private:
     void add_irradiance_pass(render_graph& graph, const parameter& parameter);
 
     rdg_texture* m_environment_map;
+
+    atmosphere_data m_atmosphere;
+    vec3f m_sun_direction;
+    vec3f m_sun_irradiance;
+
+    rhi_texture_srv* m_transmittance_lut;
+    rhi_texture_srv* m_multi_scattering_lut;
 };
 
 class atmosphere_pass
@@ -50,5 +58,11 @@ public:
 private:
     void add_sky_pass(render_graph& graph, const parameter& parameter);
     void add_aerial_perspective_pass(render_graph& graph, const parameter& parameter);
+
+    atmosphere_data m_atmosphere;
+    vec3f m_sun_direction;
+    vec3f m_sun_irradiance;
+
+    rhi_texture_srv* m_transmittance_lut;
 };
 } // namespace violet

@@ -67,19 +67,19 @@ public:
         m_unlit_material->set_color({1.0f, 1.0f, 1.0f});
 
         // Plane.
-        // entity plane = world.create();
-        // world.add_component<transform_component, mesh_component, scene_component>(plane);
+        entity plane = world.create();
+        world.add_component<transform_component, mesh_component, scene_component>(plane);
 
-        // auto& plane_mesh = world.get_component<mesh_component>(plane);
-        // plane_mesh.geometry = m_box_geometry.get();
-        // plane_mesh.flags |= MESH_STATIC;
-        // plane_mesh.submeshes.push_back({
-        //     .index = 0,
-        //     .material = m_pbr_material.get(),
-        // });
-        // auto& plane_transform = world.get_component<transform_component>(plane);
-        // plane_transform.set_position({0.0f, -1.0f, 0.0f});
-        // plane_transform.set_scale({10.0f, 0.05f, 10.0f});
+        auto& plane_mesh = world.get_component<mesh_component>(plane);
+        plane_mesh.geometry = m_box_geometry.get();
+        plane_mesh.flags |= MESH_STATIC;
+        plane_mesh.submeshes.push_back({
+            .index = 0,
+            .material = m_pbr_material.get(),
+        });
+        auto& plane_transform = world.get_component<transform_component>(plane);
+        plane_transform.set_position({0.0f, -1.0f, 0.0f});
+        plane_transform.set_scale({100.0f, 0.05f, 100.0f});
 
         // for (std::uint32_t i = 0; i < 1; ++i)
         // {
@@ -246,7 +246,7 @@ private:
             if (ligth_dirty)
             {
                 auto& light = world.get_component<light_component>(get_sky());
-                light.color = {.x = color[0], .y = color[1], .z = color[2]};
+                light.color = {color[0], color[1], color[2]};
                 light.color *= intensity;
                 light.cast_shadow = cast_shadow;
             }
@@ -526,6 +526,8 @@ private:
                 "Bloom Prefilter",
                 "Eye Adaptation",
                 "SSGI",
+                "SDF Page",
+                "Mesh SDF"
             };
 
             if (ImGui::Combo(
@@ -558,10 +560,15 @@ private:
                 auto* vsm = renderer->get_feature<vsm_feature>();
                 auto debug_info = vsm->get_debug_info();
 
+                static std::uint32_t max_rendered = 0;
+                max_rendered = std::max(max_rendered, debug_info.rendered);
+
+                static std::uint32_t max_unmapped = 0;
+                max_unmapped = std::max(max_unmapped, debug_info.unmapped);
+
                 ImGui::Text("Cache Hit: %d", debug_info.cache_hit);
-                ImGui::Text("Cache Miss: %d", debug_info.rendered);
-                ImGui::Text("Unmapped: %d", debug_info.unmapped);
-                ImGui::Text("Rendered: %d", debug_info.rendered);
+                ImGui::Text("Unmapped: %d, max: %d", debug_info.unmapped, max_unmapped);
+                ImGui::Text("Rendered: %d, max: %d", debug_info.rendered, max_rendered);
 
                 std::uint32_t static_draw_call = 0;
                 std::uint32_t dynamic_draw_call = 0;

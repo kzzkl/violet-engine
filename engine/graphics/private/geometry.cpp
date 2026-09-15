@@ -14,6 +14,12 @@ geometry::~geometry()
     clear_submeshes();
 
     auto* geometry_manager = render_device::instance().get_geometry_manager();
+
+    if (m_distance_field_id != INVALID_RENDER_ID)
+    {
+        geometry_manager->remove_distance_field(m_distance_field_id);
+    }
+
     geometry_manager->remove_geometry(m_geometry_id);
 }
 
@@ -130,7 +136,7 @@ std::uint32_t geometry::add_submesh(
 
     m_submesh_ids.push_back(INVALID_RENDER_ID);
 
-    mark_dirty();
+    mark_dirty(DIRTY_FLAG_SUBMESH);
 
     return static_cast<std::uint32_t>(m_submeshes.size() - 1);
 }
@@ -145,7 +151,7 @@ std::uint32_t geometry::add_submesh(
 
     m_submesh_ids.push_back(INVALID_RENDER_ID);
 
-    mark_dirty();
+    mark_dirty(DIRTY_FLAG_SUBMESH);
 
     return static_cast<std::uint32_t>(m_submeshes.size() - 1);
 }
@@ -196,6 +202,12 @@ raw_buffer* geometry::get_additional_buffer(std::string_view name) const
     return iter == m_additional_buffers.end() ? nullptr : iter->second.get();
 }
 
+box3f geometry::get_bounding_box(std::uint32_t submesh_index) const
+{
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    return geometry_manager->get_bounding_box(get_submesh_id(submesh_index));
+}
+
 sphere3f geometry::get_bounding_sphere(std::uint32_t submesh_index) const
 {
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -204,15 +216,27 @@ sphere3f geometry::get_bounding_sphere(std::uint32_t submesh_index) const
 
 void geometry::update()
 {
-    if (!m_dirty)
+    if (m_dirty_flags == DIRTY_FLAG_NONE)
     {
         return;
     }
 
-    update_buffer();
-    update_submesh();
+    if (m_dirty_flags & DIRTY_FLAG_BUFFER)
+    {
+        update_buffer();
+    }
 
-    m_dirty = false;
+    if (m_dirty_flags & DIRTY_FLAG_SUBMESH)
+    {
+        update_submesh();
+    }
+
+    if (m_dirty_flags & DIRTY_FLAG_DISTANCE_FIELD)
+    {
+        update_distance_field();
+    }
+
+    m_dirty_flags = DIRTY_FLAG_NONE;
 }
 
 void geometry::set_buffer(
@@ -231,7 +255,7 @@ void geometry::set_buffer(
     geometry_buffer.stride = static_cast<std::uint32_t>(stride);
     geometry_buffer.dirty = true;
 
-    mark_dirty();
+    mark_dirty(DIRTY_FLAG_BUFFER);
 }
 
 void geometry::set_buffer_shared(geometry_buffer_type type, geometry* src_geometry)
@@ -247,37 +271,7 @@ void geometry::set_buffer_shared(geometry_buffer_type type, geometry* src_geomet
     geometry_buffer.src_geometry = src_geometry;
     geometry_buffer.dirty = true;
 
-    mark_dirty();
-}
-
-void geometry::update_submesh()
-{
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
-
-    for (std::size_t i = 0; i < m_submeshes.size(); ++i)
-    {
-        const auto& submesh = m_submeshes[i];
-        auto& submesh_id = m_submesh_ids[i];
-
-        if (submesh_id == INVALID_RENDER_ID)
-        {
-            if (submesh.has_cluster())
-            {
-                submesh_id = geometry_manager->add_submesh(
-                    m_geometry_id,
-                    submesh.clusters,
-                    submesh.cluster_nodes);
-            }
-            else
-            {
-                submesh_id = geometry_manager->add_submesh(
-                    m_geometry_id,
-                    submesh.vertex_offset,
-                    submesh.index_offset,
-                    submesh.index_count);
-            }
-        }
-    }
+    mark_dirty(DIRTY_FLAG_BUFFER);
 }
 
 void geometry::update_buffer()
@@ -314,15 +308,56 @@ void geometry::update_buffer()
     }
 }
 
-void geometry::mark_dirty()
+void geometry::update_submesh()
 {
-    if (m_dirty)
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+
+    for (std::size_t i = 0; i < m_submeshes.size(); ++i)
+    {
+        const auto& submesh = m_submeshes[i];
+        auto& submesh_id = m_submesh_ids[i];
+
+        if (submesh_id == INVALID_RENDER_ID)
+        {
+            if (submesh.has_cluster())
+            {
+                submesh_id = geometry_manager->add_submesh(
+                    m_geometry_id,
+                    submesh.clusters,
+                    submesh.cluster_nodes);
+            }
+            else
+            {
+                submesh_id = geometry_manager->add_submesh(
+                    m_geometry_id,
+                    submesh.vertex_offset,
+                    submesh.index_offset,
+                    submesh.index_count);
+            }
+        }
+    }
+}
+
+void geometry::update_distance_field()
+{
+    assert(m_distance_field_id == INVALID_RENDER_ID);
+
+    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    m_distance_field_id = geometry_manager->add_distance_field(m_geometry_id, m_distance_field);
+}
+
+void geometry::mark_dirty(dirty_flags dirty_flags)
+{
+    if (dirty_flags == DIRTY_FLAG_NONE)
     {
         return;
     }
 
-    m_dirty = true;
+    if (m_dirty_flags == DIRTY_FLAG_NONE)
+    {
+        render_device::instance().get_geometry_manager()->mark_dirty(m_geometry_id);
+    }
 
-    render_device::instance().get_geometry_manager()->mark_dirty(m_geometry_id);
+    m_dirty_flags |= dirty_flags;
 }
 } // namespace violet

@@ -1,47 +1,60 @@
 #include "mesh.hlsli"
 #include "brdf.hlsli"
 #include "color.hlsli"
-#include "virtual_shadow_map/vsm_common.hlsli"
+#include "material.hlsli"
 
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-struct vs_output
+struct gf2_varying
 {
     float4 position_cs : SV_POSITION;
     float3 position_ws : POSITION_WS;
     float3 normal_ws : NORMAL_WS;
-    float3 tangent_ws : TANGENT_WS;
+    float4 tangent_ws : TANGENT_WS;
     float3 bitangent_ws : BITANGENT_WS;
     float2 uv : TEXCOORD;
     float4 uv2 : TEXCOORD2;
-    uint material_address : MATERIAL_ADDRESS;
 };
 
-float3 get_normal(vs_output input, float3 packed_normal)
+float3 gf2_get_normal(gf2_varying input, float3 packed_normal)
 {
     float3 tangent_normal = packed_normal * 2.0 - 1.0;
 
     float3 n = normalize(input.normal_ws);
-    float3 t = normalize(input.tangent_ws);
+    float3 t = normalize(input.tangent_ws.xyz);
     float3 b = normalize(cross(n, t));
     float3x3 tbn = transpose(float3x3(t, b, n));
 
     return normalize(mul(tbn, tangent_normal));
 }
 
-float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float metallic, uint ramp_texture, float3 position_ws)
+gf2_varying gf2_evaluate_varying(material_context context, mesh mesh)
+{
+    gf2_varying varying;
+
+    float4x4 matrix_m = mesh.get_model_matrix();
+
+    varying.position_ws = mul(matrix_m, float4(mesh.vertex.position, 1.0)).xyz;
+    varying.position_cs = mul(context.camera.matrix_vp, float4(varying.position_ws, 1.0));
+    varying.normal_ws = mul((float3x3)matrix_m, mesh.vertex.normal);
+    varying.tangent_ws = mul(matrix_m, mesh.vertex.tangent);
+    varying.bitangent_ws = normalize(cross(varying.normal_ws, varying.tangent_ws.xyz) * mesh.vertex.tangent.w);
+    varying.uv = mesh.vertex.uv;
+    varying.uv2 = mesh.fetch_attribute<float4>(GEOMETRY_ATTRIBUTE_CUSTOM1);
+
+    return varying;
+}
+
+float3 gf2_evaluate_lighting(material_context context, float3 N, float3 V, float3 albedo, float roughness, float metallic, uint ramp_texture, float3 position_ws)
 {
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
     Texture2D<float4> ramp = ResourceDescriptorHeap[ramp_texture];
 
-    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
+    StructuredBuffer<light_data> lights = ResourceDescriptorHeap[context.scene.light_buffer];
 
     float NdotV = saturate(dot(N, V));
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 direct_lighting = 0.0;
-    if (scene.light_count > 0)
+    if (context.scene.light_count > 0)
     {
         light_data light = lights[0];
 
@@ -60,8 +73,8 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
         float3 specular = d * vis * f;
         float3 diffuse = albedo / PI * kd;
         
-        float3 diffuse_ramp = ramp.Sample(linear_clamp_sampler, float2(NdotL, 0.875)).rgb;
-        float3 specular_ramp = ramp.Sample(linear_clamp_sampler, float2(NdotL, 0.625)).rgb;
+        float3 diffuse_ramp = ramp.SampleLevel(linear_clamp_sampler, float2(NdotL, 0.875), 0.0).rgb;
+        float3 specular_ramp = ramp.SampleLevel(linear_clamp_sampler, float2(NdotL, 0.625), 0.0).rgb;
 
         float shadow_factor = 1.0;
         // if (light.vsm_address != 0xFFFFFFFF)
@@ -74,30 +87,4 @@ float3 direct_light(float3 N, float3 V, float3 albedo, float roughness, float me
     }
 
     return direct_lighting;
-}
-
-float3 indirect_light(float3 N, float3 V, float3 albedo, float roughness, float metallic, uint brdf_lut_address)
-{
-    return 0.0;
-    // SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-
-    // float NdotV = saturate(dot(N, V));
-    // float3 F0 = lerp(0.04, albedo, metallic);
-
-    // float3 R = reflect(-V, N);
-    // float3 f = f_schlick_roughness(NdotV, F0, roughness);
-    // float3 kd = lerp(1.0 - f, 0.0, metallic);
-
-    // TextureCube<float3> prefilter_map = ResourceDescriptorHeap[scene.prefilter];
-    // float3 prefilter = prefilter_map.SampleLevel(linear_clamp_sampler, R, roughness * 4.0);
-
-    // Texture2D<float2> brdf_lut = ResourceDescriptorHeap[brdf_lut_address];
-    // float2 brdf = brdf_lut.Sample(linear_clamp_sampler, float2(NdotV, roughness));
-    // float3 specular = (F0 * brdf.x + brdf.y) * prefilter;
-
-    // TextureCube<float3> irradiance_map = ResourceDescriptorHeap[scene.irradiance];
-    // float3 irradiance = irradiance_map.Sample(linear_clamp_sampler, N);
-    // float3 diffuse = albedo * irradiance * kd / PI;
-
-    // return specular + diffuse;
 }

@@ -1,6 +1,7 @@
 #include "graphics/renderers/passes/cull_pass.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
 
 namespace violet
 {
@@ -389,7 +390,8 @@ void cull_pass::add_instance_cull_pass(render_graph& graph)
                     RHI_ACCESS_INDIRECT_COMMAND_READ);
             }
 
-            data.instance_count = graph.get_context().get_scene().instance_count;
+            data.instance_count =
+                graph.get_context().get_module<render_scene_mesh>().get_instance_count();
         },
         [stage = m_stage](const pass_data& data, rdg_command& command)
         {

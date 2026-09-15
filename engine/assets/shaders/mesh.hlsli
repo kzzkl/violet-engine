@@ -78,9 +78,9 @@ struct mesh
 {
     geometry_data geometry;
     instance_data instance;
+    mesh_data data;
 
-    scene_data scene;
-
+    uint vertex_buffer_id;
     mesh_vertex vertex;
 
 #if USE_RASTER_INTERPOLATION
@@ -97,12 +97,12 @@ struct mesh
     template <typename T>
     T fetch_attribute(geometry_attribute attribute)
     {
-        if (geometry.attributes[attribute] == 0)
+        if (geometry.attributes[attribute] == 0xFFFFFFFF)
         {
             return (T)0;
         }
 
-        ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+        ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[vertex_buffer_id];
 
 #if USE_RASTER_INTERPOLATION
         return vertex_buffer.Load<T>(geometry.attributes[attribute] + vertex_id * sizeof(T));
@@ -118,10 +118,7 @@ struct mesh
 
     float4x4 get_model_matrix()
     {
-        StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-        mesh_data mesh = meshes[instance.mesh_index];
-
-        return mesh.matrix_m;
+        return data.matrix_m;
     }
 };
 
@@ -134,7 +131,7 @@ float mesh::fetch_attribute<float>(geometry_attribute attribute)
         return (float)0;
     }
 
-    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[vertex_buffer_id];
 
     float p0 = vertex_buffer.Load<float>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float));
     float p1 = vertex_buffer.Load<float>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float));
@@ -151,7 +148,7 @@ float2 mesh::fetch_attribute<float2>(geometry_attribute attribute)
         return (float2)0;
     }
 
-    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[vertex_buffer_id];
 
     float2 p0 = vertex_buffer.Load<float2>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float2));
     float2 p1 = vertex_buffer.Load<float2>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float2));
@@ -171,7 +168,7 @@ float3 mesh::fetch_attribute<float3>(geometry_attribute attribute)
         return (float3)0;
     }
 
-    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[vertex_buffer_id];
 
     float3 p0 = vertex_buffer.Load<float3>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float3));
     float3 p1 = vertex_buffer.Load<float3>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float3));
@@ -193,7 +190,7 @@ float4 mesh::fetch_attribute<float4>(geometry_attribute attribute)
         return (float4)0;
     }
 
-    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
+    ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[vertex_buffer_id];
 
     float4 p0 = vertex_buffer.Load<float4>(geometry.attributes[attribute] + triangle_indexes.x * sizeof(float4));
     float4 p1 = vertex_buffer.Load<float4>(geometry.attributes[attribute] + triangle_indexes.y * sizeof(float4));
@@ -218,9 +215,12 @@ mesh mesh::create(uint instance_id, scene_data scene, uint vertex_id)
     mesh.instance = instances[instance_id];
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-    mesh.geometry = geometries[mesh.instance.geometry_index];
+    mesh.geometry = geometries[mesh.instance.submesh_id];
 
-    mesh.scene = scene;
+    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
+    mesh.data = meshes[mesh.instance.mesh_id];
+
+    mesh.vertex_buffer_id = scene.vertex_buffer;
     mesh.vertex_id = vertex_id;
 
     mesh.vertex.position = mesh.fetch_attribute<float3>(GEOMETRY_ATTRIBUTE_POSITION);
@@ -239,9 +239,12 @@ mesh mesh::create(uint instance_id, scene_data scene, uint primitive_id, float2 
     mesh.instance = instances[instance_id];
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-    mesh.geometry = geometries[mesh.instance.geometry_index];
+    mesh.geometry = geometries[mesh.instance.submesh_id];
 
-    mesh.scene = scene;
+    StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
+    mesh.data = meshes[mesh.instance.mesh_id];
+
+    mesh.vertex_buffer_id = scene.vertex_buffer;
 
     ByteAddressBuffer vertex_buffer = ResourceDescriptorHeap[scene.vertex_buffer];
     StructuredBuffer<uint> index_buffer = ResourceDescriptorHeap[scene.index_buffer];

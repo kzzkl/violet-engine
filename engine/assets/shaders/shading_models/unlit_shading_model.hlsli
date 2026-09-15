@@ -2,12 +2,12 @@
 
 struct unlit_shading_model
 {
-    float3 albedo;
+    float3 color;
 
     static unlit_shading_model create(shading_context context, surface surface, camera_data camera)
     {
         unlit_shading_model shading_model;
-        shading_model.albedo = surface.albedo;
+        shading_model.color = surface.albedo + surface.emissive;
         return shading_model;
     }
 
@@ -18,6 +18,6 @@ struct unlit_shading_model
 
     float3 evaluate_indirect_lighting(shading_context context, float3 irradiance)
     {
-        return albedo;
+        return color;
     }
 };

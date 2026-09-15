@@ -69,8 +69,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     if (instance_id != 0xFFFFFFFF)
     {
         instance = instances[instance_id];
-        geometry = geometries[instance.geometry_index];
-        mesh = meshes[instance.mesh_index];
+        geometry = geometries[instance.submesh_id];
+        mesh = meshes[instance.mesh_id];
     }
 
     bool visible = instance_id != 0xFFFFFFFF;

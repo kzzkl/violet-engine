@@ -1,29 +1,29 @@
 #include "gf2/gf2_material.hlsli"
-#include "shading/shading_model.hlsli"
 
 struct gf2_material_eye
 {
-    uint diffuse_texture;
+    using varying = gf2_varying;
+
+    uint diffuse_texture_id;
+
+    varying evaluate_varying(material_context context, mesh mesh)
+    {
+        return gf2_evaluate_varying(context, mesh);
+    }
+
+    surface evaluate_surface(material_context context, varying varying)
+    {
+        SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
+
+        Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[diffuse_texture_id];
+
+        surface surface;
+        surface.albedo = 0.0;
+        surface.roughness = 0.0;
+        surface.metallic = 0.0;
+        surface.emissive = context.sample_texture(diffuse_texture, linear_repeat_sampler, varying.uv).rgb;;
+        surface.normal_ws = 0.0;
+
+        return surface;
+    }
 };
-
-fs_output fs_main(vs_output input)
-{
-    SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-    
-    gf2_material_eye material = load_material<gf2_material_eye>(scene.material_buffer, input.material_address);
-
-    Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[material.diffuse_texture];
-
-    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
-
-    gbuffer gbuffer;
-    gbuffer.albedo = 0.0;
-    gbuffer.roughness = 0.0;
-    gbuffer.metallic = 0.0;
-    gbuffer.emissive = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
-    gbuffer.normal = 0.0;
-    gbuffer.shading_model = material_info.shading_model;
-
-    return fs_output::create(gbuffer);
-}

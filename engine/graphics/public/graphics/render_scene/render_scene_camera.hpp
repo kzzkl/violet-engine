@@ -19,7 +19,7 @@ public:
         rhi_ptr<rhi_buffer> irradiance_sh;
         rhi_ptr<rhi_texture> prefilter_map;
 
-        bool dirty;
+        bool moved;
         bool valid;
     };
 
@@ -37,7 +37,7 @@ public:
     void reset() override;
 
     template <typename Functor>
-    void each_camera(Functor&& functor)
+    void each_camera(Functor&& functor) const
     {
         for (render_id camera_id = 0; camera_id < m_cameras.size(); ++camera_id)
         {
@@ -49,7 +49,7 @@ public:
     }
 
     template <typename Functor>
-    void each_added_camera(Functor&& functor)
+    void each_added_camera(Functor&& functor) const
     {
         for (auto camera_id : m_added_cameras)
         {
@@ -58,7 +58,7 @@ public:
     }
 
     template <typename Functor>
-    void each_removed_camera(Functor&& functor)
+    void each_removed_camera(Functor&& functor) const
     {
         for (auto camera_id : m_removed_cameras)
         {

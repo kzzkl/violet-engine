@@ -462,29 +462,38 @@ void vk_command::fill_buffer(
 
 void vk_command::copy_buffer(
     rhi_buffer* src,
-    const rhi_buffer_region& src_region,
+    const rhi_buffer_region* src_regions,
     rhi_buffer* dst,
-    const rhi_buffer_region& dst_region)
+    const rhi_buffer_region* dst_regions,
+    std::size_t region_count)
 {
-    assert(src_region.size == dst_region.size);
+    std::vector<VkBufferCopy> copy_regions(region_count);
 
-    VkBuffer src_buffer = static_cast<vk_buffer*>(src)->get_buffer();
-    VkBuffer dst_buffer = static_cast<vk_buffer*>(dst)->get_buffer();
+    for (std::size_t i = 0; i < region_count; ++i)
+    {
+        assert(src_regions[i].size == dst_regions[i].size);
 
-    VkBufferCopy buffer_copy = {
-        .srcOffset = src_region.offset,
-        .dstOffset = dst_region.offset,
-        .size = src_region.size,
-    };
+        copy_regions[i] = {
+            .srcOffset = src_regions[i].offset,
+            .dstOffset = dst_regions[i].offset,
+            .size = src_regions[i].size,
+        };
+    }
 
-    vkCmdCopyBuffer(m_command_buffer, src_buffer, dst_buffer, 1, &buffer_copy);
+    vkCmdCopyBuffer(
+        m_command_buffer,
+        static_cast<vk_buffer*>(src)->get_buffer(),
+        static_cast<vk_buffer*>(dst)->get_buffer(),
+        static_cast<std::uint32_t>(copy_regions.size()),
+        copy_regions.data());
 }
 
 void vk_command::copy_buffer_to_texture(
     rhi_buffer* buffer,
+    const rhi_buffer_region* src_regions,
     rhi_texture* texture,
-    const rhi_buffer_texture_copy* regions,
-    std::uint32_t region_count)
+    const rhi_texture_region* dst_regions,
+    std::size_t region_count)
 {
     auto* src_buffer = static_cast<vk_buffer*>(buffer);
     auto* dst_image = static_cast<vk_texture*>(texture);
@@ -492,8 +501,8 @@ void vk_command::copy_buffer_to_texture(
     std::vector<VkBufferImageCopy> copy_regions(region_count);
     for (std::size_t i = 0; i < region_count; ++i)
     {
-        const auto& buffer_region = regions[i].buffer_region;
-        const auto& texture_region = regions[i].texture_region;
+        const auto& buffer_region = src_regions[i];
+        const auto& texture_region = dst_regions[i];
 
         copy_regions[i] = {
             .bufferOffset = buffer_region.offset,
@@ -505,7 +514,12 @@ void vk_command::copy_buffer_to_texture(
                     .layerCount = texture_region.layer_count,
                 },
             .imageOffset = {0, 0, 0},
-            .imageExtent = {texture_region.extent.width, texture_region.extent.height, 1},
+            .imageExtent =
+                {
+                    texture_region.extent.width,
+                    texture_region.extent.height,
+                    texture_region.extent.depth,
+                },
         };
     }
 
@@ -536,7 +550,8 @@ void vk_command::write_timestamp(
 void vk_command::reset()
 {
     m_current_render_pass = VK_NULL_HANDLE;
-    m_current_pipeline_layout = VK_NULL_HANDLE;
+    m_current_pipeline = VK_NULL_HANDLE;
+    m_current_pipeline_layout = nullptr;
     vk_check(vkResetCommandBuffer(m_command_buffer, 0));
 }
 

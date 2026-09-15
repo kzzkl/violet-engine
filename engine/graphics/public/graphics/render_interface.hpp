@@ -974,12 +974,6 @@ struct rhi_buffer_region
     std::size_t size;
 };
 
-struct rhi_buffer_texture_copy
-{
-    rhi_buffer_region buffer_region;
-    rhi_texture_region texture_region;
-};
-
 class rhi_fence
 {
 public:
@@ -1094,15 +1088,17 @@ public:
 
     virtual void copy_buffer(
         rhi_buffer* src,
-        const rhi_buffer_region& src_region,
+        const rhi_buffer_region* src_regions,
         rhi_buffer* dst,
-        const rhi_buffer_region& dst_region) = 0;
+        const rhi_buffer_region* dst_regions,
+        std::size_t region_count) = 0;
 
     virtual void copy_buffer_to_texture(
         rhi_buffer* buffer,
+        const rhi_buffer_region* src_regions,
         rhi_texture* texture,
-        const rhi_buffer_texture_copy* regions,
-        std::uint32_t region_count) = 0;
+        const rhi_texture_region* dst_regions,
+        std::size_t region_count) = 0;
 
     virtual void begin_label(const char* label) const = 0;
     virtual void end_label() const = 0;

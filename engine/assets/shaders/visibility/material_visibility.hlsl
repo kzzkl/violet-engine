@@ -31,12 +31,15 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     uint instance_id = draw_infos[draw_id].instance_id;
     uint cluster_id = draw_infos[draw_id].cluster_id;
 
-    material_context context;
     mesh mesh = mesh::create(instance_id, scene, vertex_id);
 
     material_data material = load_material<material_data>(scene.material_buffer, mesh.get_material_address());
 
-    material::varying varying = material.data.evaluate_varying(context, mesh, camera);
+    material_context context;
+    context.scene = scene;
+    context.camera = camera;
+
+    material::varying varying = material.data.evaluate_varying(context, mesh);
 
     vs_output output;
     output.position_cs = varying.position_cs;

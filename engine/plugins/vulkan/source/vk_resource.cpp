@@ -54,6 +54,28 @@ std::pair<VkImage, VmaAllocation> create_image(
 
     return {image, allocation};
 }
+
+VkImageAspectFlags get_vk_aspect_mask(rhi_texture_flags flags, VkFormat format)
+{
+    VkImageAspectFlags aspect_mask = 0;
+
+    if (flags & RHI_TEXTURE_DEPTH_STENCIL)
+    {
+        aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        if (format == VK_FORMAT_D16_UNORM_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT ||
+            format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+        {
+            aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+    }
+    else
+    {
+        aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+
+    return aspect_mask;
+}
 } // namespace
 
 vk_texture_descriptor::vk_texture_descriptor(vk_texture* texture, VkImageView image_view)
@@ -166,11 +188,15 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     assert(desc.extent.width > 0 && desc.extent.height > 0 && desc.extent.depth > 0);
     assert(desc.level_count > 0 && desc.layer_count > 0);
 
+    VkFormat vk_format = vk_utils::map_format(desc.format);
+
+    m_aspect_mask = get_vk_aspect_mask(desc.flags, vk_format);
+
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .flags = desc.flags & RHI_TEXTURE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u,
         .imageType = desc.extent.depth == 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_3D,
-        .format = vk_utils::map_format(desc.format),
+        .format = vk_format,
         .extent = {desc.extent.width, desc.extent.height, desc.extent.depth},
         .mipLevels = m_level_count,
         .arrayLayers = m_layer_count,
@@ -219,6 +245,7 @@ vk_texture::vk_texture(
       m_flags(flags),
       m_context(context)
 {
+    m_aspect_mask = get_vk_aspect_mask(flags, format);
 }
 
 vk_texture::~vk_texture()

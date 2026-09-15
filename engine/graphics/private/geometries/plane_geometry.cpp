@@ -36,9 +36,9 @@ plane_geometry::plane_geometry(
         {
             const float x = (static_cast<float>(j) * segment_width) - width_half;
 
-            positions.push_back({.x = x, .y = -y, .z = 0});
-            normals.push_back({.x = 0, .y = 0, .z = 1});
-            tangents.push_back({.x = 1, .y = 0, .z = 0, .w = 1});
+            positions.emplace_back(x, -y, 0.0f);
+            normals.emplace_back(0.0f, 0.0f, 1.0f);
+            tangents.emplace_back(1.0f, 0.0f, 0.0f, 1.0f);
 
             vec2f uv;
             uv.x = static_cast<float>(j) / static_cast<float>(grid_x);

@@ -1,20 +1,24 @@
 #pragma once
 
-#include "graphics/resources/texture.hpp"
+#include "graphics/distance_field/distance_field.hpp"
 
 namespace violet
 {
 class distance_field_tool
 {
 public:
-    static bool generate(
-        std::span<const vec3f> positions,
-        std::span<const std::uint32_t> indexes,
-        texture_data& distance_field);
+    struct input
+    {
+        std::span<const vec3f> positions;
+        std::span<const std::uint32_t> indexes;
 
-    static bool test(
-        std::span<const vec3f> positions,
-        std::span<const std::uint32_t> indexes,
-        texture_data& distance_field);
+        float voxel_density{20.0f};
+    };
+
+    using output = distance_field;
+
+    static output generate(const input& input);
+
+    static bool test(const input& input);
 };
 } // namespace violet

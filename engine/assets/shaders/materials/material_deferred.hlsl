@@ -28,7 +28,6 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
     uint instance_id = draw_infos[draw_id].instance_id;
 
-    material_context context;
     mesh mesh = mesh::create(instance_id, scene, vertex_id);
 
     vs_output output;
@@ -42,7 +41,10 @@ vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
     output.opacity_cutoff = material.common.get_opacity_cutoff();
 #endif
 
-    output.varying = material.data.evaluate_varying(context, mesh, camera);
+    material_context context;
+    context.scene = scene;
+    context.camera = camera;
+    output.varying = material.data.evaluate_varying(context, mesh);
 
     return output;
 }
@@ -66,9 +68,12 @@ fs_output fs_main(vs_output input)
 #endif
 
     material_context context;
+    context.scene = scene;
+    context.camera = camera;
+
     material material_data = load_material_data<material>(scene.material_buffer, input.material_address);
 
-    surface surface = material_data.evaluate_surface(context, input.varying, camera);
+    surface surface = material_data.evaluate_surface(context, input.varying);
 
     gbuffer gbuffer;
     gbuffer.albedo = surface.albedo;

@@ -3,7 +3,7 @@
 
 struct constant_data
 {
-    uint vsm_physical_page_table;
+    uint physical_page_table;
     uint prev_buffer;
     uint next_buffer;
     uint hzb_sampler;
@@ -17,7 +17,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     uint physical_page_index = dtid.z;
 
-    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
     vsm_physical_page physical_page = vsm_physical_page::unpack(physical_page_table[physical_page_index]);
 
     if (dtid.x >= constant.next_size || dtid.y >= constant.next_size)

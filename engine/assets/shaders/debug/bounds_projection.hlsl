@@ -16,10 +16,10 @@ vs_output vs_main(uint vertex_id : SV_VertexID)
     instance_data instance = instances[vertex_id];
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-    geometry_data geometry = geometries[instance.geometry_index];
+    geometry_data geometry = geometries[instance.submesh_id];
 
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh_data mesh = meshes[instance.mesh_id];
 
     float4 sphere_vs = mul(camera.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
     sphere_vs.w = geometry.bounding_sphere.w * mesh.scale.w;

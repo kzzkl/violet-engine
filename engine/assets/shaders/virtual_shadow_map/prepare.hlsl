@@ -35,16 +35,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     command.z = 1;
     visible_virtual_page_indirect_args[0] = command;
 
+    command.x = PAGE_RESOLUTION / 16;
+    command.y = PAGE_RESOLUTION / 16;
+    command.z = 0;
     RWStructuredBuffer<dispatch_command> visible_virtual_page_texels_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_texels_indirect_args];
-    command.x = PAGE_RESOLUTION / 16;
-    command.y = PAGE_RESOLUTION / 16;
-    command.z = 0;
     visible_virtual_page_texels_indirect_args[0] = command;
-
     RWStructuredBuffer<dispatch_command> render_physical_page_texels_indirect_args = ResourceDescriptorHeap[constant.render_physical_page_texels_indirect_args];
-    command.x = PAGE_RESOLUTION / 16;
-    command.y = PAGE_RESOLUTION / 16;
-    command.z = 0;
     render_physical_page_texels_indirect_args[0] = command;
 
     RWStructuredBuffer<vsm_info> info = ResourceDescriptorHeap[constant.vsm_info];

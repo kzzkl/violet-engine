@@ -112,7 +112,7 @@ void process_cluster_node(uint group_index)
     uint cluster_node_id = child_index + child_offset;
 
     instance_data instance = instances[instance_id];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh_data mesh = meshes[instance.mesh_id];
 
     cluster_node_data cluster_node = cluster_nodes[cluster_node_id];
 
@@ -192,8 +192,8 @@ void process_cluster(uint3 dtid)
     unpack_cluster_item(cluster_queue[dtid.x + get_cluster_offset()], cluster_id, instance_id, recheck);
 
     instance_data instance = instances[instance_id];
-    mesh_data mesh = meshes[instance.mesh_index];
-    geometry_data geometry = geometries[instance.geometry_index];
+    mesh_data mesh = meshes[instance.mesh_id];
+    geometry_data geometry = geometries[instance.submesh_id];
 
     cluster_data cluster = clusters[cluster_id];
     if (cluster.index_count == 0)

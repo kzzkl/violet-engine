@@ -122,7 +122,7 @@ void vsm_manager::set_vsm(render_id vsm_id, const vsm_directional_light_data& li
     vec3f up = {0.0f, 1.0f, 0.0f};
     if (std::abs(vector::dot(up, light.light_direction)) > 0.99f)
     {
-        up = {.x = 1.0f, .y = 0.0f, .z = 0.0f};
+        up = {1.0f, 0.0f, 0.0f};
     }
 
     mat4f matrix_v = matrix::look_at({}, light.light_direction, up);
@@ -227,11 +227,16 @@ void vsm_manager::update(gpu_buffer_uploader* uploader)
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
             uploader->upload(
                 buffer,
                 data,
                 size,
-                offset,
+                region,
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });

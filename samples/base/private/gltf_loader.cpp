@@ -165,9 +165,9 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
         };
 
         material_data.albedo = {
-            .x = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
-            .y = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
-            .z = static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
+            static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0]),
+            static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1]),
+            static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]),
         };
 
         if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
@@ -187,9 +187,9 @@ bool gltf_loader::load(std::string_view path, mesh_loader::scene_data& scene_dat
         }
 
         material_data.emissive = {
-            .x = static_cast<float>(material.emissiveFactor[0]),
-            .y = static_cast<float>(material.emissiveFactor[1]),
-            .z = static_cast<float>(material.emissiveFactor[2]),
+            static_cast<float>(material.emissiveFactor[0]),
+            static_cast<float>(material.emissiveFactor[1]),
+            static_cast<float>(material.emissiveFactor[2]),
         };
         if (material.emissiveTexture.index != -1)
         {
