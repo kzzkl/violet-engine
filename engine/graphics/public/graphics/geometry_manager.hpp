@@ -123,6 +123,10 @@ public:
         return static_cast<std::uint32_t>(m_geometries[geometry_id].buffers[type].size);
     }
 
+    rhi_buffer* get_distance_field_buffer() const;
+    rhi_buffer* get_distance_field_brick_table() const;
+    rhi_texture* get_distance_field_brick_atlas() const;
+
 private:
     struct geometry_buffer
     {

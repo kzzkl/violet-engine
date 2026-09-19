@@ -18,10 +18,14 @@ void render_scene_sdf::set_mesh_distance_field(render_id mesh_sdf_id, render_id 
     m_meshes.mark_dirty(mesh_sdf_id);
 }
 
-void render_scene_sdf::set_mesh_matrix(render_id mesh_sdf_id, const mat4f& matrix_m)
+void render_scene_sdf::set_mesh_matrix(
+    render_id mesh_sdf_id,
+    const mat4f& matrix_m,
+    const vec3f& scale)
 {
     auto& instance = m_meshes[mesh_sdf_id];
     instance.matrix_m = matrix_m;
+    instance.scale = vector::max(scale);
     m_meshes.mark_dirty(mesh_sdf_id);
 }
 
@@ -96,6 +100,7 @@ void render_scene_sdf::allocate_clipmaps(render_scene_context& context)
                 std::uint32_t invalidated_grid_mesh_count;
                 std::uint32_t invalidated_page_count;
                 std::uint32_t pages_to_allocate_count;
+                std::uint32_t pages_to_update_count;
                 std::int32_t free_page_atlas_count;
             };
             clipmap.state = device.create_buffer({
@@ -256,10 +261,21 @@ void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
     m_meshes.update(
         [&](const mesh_data& mesh) -> mesh_data::gpu_type
         {
-            box3f volume_bounds = box::transform(
-                geometry_manager->get_distance_field_bounds(mesh.distance_field_id),
-                mesh.matrix_m);
+            box3f volume_bounds =
+                geometry_manager->get_distance_field_bounds(mesh.distance_field_id);
+            vec3f volume_center = box::get_center(volume_bounds);
+            vec3f volume_extent = box::get_extent(volume_bounds);
+            float max_extent = vector::max(volume_extent);
+
+            mat4f volume_to_world = matrix::scale(vec3f(max_extent * 0.5f));
+            volume_to_world = matrix::mul(volume_to_world, matrix::translation(volume_center));
+            volume_to_world = matrix::mul(volume_to_world, mesh.matrix_m);
+
+            volume_bounds = box::transform(volume_bounds, mesh.matrix_m);
+
             return {
+                .volume_to_world = volume_to_world,
+                .world_to_volume = matrix::inverse_transform(volume_to_world),
                 .volume_bounds_min = volume_bounds.min,
                 .distance_field_id = mesh.distance_field_id,
                 .volume_bounds_max = volume_bounds.max,

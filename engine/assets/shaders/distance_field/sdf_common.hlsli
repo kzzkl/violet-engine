@@ -27,6 +27,14 @@ static const uint SDF_MAX_MESH_COUNT = 1024 * 16;
 
 static const uint SDF_INVALID_PAGE_TABLE_ENTRY = 0xFFFFFFFF;
 
+static const uint SDF_BRICK_SIZE = 8;
+static const uint SDF_UNIQUE_BRICK_SIZE = SDF_BRICK_SIZE - 1;
+
+static const uint SDF_BRICK_ATLAS_RESOLUTION = 1024;
+static const uint SDF_BRICK_ATLAS_BRICK_COUNT_XY = SDF_BRICK_ATLAS_RESOLUTION / SDF_BRICK_SIZE;
+
+static const uint SDF_INVALID_BRICK = 0xFFFFFFFF;
+
 struct clipmap_state
 {
     uint invalidated_grid_count;
@@ -41,10 +49,12 @@ struct clipmap_state
 
 struct mesh_sdf
 {
-    float3 bounding_box_min;
-    uint mesh_id;
-    float3 bounding_box_max;
-    uint sdf_id;
+    float4x4 volume_to_world;
+    float4x4 world_to_volume;
+    float3 volume_bounds_min;
+    uint distance_field_id;
+    float3 volume_bounds_max;
+    uint padding0;
 };
 
 struct clipmap
@@ -218,6 +228,57 @@ uint get_clipmap_level(float3 position, float3 camera_position)
 
     return 0xFFFFFFFF;
 }
+
+struct distance_field
+{
+    uint3 brick_count;
+    uint brick_table_offset;
+    float3 volume_extent;
+    float max_distance;
+
+    uint get_brick_index(uint3 brick_coord)
+    {
+        return brick_coord.x + brick_coord.y * brick_count.x + brick_coord.z * brick_count.x * brick_count.y + brick_table_offset;
+    }
+
+    uint3 get_atlas_texel_origin(uint atlas_index)
+    {
+        uint3 texel_origin;
+        texel_origin.x = atlas_index % SDF_BRICK_ATLAS_BRICK_COUNT_XY;
+        atlas_index /= SDF_BRICK_ATLAS_BRICK_COUNT_XY;
+        texel_origin.y = atlas_index % SDF_BRICK_ATLAS_BRICK_COUNT_XY;
+        texel_origin.z = atlas_index / SDF_BRICK_ATLAS_BRICK_COUNT_XY;
+        return texel_origin * SDF_BRICK_SIZE;
+    }
+
+    float sample(
+        float3 position,
+        StructuredBuffer<uint> brick_table,
+        Texture3D<float> brick_atlas,
+        SamplerState sdf_sampler)
+    {
+        float3 uv = (position + volume_extent * 0.5) / volume_extent * brick_count;
+        uv = clamp(uv, 0.0, float3(brick_count));
+
+        uint3 brick_coord = min(uint3(uv), brick_count - 1);
+        float3 brick_uv = uv - brick_coord;
+
+        uint atlas_index = brick_table[get_brick_index(brick_coord)];
+        if (atlas_index == SDF_INVALID_BRICK)
+        {
+            return max_distance;
+        }
+
+        uint3 atlas_extent;
+        brick_atlas.GetDimensions(atlas_extent.x, atlas_extent.y, atlas_extent.z);
+
+        float3 atlas_texel = get_atlas_texel_origin(atlas_index) + brick_uv * SDF_UNIQUE_BRICK_SIZE;
+        float3 atlas_uv = (atlas_texel + 0.5) / atlas_extent;
+
+        float value = brick_atlas.SampleLevel(sdf_sampler, atlas_uv, 0.0);
+        return (value - 0.5) * 2.0 * max_distance;
+    }
+};
 
 bool intersect_aabb(
     float3 aabb_min_a,

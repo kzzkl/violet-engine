@@ -1,4 +1,5 @@
 #include "graphics/renderers/passes/sdf_pass.hpp"
+#include "graphics/geometry_manager.hpp"
 #include "graphics/render_scene/render_scene_sdf.hpp"
 
 namespace violet
@@ -188,6 +189,10 @@ struct sdf_debug_mesh_sdf_cs : public shader_cs
     {
         std::uint32_t mesh_index;
         std::uint32_t mesh_buffer;
+
+        std::uint32_t distance_field_buffer;
+        std::uint32_t brick_table;
+        std::uint32_t brick_atlas;
 
         std::uint32_t debug_output;
     };
@@ -884,6 +889,7 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
             [](const pass_data& data, rdg_command& command)
             {
                 auto& device = render_device::instance();
+                auto* geometry_manager = device.get_geometry_manager();
 
                 command.set_pipeline({
                     .compute_shader = device.get_shader<sdf_debug_mesh_sdf_cs>(),
@@ -893,6 +899,15 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
                     sdf_debug_mesh_sdf_cs::constant_data{
                         .mesh_index = 0,
                         .mesh_buffer = data.mesh_buffer.get_bindless(),
+                        .distance_field_buffer = geometry_manager->get_distance_field_buffer()
+                                                     ->get_srv()
+                                                     ->get_bindless(),
+                        .brick_table = geometry_manager->get_distance_field_brick_table()
+                                           ->get_srv()
+                                           ->get_bindless(),
+                        .brick_atlas = geometry_manager->get_distance_field_brick_atlas()
+                                           ->get_srv(RHI_TEXTURE_DIMENSION_3D)
+                                           ->get_bindless(),
                         .debug_output = data.debug_output.get_bindless(),
                     });
 

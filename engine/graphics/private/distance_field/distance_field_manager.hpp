@@ -21,6 +21,11 @@ public:
 
     void update(gpu_buffer_uploader* uploader);
 
+    rhi_buffer* get_distance_field_buffer() const
+    {
+        return m_distance_fields.get_buffer()->get_rhi();
+    }
+
     rhi_buffer* get_brick_table() const
     {
         return m_brick_table->get_rhi();
@@ -38,11 +43,10 @@ private:
     {
         struct gpu_type
         {
-            vec4u brick_count;
+            vec3u brick_count;
             std::uint32_t brick_table_offset;
-            std::uint32_t brick_data_offset;
-            std::uint32_t padding0;
-            std::uint32_t padding1;
+            vec3f volume_extent_sdf;
+            float max_distance_sdf;
         };
 
         vec3u brick_count;

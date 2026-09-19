@@ -513,7 +513,12 @@ void vk_command::copy_buffer_to_texture(
                     .baseArrayLayer = texture_region.layer,
                     .layerCount = texture_region.layer_count,
                 },
-            .imageOffset = {0, 0, 0},
+            .imageOffset =
+                {
+                    texture_region.offset_x,
+                    texture_region.offset_y,
+                    texture_region.offset_z,
+                },
             .imageExtent =
                 {
                     texture_region.extent.width,

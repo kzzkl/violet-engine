@@ -436,6 +436,8 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
             m_cluster_node_depth = std::max(m_cluster_node_depth, cluster_node.depth);
         });
     ++m_cluster_node_depth;
+
+    m_distance_field_manager->update(uploader);
 }
 
 void geometry_manager::mark_dirty(render_id geometry_id)
@@ -443,5 +445,20 @@ void geometry_manager::mark_dirty(render_id geometry_id)
     std::scoped_lock lock(m_mutex);
 
     m_dirty_geometries.push_back(geometry_id);
+}
+
+rhi_buffer* geometry_manager::get_distance_field_buffer() const
+{
+    return m_distance_field_manager->get_distance_field_buffer();
+}
+
+rhi_buffer* geometry_manager::get_distance_field_brick_table() const
+{
+    return m_distance_field_manager->get_brick_table();
+}
+
+rhi_texture* geometry_manager::get_distance_field_brick_atlas() const
+{
+    return m_distance_field_manager->get_brick_atlas();
 }
 } // namespace violet

@@ -65,7 +65,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
             uint mesh_id = clipmap_level_meshes[mesh_index + clipmap_level_meshes_offset];
             mesh_sdf mesh = meshes[mesh_id];
 
-            if (intersect_aabb(mesh.bounding_box_min, mesh.bounding_box_max, grid_min, grid_max))
+            if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, grid_min, grid_max))
             {
 #ifdef CALCULATE_GRID_MESH_LIST_OFFSET
                 InterlockedAdd(gs_mesh_count, 1);

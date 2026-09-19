@@ -98,7 +98,10 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     sdf_module.set_mesh_distance_field(
                         mesh_meta.mesh_sdf,
                         mesh.geometry->get_distance_field_id());
-                    sdf_module.set_mesh_matrix(mesh_meta.mesh_sdf, transform.matrix);
+                    sdf_module.set_mesh_matrix(
+                        mesh_meta.mesh_sdf,
+                        transform.matrix,
+                        transform.scale);
                 }
 
                 std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;

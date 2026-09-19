@@ -370,5 +370,21 @@ void gpu_buffer_uploader::record_texture_request(rhi_command* command)
         src_regions.clear();
         dst_regions.clear();
     }
+
+    for (rhi_texture_barrier& barrier : barriers)
+    {
+        std::swap(barrier.src_stages, barrier.dst_stages);
+        std::swap(barrier.src_access, barrier.dst_access);
+        std::swap(barrier.src_layout, barrier.dst_layout);
+    }
+
+    command->set_pipeline_barrier(
+        nullptr,
+        0,
+        barriers.data(),
+        static_cast<std::uint32_t>(barriers.size()));
+
+    m_texture_requests.clear();
+    m_dst_textures.clear();
 }
 } // namespace violet

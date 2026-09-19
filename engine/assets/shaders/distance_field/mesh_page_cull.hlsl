@@ -66,7 +66,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
         uint mesh_id = invalidated_grid_meshes[grid.mesh_offset + mesh_offset];
 
         mesh_sdf mesh = meshes[mesh_id];
-        if (intersect_aabb(mesh.bounding_box_min, mesh.bounding_box_max, page_min, page_max))
+        if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, page_min, page_max))
         {
             // TODO: sample sdf
             ++intersect_count;

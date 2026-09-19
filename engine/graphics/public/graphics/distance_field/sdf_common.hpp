@@ -55,4 +55,6 @@ static constexpr std::uint32_t SDF_BRICK_ATLAS_BLOCK_COUNT_X =
 static constexpr std::uint32_t SDF_BRICK_ATLAS_BLOCK_COUNT_Y = SDF_BRICK_ATLAS_BRICK_COUNT_PER_AXIS;
 
 static constexpr std::uint32_t SDF_INVALID_BRICK = 0xFFFFFFFF;
+
+static constexpr float SDF_MAX_DISTANCE_VOXEL_COUNT = 4.0f;
 } // namespace violet

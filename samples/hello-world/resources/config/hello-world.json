@@ -12,6 +12,7 @@
         "model3": "D:/Workspace/assets/models/obj/terrain.obj",
         "model4": "D:/Workspace/assets/models/gltf/SanMiguel.glb",
         "model5": "D:/Workspace/assets/models/obj/stanford-bunny.obj",
-        "model6": "D:/Workspace/assets/models/gltf/Sponza.glb"
+        "model6": "D:/Workspace/assets/models/gltf/Sponza.glb",
+        "model7": "D:/Workspace/assets/models/gltf/box.glb"
     }
 }

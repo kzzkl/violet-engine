@@ -357,7 +357,7 @@ void deferred_renderer::prepare_rdg_resources(render_graph& graph)
         m_debug_output = graph.add_texture(
             "Debug Output",
             render_extent,
-            RHI_FORMAT_R32G32B32A32_FLOAT,
+            RHI_FORMAT_R8G8B8A8_UNORM,
             RHI_TEXTURE_RENDER_TARGET | RHI_TEXTURE_STORAGE | RHI_TEXTURE_TRANSFER_SRC |
                 RHI_TEXTURE_TRANSFER_DST);
 

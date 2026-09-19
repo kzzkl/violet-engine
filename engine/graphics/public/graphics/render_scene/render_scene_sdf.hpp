@@ -27,7 +27,7 @@ public:
 
     render_id add_mesh();
     void set_mesh_distance_field(render_id mesh_sdf_id, render_id distance_field_id);
-    void set_mesh_matrix(render_id mesh_sdf_id, const mat4f& matrix_m);
+    void set_mesh_matrix(render_id mesh_sdf_id, const mat4f& matrix_m, const vec3f& scale);
     void remove_mesh(render_id mesh_sdf_id);
 
     void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
@@ -89,14 +89,18 @@ private:
     {
         struct gpu_type
         {
+            mat4f volume_to_world;
+            mat4f world_to_volume;
             vec3f volume_bounds_min;
             std::uint32_t distance_field_id;
             vec3f volume_bounds_max;
-            std::uint32_t padding;
+            std::uint32_t padding0;
         };
 
         std::uint32_t distance_field_id;
+
         mat4f matrix_m;
+        float scale;
     };
 
     struct invalidation_region

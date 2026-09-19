@@ -14,7 +14,7 @@ distance_field_manager::distance_field_manager()
         .extent =
             {
                 .width = 128 * SDF_BRICK_SIZE,
-                .height = 1024 * SDF_BRICK_SIZE,
+                .height = 128 * SDF_BRICK_SIZE,
                 .depth = SDF_BRICK_SIZE,
             },
         .format = RHI_FORMAT_R8_UNORM,
@@ -30,9 +30,11 @@ render_id distance_field_manager::add_distance_field(const distance_field& dista
     render_id distance_field_id = m_distance_fields.add();
 
     auto& distance_field = m_distance_fields[distance_field_id];
+    distance_field.brick_count = distance_field_data.brick_count;
+    distance_field.volume_bounds = distance_field_data.volume_bounds;
 
     std::uint32_t brick_count = distance_field_data.get_brick_count();
-    distance_field.brick_table = m_brick_table->allocate(brick_count);
+    distance_field.brick_table = m_brick_table->allocate(brick_count * sizeof(std::uint32_t));
 
     distance_field.blocks.resize(
         (distance_field_data.get_active_brick_count() + block_size - 1) / block_size);
@@ -41,7 +43,10 @@ render_id distance_field_manager::add_distance_field(const distance_field& dista
         block = m_block_allocator.allocate();
     }
 
-    distance_field_upload_request upload_request;
+    distance_field_upload_request upload_request = {
+        .distance_field_id = distance_field_id,
+    };
+
     upload_request.brick_data.resize(distance_field_data.brick_data.size());
 
     std::uint32_t active_brick_index = 0;
@@ -66,7 +71,11 @@ render_id distance_field_manager::add_distance_field(const distance_field& dista
             distance_field_data.brick_data.data() +
                 (distance_field_data.brick_table[i] * brick_data_size),
             brick_data_size);
+
+        ++active_brick_index;
     }
+
+    m_upload_queue.push_back(std::move(upload_request));
 
     return distance_field_id;
 }
@@ -88,6 +97,19 @@ void distance_field_manager::update(gpu_buffer_uploader* uploader)
     for (const auto& request : m_upload_queue)
     {
         const auto& distance_field = m_distance_fields[request.distance_field_id];
+
+        rhi_buffer_region brick_table_region = {
+            .offset = distance_field.brick_table.offset,
+            .size = request.brick_table.size() * sizeof(std::uint32_t),
+        };
+
+        uploader->upload(
+            m_brick_table->get_rhi(),
+            request.brick_table.data(),
+            brick_table_region.size,
+            brick_table_region,
+            RHI_PIPELINE_STAGE_COMPUTE,
+            RHI_ACCESS_SHADER_READ);
 
         auto brick_count =
             static_cast<std::uint32_t>(request.brick_data.size() / SDF_BRICK_VOXEL_COUNT);
@@ -128,10 +150,24 @@ void distance_field_manager::update(gpu_buffer_uploader* uploader)
         }
     }
 
+    m_upload_queue.clear();
+
     m_distance_fields.update(
         [&](const gpu_distance_field& distance_field) -> gpu_distance_field::gpu_type
         {
-            return {};
+            vec3f volume_extent_ms = box::get_extent(distance_field.volume_bounds);
+            vec3f volume_extent_ms_max = vector::max(volume_extent_ms);
+            vec3f volume_extent_sdf = volume_extent_ms / volume_extent_ms_max * 2.0f;
+            vec3f voxel_extent_sdf =
+                volume_extent_sdf / vec3f(distance_field.brick_count) / SDF_UNIQUE_BRICK_SIZE;
+
+            return {
+                .brick_count = distance_field.brick_count,
+                .brick_table_offset = distance_field.brick_table.offset /
+                                      static_cast<std::uint32_t>(sizeof(std::uint32_t)),
+                .volume_extent_sdf = volume_extent_sdf,
+                .max_distance_sdf = vector::length(voxel_extent_sdf * SDF_MAX_DISTANCE_VOXEL_COUNT),
+            };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
         {

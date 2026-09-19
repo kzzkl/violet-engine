@@ -39,8 +39,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
             clipmap clipmap = constant.clipmaps[level];
 
             if (intersect_aabb(
-                mesh.bounding_box_min,
-                mesh.bounding_box_max,
+                mesh.volume_bounds_min,
+                mesh.volume_bounds_max,
                 clipmap.position,
                 clipmap.position + clipmap.extent))
             {
