@@ -3,7 +3,8 @@
 
 struct constant_data
 {
-    clipmap clipmaps[SDF_CLIPMAP_LEVEL_COUNT];
+    uint clipmap_levels;
+    uint clipmap_level_offset;
 
     uint mesh_buffer;
     uint mesh_count;
@@ -30,19 +31,21 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     uint offsets[SDF_CLIPMAP_LEVEL_COUNT];
 
+    StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+
     if (dtid.x < constant.mesh_count)
     {
         mesh_sdf mesh = meshes[dtid.x];
 
         for (uint level = 0; level < SDF_CLIPMAP_LEVEL_COUNT; ++level)
         {
-            clipmap clipmap = constant.clipmaps[level];
+            clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + level];
 
             if (intersect_aabb(
                 mesh.volume_bounds_min,
                 mesh.volume_bounds_max,
-                clipmap.position,
-                clipmap.position + clipmap.extent))
+                clipmap_level.position,
+                clipmap_level.position + clipmap_level.extent))
             {
                 InterlockedAdd(gs_mesh_counts[level], 1, offsets[level]);
             }

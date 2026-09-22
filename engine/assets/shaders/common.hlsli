@@ -234,7 +234,9 @@ float2 get_compute_uv(uint2 texel_coord, uint width, uint height)
 
 uint get_dispatch_group_count(uint offset, uint count, uint group_size)
 {
-    return (offset + count + group_size - 1) / group_size - (offset + group_size - 1) / group_size;
+    uint prev = offset + group_size - 1;
+    uint next = prev + count;
+    return next / group_size - prev / group_size;
 }
 
 #endif

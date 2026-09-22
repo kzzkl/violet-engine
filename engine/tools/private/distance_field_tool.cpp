@@ -78,7 +78,7 @@ public:
         m_volume_bounds.min = mesh_bounds.min - m_voxel_extent;
         m_volume_bounds.max = mesh_bounds.max + m_voxel_extent;
 
-        m_max_distance = vector::length(m_voxel_extent) * 4.0f;
+        m_max_distance = vector::length(m_voxel_extent) * SDF_MAX_DISTANCE_VOXEL_COUNT;
 
         std::size_t total_brick_count =
             static_cast<std::size_t>(m_brick_count.x) * m_brick_count.y * m_brick_count.z;

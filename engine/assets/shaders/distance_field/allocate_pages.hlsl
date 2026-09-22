@@ -18,7 +18,7 @@ groupshared int gs_allocate_count;
 
 [shader("compute")]
 [numthreads(64, 1, 1)]
-void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
+void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 gid : SV_GroupID)
 {
     RWStructuredBuffer<clipmap_state> clipmap_state = ResourceDescriptorHeap[constant.clipmap_state];
     StructuredBuffer<uint> pages_to_allocate = ResourceDescriptorHeap[constant.pages_to_allocate];
@@ -28,7 +28,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     if (group_index == 0)
     {
         int allocate_count = 64;
-        if ((group_index + 1) * 64 > clipmap_state[0].pages_to_allocate_count)
+        if ((gid.x + 1) * 64 > clipmap_state[0].pages_to_allocate_count)
         {
             allocate_count = clipmap_state[0].pages_to_allocate_count % 64;
         }

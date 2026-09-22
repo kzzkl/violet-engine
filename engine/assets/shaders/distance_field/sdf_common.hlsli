@@ -3,10 +3,11 @@
 
 static const float SDF_CLIPMAP_EXTENT = 50.0;
 
-static const uint SDF_CLIPMAP_RESOLUTION = 256;
+static const uint SDF_CLIPMAP_RESOLUTION = 252;
 static const uint SDF_CLIPMAP_PAGE_RESOLUTION = 8;
+static const uint SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION = SDF_CLIPMAP_PAGE_RESOLUTION - 1;
 
-static const uint SDF_CLIPMAP_PAGE_COUNT_PER_AXIS = SDF_CLIPMAP_RESOLUTION / SDF_CLIPMAP_PAGE_RESOLUTION;
+static const uint SDF_CLIPMAP_PAGE_COUNT_PER_AXIS = SDF_CLIPMAP_RESOLUTION / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION;
 static const uint SDF_CLIPMAP_PAGE_COUNT_PER_AXIS_HALF = SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
 static const uint SDF_CLIPMAP_PAGE_COUNT = SDF_CLIPMAP_PAGE_COUNT_PER_AXIS * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
 
@@ -57,10 +58,14 @@ struct mesh_sdf
     uint padding0;
 };
 
-struct clipmap
+struct clipmap_level
 {
     float3 position;
     float extent;
+    float max_distance;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 struct clipmap_grid
@@ -229,6 +234,16 @@ uint get_clipmap_level(float3 position, float3 camera_position)
     return 0xFFFFFFFF;
 }
 
+float encode_distance(float distance, float max_distance)
+{
+    return saturate(distance / max_distance * 0.5 + 0.5);
+}
+
+float decode_distance(float encode, float max_distance)
+{
+    return (encode - 0.5) * 2.0 * max_distance;
+}
+
 struct distance_field
 {
     uint3 brick_count;
@@ -276,7 +291,7 @@ struct distance_field
         float3 atlas_uv = (atlas_texel + 0.5) / atlas_extent;
 
         float value = brick_atlas.SampleLevel(sdf_sampler, atlas_uv, 0.0);
-        return (value - 0.5) * 2.0 * max_distance;
+        return decode_distance(value, max_distance);
     }
 };
 
@@ -289,6 +304,17 @@ bool intersect_aabb(
 {
     float3 gap = max(max(aabb_min_a - aabb_max_b, aabb_min_b - aabb_max_a), 0.0);
     return dot(gap, gap) <= influence_radius * influence_radius;
+}
+
+float get_volume_bounds_distance(float3 position, float3 volume_extent)
+{
+    float3 half_extents = volume_extent * 0.5;
+    float3 q = abs(position) - half_extents;
+
+    float outside_dist = length(max(q, 0.0));
+    float inside_dist = min(max(q.x, max(q.y, q.z)), 0.0);
+
+    return outside_dist + inside_dist;
 }
 
 #endif

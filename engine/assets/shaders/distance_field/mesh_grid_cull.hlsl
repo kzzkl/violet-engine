@@ -3,9 +3,10 @@
 
 struct constant_data
 {
-    clipmap clipmaps[SDF_CLIPMAP_LEVEL_COUNT];
-
     uint clipmap_state;
+
+    uint clipmap_levels;
+    uint clipmap_level_offset;
 
     uint invalidated_grids;
 
@@ -39,11 +40,12 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 
     uint mesh_count = clipmap_level_mesh_counts[grid.level];
 
-    clipmap clipmap = constant.clipmaps[grid.level];
+    StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+    clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + grid.level];
 
-    float grid_extent = clipmap.extent / SDF_CLIPMAP_GRID_COUNT_PER_AXIS;
+    float grid_extent = clipmap_level.extent / SDF_CLIPMAP_GRID_COUNT_PER_AXIS;
 
-    float3 grid_min = clipmap.position + grid.coord * grid_extent;
+    float3 grid_min = clipmap_level.position + grid.coord * grid_extent;
     float3 grid_max = grid_min + grid_extent;
 
     if (group_index == 0)

@@ -140,11 +140,11 @@ private:
                 transform.set_position({translate, 0.0f, 0.0f});
             }
 
-            static float scale = 1.0f;
-            if (ImGui::SliderFloat("Scale", &scale, 1.0f, 10000.0f))
+            static vec3f scale = 1.0f;
+            if (ImGui::SliderFloat3("Scale", &scale.x, 1.0f, 10.0f))
             {
                 auto& transform = world.get_component<transform_component>(m_root);
-                transform.set_scale({scale, scale, scale});
+                transform.set_scale(scale);
             }
         }
 

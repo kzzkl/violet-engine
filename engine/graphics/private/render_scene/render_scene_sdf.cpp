@@ -6,6 +6,11 @@
 
 namespace violet
 {
+render_scene_sdf::render_scene_sdf()
+    : m_clipmap_levels(7)
+{
+}
+
 render_id render_scene_sdf::add_mesh()
 {
     return m_meshes.add();
@@ -38,7 +43,7 @@ void render_scene_sdf::update(render_scene_context& context, gpu_buffer_uploader
 {
     deallocate_clipmaps(context);
     allocate_clipmaps(context);
-    update_clipmap(context);
+    update_clipmap(context, uploader);
 
     update_meshes(uploader);
     update_invalidation_regions(uploader);
@@ -87,12 +92,16 @@ void render_scene_sdf::allocate_clipmaps(render_scene_context& context)
             clipmap.camera_id = camera_id;
             clipmap.need_clear = true;
 
-            auto& device = render_device::instance();
-
-            for (auto& center : clipmap.level_centers)
+            clipmap.level_offset = m_clipmap_levels.add(SDF_CLIPMAP_LEVEL_COUNT);
+            for (std::uint32_t i = 0; i < SDF_CLIPMAP_LEVEL_COUNT; ++i)
             {
-                center = std::numeric_limits<std::int32_t>::max();
+                m_clipmap_levels[i + clipmap.level_offset] = {
+                    .coord = std::numeric_limits<std::int32_t>::max(),
+                    .level = i,
+                };
             }
+
+            auto& device = render_device::instance();
 
             struct clipmap_state
             {
@@ -157,7 +166,7 @@ void render_scene_sdf::allocate_clipmaps(render_scene_context& context)
         });
 }
 
-void render_scene_sdf::update_clipmap(render_scene_context& context)
+void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     auto& camera_module = context.get_module<render_scene_camera>();
 
@@ -193,21 +202,25 @@ void render_scene_sdf::update_clipmap(render_scene_context& context)
                 float page_extent = SDF_CLIPMAP_PAGE_EXTENT * static_cast<float>(1u << i);
                 vec3i camera_page_coord = camera.position / page_extent;
 
-                const vec3i& old_center = clipmap.level_centers[i];
+                auto& clipmap_level = m_clipmap_levels[clipmap.level_offset + i];
+                const vec3i& old_coord = clipmap_level.coord;
 
-                if (camera_page_coord == old_center)
+                if (camera_page_coord == old_coord)
                 {
                     break;
                 }
 
+                clipmap_level.coord = camera_page_coord;
+                m_clipmap_levels.mark_dirty(clipmap.level_offset + i);
+
                 vec3i window_min = camera_page_coord - half_page_size;
                 vec3i window_max = camera_page_coord + half_page_size;
 
-                vec3i delta = camera_page_coord - old_center;
+                vec3i delta = camera_page_coord - old_coord;
 
-                bool full_update = old_center.x == std::numeric_limits<std::int32_t>::max() &&
-                                   old_center.y == std::numeric_limits<std::int32_t>::max() &&
-                                   old_center.z == std::numeric_limits<std::int32_t>::max();
+                bool full_update = old_coord.x == std::numeric_limits<std::int32_t>::max() &&
+                                   old_coord.y == std::numeric_limits<std::int32_t>::max() &&
+                                   old_coord.z == std::numeric_limits<std::int32_t>::max();
 
                 for (std::uint32_t axis = 0; !full_update && axis < 3; ++axis)
                 {
@@ -248,9 +261,39 @@ void render_scene_sdf::update_clipmap(render_scene_context& context)
                             vec3f(slab_max) * page_extent);
                     }
                 }
-
-                clipmap.level_centers[i] = camera_page_coord;
             }
+        });
+
+    m_clipmap_levels.update(
+        [&](const clipmap_level_data& clipmap_level) -> clipmap_level_data::gpu_type
+        {
+            auto level_scale = static_cast<float>(1 << clipmap_level.level);
+            vec3i origin = clipmap_level.coord - SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
+
+            vec3f voxel_extent =
+                SDF_CLIPMAP_PAGE_EXTENT / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION * level_scale;
+            float max_distance = vector::length(voxel_extent) * SDF_MAX_DISTANCE_VOXEL_COUNT;
+
+            return {
+                .position = vec3f(origin) * SDF_CLIPMAP_PAGE_EXTENT * level_scale,
+                .extent = SDF_CLIPMAP_EXTENT * level_scale,
+                .max_distance = max_distance,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
+            uploader.upload(
+                buffer,
+                data,
+                size,
+                region,
+                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
         });
 }
 

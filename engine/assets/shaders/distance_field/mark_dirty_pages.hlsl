@@ -3,9 +3,10 @@
 
 struct constant_data
 {
-    clipmap clipmaps[SDF_CLIPMAP_LEVEL_COUNT];
-
     uint clipmap_state;
+
+    uint clipmap_levels;
+    uint clipmap_level_offset;
 
     uint invalidation_regions;
     uint invalidation_region_count;
@@ -42,13 +43,15 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     StructuredBuffer<invalidation_region> invalidation_regions = ResourceDescriptorHeap[constant.invalidation_regions];
 
     uint level = dtid.z / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    clipmap clipmap = constant.clipmaps[level];
+
+    StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+    clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + level];
 
     uint3 grid_coord = gid;
     grid_coord.z %= SDF_CLIPMAP_GRID_COUNT_PER_AXIS;
 
-    float grid_extent = clipmap.extent / SDF_CLIPMAP_GRID_COUNT_PER_AXIS;
-    float3 grid_min = clipmap.position + grid_coord * grid_extent;
+    float grid_extent = clipmap_level.extent / SDF_CLIPMAP_GRID_COUNT_PER_AXIS;
+    float3 grid_min = clipmap_level.position + grid_coord * grid_extent;
     float3 grid_max = grid_min + grid_extent;
 
     if (group_index == 0)
@@ -88,7 +91,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
 
     GroupMemoryBarrierWithGroupSync();
 
-    float page_extent = clipmap.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
     float3 page_min = grid_min + gtid * page_extent;
     float3 page_max = page_min + page_extent;
 

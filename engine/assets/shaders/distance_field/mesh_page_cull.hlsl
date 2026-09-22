@@ -3,9 +3,10 @@
 
 struct constant_data
 {
-    clipmap clipmaps[SDF_CLIPMAP_LEVEL_COUNT];
-
     uint clipmap_state;
+
+    uint clipmap_levels;
+    uint clipmap_level_offset;
 
     uint invalidated_grids;
     uint invalidated_pages;
@@ -23,6 +24,10 @@ struct constant_data
     uint pages_to_update_indirect_args;
 
     uint page_atlas_capacity;
+
+    uint distance_field_buffer;
+    uint brick_table;
+    uint brick_atlas;
 };
 PushConstant(constant_data, constant);
 
@@ -38,14 +43,16 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     clipmap_page page = clipmap_page::unpack(invalidated_pages[gid.x]);
     clipmap_grid grid = clipmap_grid::unpack(invalidated_grids[page.grid_index]);
 
-    RWStructuredBuffer<uint> invalidated_grid_meshes = ResourceDescriptorHeap[constant.invalidated_grid_meshes];
+    StructuredBuffer<uint> invalidated_grid_meshes = ResourceDescriptorHeap[constant.invalidated_grid_meshes];
     StructuredBuffer<mesh_sdf> meshes = ResourceDescriptorHeap[constant.mesh_buffer];
 
-    clipmap clipmap = constant.clipmaps[page.level];
-    float page_extent = clipmap.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+    StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+    clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + page.level];
 
-    float3 page_min = clipmap.position + page.coord * page_extent;
+    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+    float3 page_min = clipmap_level.position + page.coord * page_extent;
     float3 page_max = page_min + page_extent;
+    float3 page_center = (page_min + page_max) * 0.5;
 
     if (group_index == 0)
     {
@@ -53,6 +60,10 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     }
 
     GroupMemoryBarrierWithGroupSync();
+
+    StructuredBuffer<distance_field> distance_fields = ResourceDescriptorHeap[constant.distance_field_buffer];
+    StructuredBuffer<uint> brick_table = ResourceDescriptorHeap[constant.brick_table];
+    Texture3D<float> brick_atlas = ResourceDescriptorHeap[constant.brick_atlas];
 
     uint intersect_count = 0;
     for (uint i = 0; i < grid.mesh_count; i += 64)
@@ -68,8 +79,18 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
         mesh_sdf mesh = meshes[mesh_id];
         if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, page_min, page_max))
         {
-            // TODO: sample sdf
-            ++intersect_count;
+            distance_field distance_field = distance_fields[mesh.distance_field_id];
+
+            float3 center = mul(mesh.world_to_volume, float4(page_center, 1.0)).xyz;
+            float3 half_extent = distance_field.volume_extent * 0.5;
+            float3 to_box = abs(center) - half_extent;
+
+            float distance = length(max(to_box, 0.0)) + min(max(to_box.x, max(to_box.y, to_box.z)), 0.0);
+            if (distance < page_extent)
+            {
+                // TODO: sample sdf
+                ++intersect_count;
+            }
         }
     }
 
@@ -88,19 +109,9 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 
         if (gs_intersect_count > 0)
         {
-            if (page_table_entry.resident())
-            {
-                uint pages_to_update_offset;
-                InterlockedAdd(clipmap_state[0].pages_to_update_count, 1, pages_to_update_offset);
+            bool need_update = true;
 
-                RWStructuredBuffer<dispatch_command> pages_to_update_indirect_args = ResourceDescriptorHeap[constant.pages_to_update_indirect_args];
-                uint dispatch_count = get_dispatch_group_count(pages_to_update_offset, 1, 64);
-                if (dispatch_count > 0)
-                {
-                    InterlockedAdd(pages_to_update_indirect_args[0].x, dispatch_count);
-                }
-            }
-            else
+            if (!page_table_entry.resident())
             {
                 uint pages_to_allocate_offset;
                 InterlockedAdd(clipmap_state[0].pages_to_allocate_count, 1, pages_to_allocate_offset);
@@ -118,7 +129,25 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
                 }
                 else
                 {
-                    page_table[page_table_coord] = SDF_INVALID_PAGE_TABLE_ENTRY;
+                    need_update = false;
+                }
+            }
+
+            if (need_update)
+            {
+                uint pages_to_update_offset;
+                InterlockedAdd(clipmap_state[0].pages_to_update_count, 1, pages_to_update_offset);
+
+                RWStructuredBuffer<uint> pages_to_update = ResourceDescriptorHeap[constant.pages_to_update];
+                pages_to_update[pages_to_update_offset] = page.pack();
+
+                RWStructuredBuffer<dispatch_command> pages_to_update_indirect_args = ResourceDescriptorHeap[constant.pages_to_update_indirect_args];
+
+                // 8 tiles per page. 64 threads(voxels) per tile.
+                uint dispatch_count = get_dispatch_group_count(pages_to_update_offset, 8, 64);
+                if (dispatch_count > 0)
+                {
+                    InterlockedAdd(pages_to_update_indirect_args[0].x, dispatch_count);
                 }
             }
         }

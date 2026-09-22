@@ -6,11 +6,12 @@ namespace violet
 {
 static constexpr float SDF_CLIPMAP_EXTENT = 50.0f;
 
-static constexpr std::uint32_t SDF_CLIPMAP_RESOLUTION = 256;
+static constexpr std::uint32_t SDF_CLIPMAP_RESOLUTION = 252;
 static constexpr std::uint32_t SDF_CLIPMAP_PAGE_RESOLUTION = 8;
+static constexpr std::uint32_t SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION = SDF_CLIPMAP_PAGE_RESOLUTION - 1;
 
 static constexpr std::uint32_t SDF_CLIPMAP_PAGE_COUNT_PER_AXIS =
-    SDF_CLIPMAP_RESOLUTION / SDF_CLIPMAP_PAGE_RESOLUTION;
+    SDF_CLIPMAP_RESOLUTION / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION;
 static constexpr std::uint32_t SDF_CLIPMAP_PAGE_COUNT = SDF_CLIPMAP_PAGE_COUNT_PER_AXIS *
                                                         SDF_CLIPMAP_PAGE_COUNT_PER_AXIS *
                                                         SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;

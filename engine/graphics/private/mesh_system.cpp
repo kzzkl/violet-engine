@@ -53,6 +53,13 @@ void mesh_system::update(render_scene_manager& scene_manager)
 
                     mesh_meta.mesh = render_scene->get_module<render_scene_mesh>().add_mesh();
                     mesh_meta.instances.clear();
+
+                    if (mesh.geometry->has_distance_field())
+                    {
+                        auto& sdf_module = render_scene->get_module<render_scene_sdf>();
+                        mesh_meta.mesh_sdf = sdf_module.add_mesh();
+                    }
+
                     mesh_meta.scene = render_scene;
                 }
 
@@ -60,6 +67,14 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     mesh_meta.mesh,
                     transform.matrix,
                     transform.scale);
+
+                if (mesh_meta.mesh_sdf != INVALID_RENDER_ID)
+                {
+                    render_scene->get_module<render_scene_sdf>().set_mesh_matrix(
+                        mesh_meta.mesh_sdf,
+                        transform.matrix,
+                        transform.scale);
+                }
             },
             [this](auto& view)
             {
@@ -89,19 +104,9 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 if (mesh.geometry->has_distance_field())
                 {
                     auto& sdf_module = mesh_meta.scene->get_module<render_scene_sdf>();
-
-                    if (mesh_meta.mesh_sdf == INVALID_RENDER_ID)
-                    {
-                        mesh_meta.mesh_sdf = sdf_module.add_mesh();
-                    }
-
                     sdf_module.set_mesh_distance_field(
                         mesh_meta.mesh_sdf,
                         mesh.geometry->get_distance_field_id());
-                    sdf_module.set_mesh_matrix(
-                        mesh_meta.mesh_sdf,
-                        transform.matrix,
-                        transform.scale);
                 }
 
                 std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;
