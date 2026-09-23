@@ -10,6 +10,7 @@ struct constant_data
     uint invalidated_page_indirect_args;
 
     uint pages_to_allocate_indirect_args;
+    uint pages_to_update_indirect_args;
 };
 PushConstant(constant_data, constant);
 
@@ -45,4 +46,7 @@ void cs_main()
 
     RWStructuredBuffer<dispatch_command> pages_to_allocate_indirect_args = ResourceDescriptorHeap[constant.pages_to_allocate_indirect_args];
     pages_to_allocate_indirect_args[0] = command;
+
+    RWStructuredBuffer<dispatch_command> pages_to_update_indirect_args = ResourceDescriptorHeap[constant.pages_to_update_indirect_args];
+    pages_to_update_indirect_args[0] = command;
 }

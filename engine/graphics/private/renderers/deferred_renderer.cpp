@@ -593,6 +593,9 @@ void deferred_renderer::add_sdf_pass(render_graph& graph)
     case DEBUG_MODE_SDF_MESH_SDF:
         debug_mode = sdf_pass::DEBUG_MODE_MESH_SDF;
         break;
+    case DEBUG_MODE_SDF_GLOBAL_SDF:
+        debug_mode = sdf_pass::DEBUG_MODE_GLOBAL_SDF;
+        break;
     default:
         break;
     }

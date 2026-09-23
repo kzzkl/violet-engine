@@ -83,9 +83,9 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 
             float3 center = mul(mesh.world_to_volume, float4(page_center, 1.0)).xyz;
             float3 half_extent = distance_field.volume_extent * 0.5;
-            float3 to_box = abs(center) - half_extent;
+            float3 to_box = (abs(center) - half_extent) * mesh.volume_to_world_scale.xyz;
 
-            float distance = length(max(to_box, 0.0)) + min(max(to_box.x, max(to_box.y, to_box.z)), 0.0);
+            float distance = length(max(0.0, to_box)) + min(0.0, max3(to_box));
             if (distance < page_extent)
             {
                 // TODO: sample sdf
@@ -144,11 +144,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
                 RWStructuredBuffer<dispatch_command> pages_to_update_indirect_args = ResourceDescriptorHeap[constant.pages_to_update_indirect_args];
 
                 // 8 tiles per page. 64 threads(voxels) per tile.
-                uint dispatch_count = get_dispatch_group_count(pages_to_update_offset, 8, 64);
-                if (dispatch_count > 0)
-                {
-                    InterlockedAdd(pages_to_update_indirect_args[0].x, dispatch_count);
-                }
+                InterlockedAdd(pages_to_update_indirect_args[0].x, 8);
             }
         }
         else

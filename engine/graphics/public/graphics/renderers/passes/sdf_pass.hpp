@@ -12,6 +12,7 @@ public:
         DEBUG_MODE_NONE,
         DEBUG_MODE_PAGE,
         DEBUG_MODE_MESH_SDF,
+        DEBUG_MODE_GLOBAL_SDF,
     };
 
     struct clipmap

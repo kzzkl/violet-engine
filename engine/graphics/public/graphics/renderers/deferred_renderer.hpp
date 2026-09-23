@@ -23,6 +23,7 @@ public:
         DEBUG_MODE_SSGI,
         DEBUG_MODE_SDF_PAGE,
         DEBUG_MODE_SDF_MESH_SDF,
+        DEBUG_MODE_SDF_GLOBAL_SDF,
     };
 
     deferred_renderer();

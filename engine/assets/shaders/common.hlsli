@@ -183,6 +183,16 @@ SamplerState get_linear_clamp_sampler()
     return SamplerDescriptorHeap[5];
 }
 
+float max3(float3 v)
+{
+    return max(max(v.x, v.y), v.z);
+}
+
+float min3(float3 v)
+{
+    return min(min(v.x, v.y), v.z);
+}
+
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
 {
     StructuredBuffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];

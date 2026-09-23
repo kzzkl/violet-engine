@@ -50,8 +50,9 @@ struct clipmap_state
 
 struct mesh_sdf
 {
-    float4x4 volume_to_world;
     float4x4 world_to_volume;
+    float4x4 volume_to_world;
+    float4 volume_to_world_scale;
     float3 volume_bounds_min;
     uint distance_field_id;
     float3 volume_bounds_max;
@@ -190,15 +191,15 @@ struct clipmap_page_table_entry
     uint3 get_page_atlas_coord()
     {
         uint3 coord;
-        coord.x = page_atlas_id >> 14;
+        coord.x = page_atlas_id & 0x7F;
         coord.y = (page_atlas_id >> 7) & 0x7F;
-        coord.z = page_atlas_id & 0x7F;
+        coord.z = page_atlas_id >> 14;
         return coord;
     }
 
     void set_page_atlas_coord(uint3 coord)
     {
-        page_atlas_id = coord.x << 14 | coord.y << 7 | coord.z;
+        page_atlas_id = (coord.x & 0x7F) | ((coord.y & 0x7F) << 7) | (coord.z << 14);
     }
 
     bool resident()

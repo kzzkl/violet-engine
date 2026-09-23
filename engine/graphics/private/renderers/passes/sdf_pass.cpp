@@ -32,6 +32,7 @@ struct sdf_prepare_cs : public shader_cs
         std::uint32_t invalidated_grid_indirect_args;
         std::uint32_t invalidated_page_indirect_args;
         std::uint32_t pages_to_allocate_indirect_args;
+        std::uint32_t pages_to_update_indirect_args;
     };
 
     static constexpr parameter_layout parameters = {
@@ -241,6 +242,28 @@ struct sdf_debug_mesh_sdf_cs : public shader_cs
     };
 };
 
+struct sdf_debug_global_sdf_cs : public shader_cs
+{
+    static constexpr std::string_view path =
+        "assets/shaders/distance_field/sdf_debug_global_sdf.hlsl";
+
+    struct constant_data
+    {
+        std::uint32_t clipmap_levels;
+        std::uint32_t clipmap_level_offset;
+
+        std::uint32_t page_table;
+        std::uint32_t page_atlas;
+
+        std::uint32_t debug_output;
+    };
+
+    static constexpr parameter_layout parameters = {
+        {.space = 0, .desc = bindless},
+        {.space = 1, .desc = camera},
+    };
+};
+
 void sdf_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "SDF");
@@ -403,6 +426,7 @@ void sdf_pass::prepare(render_graph& graph)
         rdg_buffer_uav invalidated_page_indirect_args;
 
         rdg_buffer_uav pages_to_allocate_indirect_args;
+        rdg_buffer_uav pages_to_update_indirect_args;
     };
 
     graph.add_pass<pass_data>(
@@ -421,6 +445,8 @@ void sdf_pass::prepare(render_graph& graph)
 
             data.pages_to_allocate_indirect_args =
                 pass.add_buffer_uav(m_pages_to_allocate_indirect_args, RHI_PIPELINE_STAGE_COMPUTE);
+            data.pages_to_update_indirect_args =
+                pass.add_buffer_uav(m_pages_to_update_indirect_args, RHI_PIPELINE_STAGE_COMPUTE);
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -440,6 +466,8 @@ void sdf_pass::prepare(render_graph& graph)
                         data.invalidated_page_indirect_args.get_bindless(),
                     .pages_to_allocate_indirect_args =
                         data.pages_to_allocate_indirect_args.get_bindless(),
+                    .pages_to_update_indirect_args =
+                        data.pages_to_update_indirect_args.get_bindless(),
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 
@@ -930,7 +958,7 @@ void sdf_pass::update_pages(render_graph& graph)
         rdg_buffer_srv mesh_buffer;
 
         rdg_texture_srv page_table;
-        rdg_texture_srv page_atlas;
+        rdg_texture_uav page_atlas;
 
         rdg_buffer_srv pages_to_update;
 
@@ -960,7 +988,7 @@ void sdf_pass::update_pages(render_graph& graph)
                 m_page_table,
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_TEXTURE_DIMENSION_3D);
-            data.page_atlas = pass.add_texture_srv(
+            data.page_atlas = pass.add_texture_uav(
                 m_page_atlas,
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_TEXTURE_DIMENSION_3D);
@@ -1016,7 +1044,7 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
         };
 
         graph.add_pass<pass_data>(
-            "SDF Debug",
+            "SDF Debug Page",
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
@@ -1060,7 +1088,7 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
         };
 
         graph.add_pass<pass_data>(
-            "SDF Debug",
+            "SDF Debug Mesh SDF",
             RDG_PASS_COMPUTE,
             [&](pass_data& data, rdg_pass& pass)
             {
@@ -1088,6 +1116,63 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
                         .distance_field_buffer = data.distance_field_buffer,
                         .brick_table = data.brick_table,
                         .brick_atlas = data.brick_atlas,
+                        .debug_output = data.debug_output.get_bindless(),
+                    });
+
+                command.set_parameter(0, RDG_PARAMETER_BINDLESS);
+                command.set_parameter(1, RDG_PARAMETER_CAMERA);
+
+                auto extent = data.debug_output.get_extent();
+                command.dispatch_2d(extent.width, extent.height);
+            });
+    }
+    else if (parameter.debug_mode == DEBUG_MODE_GLOBAL_SDF)
+    {
+        struct pass_data
+        {
+            std::uint32_t clipmap_levels;
+            std::uint32_t clipmap_level_offset;
+
+            rdg_texture_srv page_table;
+            rdg_texture_srv page_atlas;
+
+            rdg_texture_uav debug_output;
+        };
+
+        graph.add_pass<pass_data>(
+            "SDF Debug Global SDF",
+            RDG_PASS_COMPUTE,
+            [&](pass_data& data, rdg_pass& pass)
+            {
+                data.clipmap_levels = m_clipmap_levels;
+                data.clipmap_level_offset = m_clipmap_level_offset;
+
+                data.page_table = pass.add_texture_srv(
+                    m_page_table,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_3D);
+                data.page_atlas = pass.add_texture_srv(
+                    m_page_atlas,
+                    RHI_PIPELINE_STAGE_COMPUTE,
+                    RHI_TEXTURE_DIMENSION_3D);
+
+                data.debug_output =
+                    pass.add_texture_uav(parameter.debug_output, RHI_PIPELINE_STAGE_COMPUTE);
+            },
+            [](const pass_data& data, rdg_command& command)
+            {
+                auto& device = render_device::instance();
+
+                command.set_pipeline({
+                    .compute_shader = device.get_shader<sdf_debug_global_sdf_cs>(),
+                });
+
+                command.set_constant(
+                    sdf_debug_global_sdf_cs::constant_data{
+                        .clipmap_levels = data.clipmap_levels,
+                        .clipmap_level_offset = data.clipmap_level_offset,
+                        .page_table = data.page_table.get_bindless(),
+                        .page_atlas = data.page_atlas.get_bindless(),
                         .debug_output = data.debug_output.get_bindless(),
                     });
 

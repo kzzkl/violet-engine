@@ -113,8 +113,9 @@ private:
     {
         struct gpu_type
         {
-            mat4f volume_to_world;
             mat4f world_to_volume;
+            mat4f volume_to_world;
+            vec4f volume_to_world_scale;
             vec3f volume_bounds_min;
             std::uint32_t distance_field_id;
             vec3f volume_bounds_max;

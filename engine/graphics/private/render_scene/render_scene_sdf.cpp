@@ -200,7 +200,7 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
             for (std::uint32_t i = 0; i < SDF_CLIPMAP_LEVEL_COUNT; ++i)
             {
                 float page_extent = SDF_CLIPMAP_PAGE_EXTENT * static_cast<float>(1u << i);
-                vec3i camera_page_coord = camera.position / page_extent;
+                vec3i camera_page_coord = vector::floor(camera.position / page_extent);
 
                 auto& clipmap_level = m_clipmap_levels[clipmap.level_offset + i];
                 const vec3i& old_coord = clipmap_level.coord;
@@ -209,9 +209,6 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                 {
                     break;
                 }
-
-                clipmap_level.coord = camera_page_coord;
-                m_clipmap_levels.mark_dirty(clipmap.level_offset + i);
 
                 vec3i window_min = camera_page_coord - half_page_size;
                 vec3i window_max = camera_page_coord + half_page_size;
@@ -261,6 +258,9 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                             vec3f(slab_max) * page_extent);
                     }
                 }
+
+                clipmap_level.coord = camera_page_coord;
+                m_clipmap_levels.mark_dirty(clipmap.level_offset + i);
             }
         });
 
@@ -314,11 +314,24 @@ void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
             volume_to_world = matrix::mul(volume_to_world, matrix::translation(volume_center));
             volume_to_world = matrix::mul(volume_to_world, mesh.matrix_m);
 
+            vec4f volume_to_world_scale = {
+                vector::length(volume_to_world[0]),
+                vector::length(volume_to_world[1]),
+                vector::length(volume_to_world[2]),
+                0.0f,
+            };
+            volume_to_world_scale.w = std::min({
+                volume_to_world_scale.x,
+                volume_to_world_scale.y,
+                volume_to_world_scale.z,
+            });
+
             volume_bounds = box::transform(volume_bounds, mesh.matrix_m);
 
             return {
-                .volume_to_world = volume_to_world,
                 .world_to_volume = matrix::inverse_transform(volume_to_world),
+                .volume_to_world = volume_to_world,
+                .volume_to_world_scale = volume_to_world_scale,
                 .volume_bounds_min = volume_bounds.min,
                 .distance_field_id = mesh.distance_field_id,
                 .volume_bounds_max = volume_bounds.max,

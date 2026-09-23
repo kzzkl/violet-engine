@@ -527,7 +527,8 @@ private:
                 "Eye Adaptation",
                 "SSGI",
                 "SDF Page",
-                "Mesh SDF"
+                "Mesh SDF",
+                "Global SDF"
             };
 
             if (ImGui::Combo(
