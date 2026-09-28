@@ -104,7 +104,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     {
         RWStructuredBuffer<clipmap_state> clipmap_state = ResourceDescriptorHeap[constant.clipmap_state];
 
-        uint3 page_table_coord = page.get_page_table_coord();
+        uint3 page_table_coord = get_page_table_coord(page.coord, clipmap_level.origin, page.level);
         clipmap_page_table_entry page_table_entry = clipmap_page_table_entry::unpack(page_table[page_table_coord]);
 
         if (gs_intersect_count > 0)

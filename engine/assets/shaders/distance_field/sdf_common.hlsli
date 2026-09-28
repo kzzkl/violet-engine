@@ -63,10 +63,8 @@ struct clipmap_level
 {
     float3 position;
     float extent;
+    int3 origin;
     float max_distance;
-    uint padding0;
-    uint padding1;
-    uint padding2;
 };
 
 struct clipmap_grid
@@ -156,12 +154,14 @@ struct clipmap_page
 
         return grid_index << 20 | global_id;
     }
-
-    uint3 get_page_table_coord()
-    {
-        return uint3(coord.xy, coord.z + level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS);
-    }
 };
+
+uint3 get_page_table_coord(uint3 local_coord, int3 clipmap_origin, uint clipmap_level)
+{
+    int3 coord = clipmap_origin + local_coord;
+    coord = ((coord % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS) + SDF_CLIPMAP_PAGE_COUNT_PER_AXIS) % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+    return uint3(coord.xy, coord.z + clipmap_level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS);
+}
 
 static const uint SDF_CLIPMAP_PAGE_TABLE_ENTRY_FLAG_RESIDENT = 1 << 0;
 

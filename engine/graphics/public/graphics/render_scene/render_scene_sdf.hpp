@@ -97,15 +97,13 @@ private:
     {
         struct gpu_type
         {
-            vec3i position;
+            vec3f position;
             float extent;
+            vec3i origin;
             float max_distance;
-            std::uint32_t padding0;
-            std::uint32_t padding1;
-            std::uint32_t padding2;
         };
 
-        vec3i coord;
+        vec3i center;
         std::uint32_t level;
     };
 

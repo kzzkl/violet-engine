@@ -5,11 +5,13 @@ struct constant_data
 {
     uint clipmap_state;
 
+    uint clipmap_levels;
+    uint clipmap_level_offset;
+
     uint page_table;
     uint free_pages;
 
     uint pages_to_allocate;
-    uint page_atlas_capacity;
 };
 PushConstant(constant_data, constant);
 
@@ -65,6 +67,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex,
         }
 
         clipmap_page page = clipmap_page::unpack(pages_to_allocate[dtid.x]);
-        page_table[page.get_page_table_coord()] = page_table_entry;
+
+        StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+        clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + page.level];
+
+        uint3 page_table_coord = get_page_table_coord(page.coord, clipmap_level.origin, page.level);
+        page_table[page_table_coord] = page_table_entry;
     }
 }

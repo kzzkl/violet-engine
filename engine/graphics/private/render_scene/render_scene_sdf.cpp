@@ -96,7 +96,7 @@ void render_scene_sdf::allocate_clipmaps(render_scene_context& context)
             for (std::uint32_t i = 0; i < SDF_CLIPMAP_LEVEL_COUNT; ++i)
             {
                 m_clipmap_levels[i + clipmap.level_offset] = {
-                    .coord = std::numeric_limits<std::int32_t>::max(),
+                    .center = std::numeric_limits<std::int32_t>::max(),
                     .level = i,
                 };
             }
@@ -203,9 +203,8 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                 vec3i camera_page_coord = vector::floor(camera.position / page_extent);
 
                 auto& clipmap_level = m_clipmap_levels[clipmap.level_offset + i];
-                const vec3i& old_coord = clipmap_level.coord;
 
-                if (camera_page_coord == old_coord)
+                if (camera_page_coord == clipmap_level.center)
                 {
                     break;
                 }
@@ -213,11 +212,12 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                 vec3i window_min = camera_page_coord - half_page_size;
                 vec3i window_max = camera_page_coord + half_page_size;
 
-                vec3i delta = camera_page_coord - old_coord;
+                vec3i delta = camera_page_coord - clipmap_level.center;
 
-                bool full_update = old_coord.x == std::numeric_limits<std::int32_t>::max() &&
-                                   old_coord.y == std::numeric_limits<std::int32_t>::max() &&
-                                   old_coord.z == std::numeric_limits<std::int32_t>::max();
+                bool full_update =
+                    clipmap_level.center.x == std::numeric_limits<std::int32_t>::max() &&
+                    clipmap_level.center.y == std::numeric_limits<std::int32_t>::max() &&
+                    clipmap_level.center.z == std::numeric_limits<std::int32_t>::max();
 
                 for (std::uint32_t axis = 0; !full_update && axis < 3; ++axis)
                 {
@@ -259,7 +259,7 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                     }
                 }
 
-                clipmap_level.coord = camera_page_coord;
+                clipmap_level.center = camera_page_coord;
                 m_clipmap_levels.mark_dirty(clipmap.level_offset + i);
             }
         });
@@ -268,7 +268,7 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
         [&](const clipmap_level_data& clipmap_level) -> clipmap_level_data::gpu_type
         {
             auto level_scale = static_cast<float>(1 << clipmap_level.level);
-            vec3i origin = clipmap_level.coord - SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
+            vec3i origin = clipmap_level.center - SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
 
             vec3f voxel_extent =
                 SDF_CLIPMAP_PAGE_EXTENT / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION * level_scale;
@@ -277,6 +277,7 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
             return {
                 .position = vec3f(origin) * SDF_CLIPMAP_PAGE_EXTENT * level_scale,
                 .extent = SDF_CLIPMAP_EXTENT * level_scale,
+                .origin = origin,
                 .max_distance = max_distance,
             };
         },
