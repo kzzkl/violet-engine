@@ -14,7 +14,7 @@ ray_hit sdf_trace(
 {
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float surface_epsilon = 0.05 * distance_field.max_distance;
+    float surface_epsilon = 0.125 * distance_field.max_distance;
 
     ray_hit result = ray_hit_miss;
 

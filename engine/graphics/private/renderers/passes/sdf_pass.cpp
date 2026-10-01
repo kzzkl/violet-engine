@@ -158,14 +158,13 @@ struct sdf_allocate_pages_cs : public shader_cs
     {
         std::uint32_t clipmap_state;
 
+        std::uint32_t clipmap_levels;
+        std::uint32_t clipmap_level_offset;
+
         std::uint32_t page_table;
         std::uint32_t free_pages;
 
         std::uint32_t pages_to_allocate;
-
-        std::uint32_t pages_to_update;
-        std::uint32_t pages_to_update_indirect_args;
-
         std::uint32_t page_atlas_capacity;
     };
 
@@ -281,14 +280,22 @@ void sdf_pass::add(render_graph& graph, const parameter& parameter)
     m_clipmap_levels = sdf_module.get_clipmap_levels_buffer()->get_srv()->get_bindless();
     m_clipmap_level_offset = clipmap.level_offset;
 
-    m_page_table = graph.add_texture("SDF Page Table", clipmap.page_table);
-    m_page_atlas = graph.add_texture("SDF Page Atlas", clipmap.page_atlas);
+    m_page_table = graph.add_texture(
+        "SDF Page Table",
+        clipmap.page_table,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+    m_page_atlas = graph.add_texture(
+        "SDF Page Atlas",
+        clipmap.page_atlas,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
     m_free_pages = graph.add_buffer("SDF Free Pages", clipmap.free_pages);
     m_page_atlas_capacity = clipmap.page_atlas_capacity;
 
     m_invalidated_grids = graph.add_buffer(
         "SDF Invalidated Grids",
-        sizeof(vec2u) * SDF_CLIPMAP_GRID_COUNT * SDF_CLIPMAP_LEVEL_COUNT,
+        sizeof(vec4u) * SDF_CLIPMAP_GRID_COUNT * SDF_CLIPMAP_LEVEL_COUNT,
         RHI_BUFFER_STORAGE);
     m_invalidated_grid_indirect_args = graph.add_buffer(
         "SDF Invalidated Grid Indirect Args",
@@ -879,15 +886,15 @@ void sdf_pass::allocate_pages(render_graph& graph)
     {
         rdg_buffer_uav clipmap_state;
 
+        std::uint32_t clipmap_levels;
+        std::uint32_t clipmap_level_offset;
+
         rdg_texture_uav page_table;
 
         rdg_buffer_srv free_pages;
 
         rdg_buffer_srv pages_to_allocate;
         rdg_buffer_ref pages_to_allocate_indirect_args;
-
-        rdg_buffer_uav pages_to_update;
-        rdg_buffer_uav pages_to_update_indirect_args;
 
         std::uint32_t page_atlas_capacity;
     };
@@ -898,6 +905,9 @@ void sdf_pass::allocate_pages(render_graph& graph)
         [&](pass_data& data, rdg_pass& pass)
         {
             data.clipmap_state = pass.add_buffer_uav(m_clipmap_state, RHI_PIPELINE_STAGE_COMPUTE);
+
+            data.clipmap_levels = m_clipmap_levels;
+            data.clipmap_level_offset = m_clipmap_level_offset;
 
             data.page_table = pass.add_texture_uav(
                 m_page_table,
@@ -913,11 +923,6 @@ void sdf_pass::allocate_pages(render_graph& graph)
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
 
-            data.pages_to_update =
-                pass.add_buffer_uav(m_pages_to_update, RHI_PIPELINE_STAGE_COMPUTE);
-            data.pages_to_update_indirect_args =
-                pass.add_buffer_uav(m_pages_to_update_indirect_args, RHI_PIPELINE_STAGE_COMPUTE);
-
             data.page_atlas_capacity = m_page_atlas_capacity;
         },
         [](const pass_data& data, rdg_command& command)
@@ -931,12 +936,11 @@ void sdf_pass::allocate_pages(render_graph& graph)
             command.set_constant(
                 sdf_allocate_pages_cs::constant_data{
                     .clipmap_state = data.clipmap_state.get_bindless(),
+                    .clipmap_levels = data.clipmap_levels,
+                    .clipmap_level_offset = data.clipmap_level_offset,
                     .page_table = data.page_table.get_bindless(),
                     .free_pages = data.free_pages.get_bindless(),
                     .pages_to_allocate = data.pages_to_allocate.get_bindless(),
-                    .pages_to_update = data.pages_to_update.get_bindless(),
-                    .pages_to_update_indirect_args =
-                        data.pages_to_update_indirect_args.get_bindless(),
                     .page_atlas_capacity = data.page_atlas_capacity,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);

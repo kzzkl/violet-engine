@@ -56,17 +56,14 @@ void cs_main(uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID, uint group_i
     StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
     clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + page.level];
 
-    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    float voxel_extent = page_extent / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION;
-
-    float3 page_min = clipmap_level.position + page.coord * page_extent;
-    float3 tile_min = page_min + tile_coord * SDF_VOXEL_COUNT_PER_TILE_AXIS * voxel_extent;
-    float3 tile_max = tile_min + SDF_VOXEL_COUNT_PER_TILE_AXIS * voxel_extent;
+    float3 page_min = clipmap_level.position + page.coord * clipmap_level.page_extent;
+    float3 tile_min = page_min + tile_coord * SDF_VOXEL_COUNT_PER_TILE_AXIS * clipmap_level.voxel_extent;
+    float3 tile_max = tile_min + SDF_VOXEL_COUNT_PER_TILE_AXIS * clipmap_level.voxel_extent;
 
     StructuredBuffer<uint> invalidated_grid_meshes = ResourceDescriptorHeap[constant.invalidated_grid_meshes];
     StructuredBuffer<mesh_sdf> meshes = ResourceDescriptorHeap[constant.mesh_buffer];
 
-    StructuredBuffer<uint2> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
+    StructuredBuffer<uint4> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
     clipmap_grid grid = clipmap_grid::unpack(invalidated_grids[page.grid_index]);
 
     if (group_index == 0)
@@ -87,7 +84,7 @@ void cs_main(uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID, uint group_i
         uint mesh_id = invalidated_grid_meshes[grid.mesh_offset + mesh_offset];
 
         mesh_sdf mesh = meshes[mesh_id];
-        if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, tile_min, tile_max))
+        if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, tile_min, tile_max, clipmap_level.max_distance))
         {
             uint mesh_index;
             InterlockedAdd(gs_tile_mesh_count, 1, mesh_index);
@@ -108,7 +105,16 @@ void cs_main(uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID, uint group_i
 
     GroupMemoryBarrierWithGroupSync();
 
-    float3 position_ws = tile_min + voxel_coord * voxel_extent;
+    Texture3D<uint> page_table = ResourceDescriptorHeap[constant.page_table];
+    uint3 page_table_coord = clipmap_level.get_page_table_coord(page.coord);
+
+    clipmap_page_table_entry page_table_entry = clipmap_page_table_entry::unpack(page_table[page_table_coord]);
+    if (!page_table_entry.resident())
+    {
+        return;
+    }
+
+    float3 position_ws = tile_min + voxel_coord * clipmap_level.voxel_extent;
 
     StructuredBuffer<distance_field> distance_fields = ResourceDescriptorHeap[constant.distance_field_buffer];
     StructuredBuffer<uint> brick_table = ResourceDescriptorHeap[constant.brick_table];
@@ -138,15 +144,6 @@ void cs_main(uint3 gid : SV_GroupID, uint3 gtid : SV_GroupThreadID, uint group_i
         distance = max(distance, distance_to_box);
 
         min_distance = min(min_distance, distance);
-    }
-
-    Texture3D<uint> page_table = ResourceDescriptorHeap[constant.page_table];
-    uint3 page_table_coord = page.get_page_table_coord();
-
-    clipmap_page_table_entry page_table_entry = clipmap_page_table_entry::unpack(page_table[page_table_coord]);
-    if (!page_table_entry.resident())
-    {
-        return;
     }
 
     uint3 page_atlas_coord = page_table_entry.get_page_atlas_coord();

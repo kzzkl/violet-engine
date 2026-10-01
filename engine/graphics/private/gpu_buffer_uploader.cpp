@@ -29,6 +29,7 @@ void gpu_buffer_uploader::upload(
     rhi_access_flags access)
 {
     assert(size == region.size);
+    assert(region.offset + region.size <= buffer->get_size());
 
     std::size_t pending_size = size;
 

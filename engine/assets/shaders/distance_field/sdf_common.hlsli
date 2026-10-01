@@ -59,16 +59,6 @@ struct mesh_sdf
     uint padding0;
 };
 
-struct clipmap_level
-{
-    float3 position;
-    float extent;
-    float max_distance;
-    uint padding0;
-    uint padding1;
-    uint padding2;
-};
-
 struct clipmap_grid
 {
     uint3 coord;
@@ -77,7 +67,7 @@ struct clipmap_grid
     uint mesh_offset;
     uint mesh_count;
 
-    static clipmap_grid unpack(uint2 packed)
+    static clipmap_grid unpack(uint4 packed)
     {
         clipmap_grid grid;
 
@@ -96,21 +86,23 @@ struct clipmap_grid
 
         grid.level = packed.x / SDF_CLIPMAP_GRID_COUNT;
 
-        grid.mesh_offset = packed.y >> 16;
-        grid.mesh_count = packed.y & 0xFFFF;
+        grid.mesh_offset = packed.y;
+        grid.mesh_count = packed.z;
     
         return grid;
     }
 
-    uint2 pack()
+    uint4 pack()
     {
-        uint2 packed;
+        uint4 packed;
         packed.x =
             coord.x +
             coord.y * SDF_CLIPMAP_GRID_COUNT_PER_AXIS +
             coord.z * SDF_CLIPMAP_GRID_COUNT_PER_AXIS * SDF_CLIPMAP_GRID_COUNT_PER_AXIS +
             level * SDF_CLIPMAP_GRID_COUNT;
-        packed.y = (mesh_offset << 16) | mesh_count;
+        packed.y = mesh_offset;
+        packed.z = mesh_count;
+        packed.w = 0;
         return packed;
     }
 };
@@ -156,10 +148,25 @@ struct clipmap_page
 
         return grid_index << 20 | global_id;
     }
+};
 
-    uint3 get_page_table_coord()
+struct clipmap_level
+{
+    float3 position;
+    uint level;
+    uint3 origin_wrapped;
+    float extent;
+    float page_extent;
+    float page_diagonal;
+    float voxel_extent;
+    float max_distance;
+
+    uint3 get_page_table_coord(uint3 local_coord)
     {
-        return uint3(coord.xy, coord.z + level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS);
+        uint3 coord = (origin_wrapped + local_coord) % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+        coord.z += level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+
+        return coord;
     }
 };
 

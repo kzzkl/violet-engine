@@ -125,6 +125,11 @@ public:
         mark_dirty(DIRTY_FLAG_DISTANCE_FIELD);
     }
 
+    const distance_field& get_distance_field() const noexcept
+    {
+        return m_distance_field;
+    }
+
     bool has_distance_field() const noexcept
     {
         return m_distance_field_id != INVALID_RENDER_ID;

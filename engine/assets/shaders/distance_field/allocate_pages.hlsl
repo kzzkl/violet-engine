@@ -5,6 +5,9 @@ struct constant_data
 {
     uint clipmap_state;
 
+    uint clipmap_levels;
+    uint clipmap_level_offset;
+
     uint page_table;
     uint free_pages;
 
@@ -25,12 +28,14 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex,
 
     RWTexture3D<uint> page_table = ResourceDescriptorHeap[constant.page_table];
 
+    uint pages_to_allocate_count = min(clipmap_state[0].pages_to_allocate_count, constant.page_atlas_capacity);
+
     if (group_index == 0)
     {
         int allocate_count = 64;
-        if ((gid.x + 1) * 64 > clipmap_state[0].pages_to_allocate_count)
+        if ((gid.x + 1) * 64 > pages_to_allocate_count)
         {
-            allocate_count = clipmap_state[0].pages_to_allocate_count % 64;
+            allocate_count = pages_to_allocate_count % 64;
         }
 
         int allocate_offset;
@@ -47,7 +52,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex,
 
     GroupMemoryBarrierWithGroupSync();
 
-    if (dtid.x < clipmap_state[0].pages_to_allocate_count && gs_allocate_count > 0)
+    if (dtid.x < pages_to_allocate_count && gs_allocate_count > 0)
     {
         uint page_table_entry;
         if (group_index < gs_allocate_count)
@@ -65,6 +70,11 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex,
         }
 
         clipmap_page page = clipmap_page::unpack(pages_to_allocate[dtid.x]);
-        page_table[page.get_page_table_coord()] = page_table_entry;
+
+        StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
+        clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + page.level];
+
+        uint3 page_table_coord = clipmap_level.get_page_table_coord(page.coord);
+        page_table[page_table_coord] = page_table_entry;
     }
 }

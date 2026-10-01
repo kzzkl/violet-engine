@@ -528,8 +528,7 @@ private:
                 "SSGI",
                 "SDF Page",
                 "Mesh SDF",
-                "Global SDF"
-            };
+                "Global SDF"};
 
             if (ImGui::Combo(
                     "Debug Mode",

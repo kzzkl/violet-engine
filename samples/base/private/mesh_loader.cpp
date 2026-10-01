@@ -618,24 +618,78 @@ bool mesh_loader_compress_textures(mesh_loader::scene_data& scene_data)
 
 bool mesh_loader_generate_distance_field(mesh_loader::scene_data& scene_data)
 {
-    for (std::uint32_t i = 0; i < scene_data.geometries.size(); ++i)
+    std::vector<std::thread> threads(
+        std::min<std::uint32_t>(std::thread::hardware_concurrency(), scene_data.geometries.size()));
+
+    scene_data.distance_fields.resize(scene_data.geometries.size());
+
+    std::atomic<std::size_t> offset = 0;
+    std::atomic<std::uint32_t> total = 0;
+
+    for (auto& thread : threads)
     {
-        auto& geometry = scene_data.geometries[i];
-        geometry.distance_field = static_cast<std::int32_t>(scene_data.distance_fields.size());
+        thread = std::thread(
+            [&]()
+            {
+                while (true)
+                {
+                    std::uint32_t index = offset.fetch_add(1);
 
-        auto output = distance_field_tool::generate({
-            .positions = geometry.positions,
-            .indexes = geometry.indexes,
-        });
+                    if (index >= scene_data.geometries.size())
+                    {
+                        break;
+                    }
 
-        scene_data.distance_fields.push_back({
-            .brick_count = output.brick_count,
-            .volume_bounds = output.volume_bounds,
-            .brick_table = std::move(output.brick_table),
-            .brick_data = std::move(output.brick_data),
-        });
+                    auto& geometry = scene_data.geometries[index];
+                    geometry.distance_field = static_cast<std::int32_t>(index);
 
-        log::info("generate distance field: {} / {}", i + 1, scene_data.geometries.size());
+                    std::vector<std::uint32_t> indexes;
+                    std::size_t index_count = 0;
+                    for (const auto& submesh : geometry.submeshes)
+                    {
+                        index_count += submesh.index_count;
+                    }
+                    indexes.resize(index_count);
+
+                    std::uint32_t index_offset = 0;
+                    for (std::size_t i = 0; i < geometry.submeshes.size(); ++i)
+                    {
+                        const auto& submesh = geometry.submeshes[i];
+                        std::ranges::transform(
+                            geometry.indexes.begin() + submesh.index_offset,
+                            geometry.indexes.begin() + submesh.index_offset + submesh.index_count,
+                            indexes.begin() + index_offset,
+                            [&](std::uint32_t index) -> std::uint32_t
+                            {
+                                return index + submesh.vertex_offset;
+                            });
+
+                        index_offset += submesh.index_count;
+                    }
+
+                    auto output = distance_field_tool::generate({
+                        .positions = geometry.positions,
+                        .indexes = indexes,
+                    });
+
+                    scene_data.distance_fields[index] = {
+                        .brick_count = output.brick_count,
+                        .volume_bounds = output.volume_bounds,
+                        .brick_table = std::move(output.brick_table),
+                        .brick_data = std::move(output.brick_data),
+                    };
+
+                    log::info(
+                        "generate distance field: {} / {}",
+                        ++total,
+                        scene_data.geometries.size());
+                }
+            });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
     }
 
     return true;

@@ -95,9 +95,23 @@ void render_scene_sdf::allocate_clipmaps(render_scene_context& context)
             clipmap.level_offset = m_clipmap_levels.add(SDF_CLIPMAP_LEVEL_COUNT);
             for (std::uint32_t i = 0; i < SDF_CLIPMAP_LEVEL_COUNT; ++i)
             {
+                auto level_scale = static_cast<float>(1 << i);
+
+                vec3f page_extent = SDF_CLIPMAP_PAGE_EXTENT * level_scale;
+                float page_diagonal = vector::length(page_extent);
+
+                vec3f voxel_extent =
+                    SDF_CLIPMAP_PAGE_EXTENT / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION * level_scale;
+                float max_distance = vector::length(voxel_extent) * SDF_MAX_DISTANCE_VOXEL_COUNT;
+
                 m_clipmap_levels[i + clipmap.level_offset] = {
-                    .coord = std::numeric_limits<std::int32_t>::max(),
+                    .center = std::numeric_limits<std::int32_t>::max(),
                     .level = i,
+                    .extent = SDF_CLIPMAP_EXTENT * level_scale,
+                    .page_extent = page_extent.x,
+                    .page_diagonal = page_diagonal,
+                    .voxel_extent = page_extent.x / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION,
+                    .max_distance = max_distance,
                 };
             }
 
@@ -203,9 +217,8 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                 vec3i camera_page_coord = vector::floor(camera.position / page_extent);
 
                 auto& clipmap_level = m_clipmap_levels[clipmap.level_offset + i];
-                const vec3i& old_coord = clipmap_level.coord;
 
-                if (camera_page_coord == old_coord)
+                if (camera_page_coord == clipmap_level.center)
                 {
                     break;
                 }
@@ -213,11 +226,12 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                 vec3i window_min = camera_page_coord - half_page_size;
                 vec3i window_max = camera_page_coord + half_page_size;
 
-                vec3i delta = camera_page_coord - old_coord;
+                vec3i delta = camera_page_coord - clipmap_level.center;
 
-                bool full_update = old_coord.x == std::numeric_limits<std::int32_t>::max() &&
-                                   old_coord.y == std::numeric_limits<std::int32_t>::max() &&
-                                   old_coord.z == std::numeric_limits<std::int32_t>::max();
+                bool full_update =
+                    clipmap_level.center.x == std::numeric_limits<std::int32_t>::max() &&
+                    clipmap_level.center.y == std::numeric_limits<std::int32_t>::max() &&
+                    clipmap_level.center.z == std::numeric_limits<std::int32_t>::max();
 
                 for (std::uint32_t axis = 0; !full_update && axis < 3; ++axis)
                 {
@@ -259,7 +273,7 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
                     }
                 }
 
-                clipmap_level.coord = camera_page_coord;
+                clipmap_level.center = camera_page_coord;
                 m_clipmap_levels.mark_dirty(clipmap.level_offset + i);
             }
         });
@@ -267,17 +281,24 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
     m_clipmap_levels.update(
         [&](const clipmap_level_data& clipmap_level) -> clipmap_level_data::gpu_type
         {
-            auto level_scale = static_cast<float>(1 << clipmap_level.level);
-            vec3i origin = clipmap_level.coord - SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
+            vec3i origin = clipmap_level.center - SDF_CLIPMAP_PAGE_COUNT_PER_AXIS / 2;
 
-            vec3f voxel_extent =
-                SDF_CLIPMAP_PAGE_EXTENT / SDF_CLIPMAP_UNIQUE_PAGE_RESOLUTION * level_scale;
-            float max_distance = vector::length(voxel_extent) * SDF_MAX_DISTANCE_VOXEL_COUNT;
+            std::int32_t n = SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+            vec3i origin_wrapped = {
+                ((origin.x % n) + n) % n,
+                ((origin.y % n) + n) % n,
+                ((origin.z % n) + n) % n,
+            };
 
             return {
-                .position = vec3f(origin) * SDF_CLIPMAP_PAGE_EXTENT * level_scale,
-                .extent = SDF_CLIPMAP_EXTENT * level_scale,
-                .max_distance = max_distance,
+                .position = vec3f(origin) * clipmap_level.page_extent,
+                .level = clipmap_level.level,
+                .origin_wrapped = origin_wrapped,
+                .extent = clipmap_level.extent,
+                .page_extent = clipmap_level.page_extent,
+                .page_diagonal = clipmap_level.page_diagonal,
+                .voxel_extent = clipmap_level.voxel_extent,
+                .max_distance = clipmap_level.max_distance,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
