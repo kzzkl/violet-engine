@@ -98,13 +98,22 @@ private:
         struct gpu_type
         {
             vec3f position;
+            std::uint32_t level;
+            vec3u origin_wrapped;
             float extent;
-            vec3i origin;
+            float page_extent;
+            float page_diagonal;
+            float voxel_extent;
             float max_distance;
         };
 
         vec3i center;
         std::uint32_t level;
+        float extent;
+        float page_extent;
+        float page_diagonal;
+        float voxel_extent;
+        float max_distance;
     };
 
     struct mesh_data

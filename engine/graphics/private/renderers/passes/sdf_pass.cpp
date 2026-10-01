@@ -165,6 +165,7 @@ struct sdf_allocate_pages_cs : public shader_cs
         std::uint32_t free_pages;
 
         std::uint32_t pages_to_allocate;
+        std::uint32_t page_atlas_capacity;
     };
 
     static constexpr parameter_layout parameters = {
@@ -294,7 +295,7 @@ void sdf_pass::add(render_graph& graph, const parameter& parameter)
 
     m_invalidated_grids = graph.add_buffer(
         "SDF Invalidated Grids",
-        sizeof(vec2u) * SDF_CLIPMAP_GRID_COUNT * SDF_CLIPMAP_LEVEL_COUNT,
+        sizeof(vec4u) * SDF_CLIPMAP_GRID_COUNT * SDF_CLIPMAP_LEVEL_COUNT,
         RHI_BUFFER_STORAGE);
     m_invalidated_grid_indirect_args = graph.add_buffer(
         "SDF Invalidated Grid Indirect Args",
@@ -894,6 +895,8 @@ void sdf_pass::allocate_pages(render_graph& graph)
 
         rdg_buffer_srv pages_to_allocate;
         rdg_buffer_ref pages_to_allocate_indirect_args;
+
+        std::uint32_t page_atlas_capacity;
     };
 
     graph.add_pass<pass_data>(
@@ -919,6 +922,8 @@ void sdf_pass::allocate_pages(render_graph& graph)
                 m_pages_to_allocate_indirect_args,
                 RHI_PIPELINE_STAGE_DRAW_INDIRECT,
                 RHI_ACCESS_INDIRECT_COMMAND_READ);
+
+            data.page_atlas_capacity = m_page_atlas_capacity;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -936,6 +941,7 @@ void sdf_pass::allocate_pages(render_graph& graph)
                     .page_table = data.page_table.get_bindless(),
                     .free_pages = data.free_pages.get_bindless(),
                     .pages_to_allocate = data.pages_to_allocate.get_bindless(),
+                    .page_atlas_capacity = data.page_atlas_capacity,
                 });
             command.set_parameter(0, RDG_PARAMETER_BINDLESS);
 

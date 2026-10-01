@@ -23,13 +23,12 @@ float sample_clipmap(
     Texture3D<float> page_atlas,
     SamplerState sampler)
 {
-    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    float3 coord = (position - clipmap_level.position) / page_extent;
+    float3 coord = (position - clipmap_level.position) / clipmap_level.page_extent;
 
     uint3 page_coord = floor(coord);
     float3 page_uv = coord - page_coord;
 
-    uint3 page_table_coord = get_page_table_coord(page_coord, clipmap_level.origin, 0);
+    uint3 page_table_coord = clipmap_level.get_page_table_coord(page_coord);
 
     clipmap_page_table_entry page_table_entry = clipmap_page_table_entry::unpack(page_table[page_table_coord]);
     if (!page_table_entry.resident())
@@ -75,7 +74,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     bool hit = false;
 
-    float surface_epsilon = 0.05 * clipmap_level.max_distance;
+    float surface_epsilon = 0.1 * clipmap_level.max_distance;
 
     float t = 0.0;
     for (uint step = 0; step < 64; ++step)
@@ -98,9 +97,13 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         t += distance;
     }
 
+    float4 position_cs = mul(camera.matrix_vp, float4(ray.origin + ray.direction * t, 1.0));
+    float depth = position_cs.z / position_cs.w;
+    depth = 1.0 - t / 50.0;
+
     if (hit)
     {
-        debug_output[dtid.xy] = float4(1.0, 0.0, 0.0, 1.0);
+        debug_output[dtid.xy] = float4(depth, depth, depth, 1.0);
     }
     else
     {

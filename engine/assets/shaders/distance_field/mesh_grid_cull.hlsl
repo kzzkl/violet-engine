@@ -26,9 +26,9 @@ groupshared uint gs_mesh_count;
 void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {
 #ifdef CALCULATE_GRID_MESH_LIST_OFFSET
-    RWStructuredBuffer<uint2> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
+    RWStructuredBuffer<uint4> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
 #else
-    StructuredBuffer<uint2> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
+    StructuredBuffer<uint4> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
 #endif
 
     clipmap_grid grid = clipmap_grid::unpack(invalidated_grids[gid.x]);
@@ -67,7 +67,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
             uint mesh_id = clipmap_level_meshes[mesh_index + clipmap_level_meshes_offset];
             mesh_sdf mesh = meshes[mesh_id];
 
-            if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, grid_min, grid_max))
+            if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, grid_min, grid_max, clipmap_level.max_distance))
             {
 #ifdef CALCULATE_GRID_MESH_LIST_OFFSET
                 InterlockedAdd(gs_mesh_count, 1);

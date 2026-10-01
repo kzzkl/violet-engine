@@ -45,7 +45,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
                 mesh.volume_bounds_min,
                 mesh.volume_bounds_max,
                 clipmap_level.position,
-                clipmap_level.position + clipmap_level.extent))
+                clipmap_level.position + clipmap_level.extent,
+                clipmap_level.max_distance))
             {
                 InterlockedAdd(gs_mesh_counts[level], 1, offsets[level]);
             }

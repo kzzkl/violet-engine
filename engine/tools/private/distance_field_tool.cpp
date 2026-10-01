@@ -216,8 +216,8 @@ private:
 
     float get_distance_sign(const vec3f& position) const
     {
-        std::uint32_t hit_back = 0;
-        std::uint32_t hit_front = 0;
+        std::uint32_t backface_hits = 0;
+        auto backface_threshold = static_cast<std::uint32_t>(m_sign_test_directions.size() / 4);
 
         for (const auto& direction : m_sign_test_directions)
         {
@@ -226,39 +226,32 @@ private:
                 .direction = direction,
             };
 
-            std::size_t nearest_primitive_index = 0xFFFFFFFF;
-            float nearest_distance = std::numeric_limits<float>::max();
-            for (auto& [offset, hit] : m_bvh.intersect(ray, m_max_distance))
+            const auto nearest = m_bvh.intersect_closest(ray, m_max_distance);
+            if (!nearest)
             {
-                if (hit.enter < nearest_distance)
-                {
-                    nearest_primitive_index = offset;
-                    nearest_distance = hit.enter;
-                }
+                continue;
             }
 
-            if (nearest_primitive_index != 0xFFFFFFFF)
+            const auto& primitive = m_bvh.get_primitive(nearest->first);
+
+            const vec3f& p0 = primitive.positions[primitive.indexes[0]];
+            const vec3f& p1 = primitive.positions[primitive.indexes[1]];
+            const vec3f& p2 = primitive.positions[primitive.indexes[2]];
+
+            vec3f normal = vector::normalize(vector::cross(p2 - p0, p1 - p0));
+
+            if (vector::dot(normal, direction) > 0)
             {
-                const auto& primitive = m_bvh.get_primitive(nearest_primitive_index);
+                ++backface_hits;
+            }
 
-                const vec3f& p0 = primitive.positions[primitive.indexes[0]];
-                const vec3f& p1 = primitive.positions[primitive.indexes[1]];
-                const vec3f& p2 = primitive.positions[primitive.indexes[2]];
-
-                vec3f normal = vector::normalize(vector::cross(p2 - p0, p1 - p0));
-
-                if (vector::dot(normal, direction) > 0)
-                {
-                    ++hit_back;
-                }
-                else
-                {
-                    ++hit_front;
-                }
+            if (backface_hits > backface_threshold)
+            {
+                return -1.0f;
             }
         }
 
-        return hit_front >= hit_back ? 1.0f : -1.0f;
+        return 1.0f;
     }
 
     std::uint8_t encode_distance(float distance) const

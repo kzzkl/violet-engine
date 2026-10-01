@@ -53,6 +53,7 @@ struct ray
         ray_interval result;
 
         result.enter = max(max(t_min.x, t_min.y), t_min.z);
+        result.enter = max(result.enter, 0.0);
         result.exit  = min(min(t_max.x, t_max.y), t_max.z);
 
         if (result.exit < max(result.enter, 0.0))

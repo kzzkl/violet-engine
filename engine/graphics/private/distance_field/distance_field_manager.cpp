@@ -6,8 +6,9 @@ namespace violet
 {
 distance_field_manager::distance_field_manager()
 {
-    m_brick_table =
-        std::make_unique<persistent_buffer>(sizeof(std::uint32_t) * 128 * 128, RHI_BUFFER_STORAGE);
+    m_brick_table = std::make_unique<persistent_buffer>(
+        sizeof(std::uint32_t) * 1024 * 1024,
+        RHI_BUFFER_STORAGE);
 
     auto& device = render_device::instance();
     m_brick_atlas = device.create_texture({
@@ -15,7 +16,7 @@ distance_field_manager::distance_field_manager()
             {
                 .width = 128 * SDF_BRICK_SIZE,
                 .height = 128 * SDF_BRICK_SIZE,
-                .depth = SDF_BRICK_SIZE,
+                .depth = 32 * SDF_BRICK_SIZE,
             },
         .format = RHI_FORMAT_R8_UNORM,
         .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,

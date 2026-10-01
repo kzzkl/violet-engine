@@ -38,7 +38,7 @@ groupshared uint gs_intersect_count;
 void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     StructuredBuffer<uint> invalidated_pages = ResourceDescriptorHeap[constant.invalidated_pages];
-    StructuredBuffer<uint2> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
+    StructuredBuffer<uint4> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
 
     clipmap_page page = clipmap_page::unpack(invalidated_pages[gid.x]);
     clipmap_grid grid = clipmap_grid::unpack(invalidated_grids[page.grid_index]);
@@ -49,9 +49,8 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     StructuredBuffer<clipmap_level> clipmap_levels = ResourceDescriptorHeap[constant.clipmap_levels];
     clipmap_level clipmap_level = clipmap_levels[constant.clipmap_level_offset + page.level];
 
-    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    float3 page_min = clipmap_level.position + page.coord * page_extent;
-    float3 page_max = page_min + page_extent;
+    float3 page_min = clipmap_level.position + page.coord * clipmap_level.page_extent;
+    float3 page_max = page_min + clipmap_level.page_extent;
     float3 page_center = (page_min + page_max) * 0.5;
 
     if (group_index == 0)
@@ -65,6 +64,8 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     StructuredBuffer<uint> brick_table = ResourceDescriptorHeap[constant.brick_table];
     Texture3D<float> brick_atlas = ResourceDescriptorHeap[constant.brick_atlas];
 
+    float influence_radius = 0.5 * clipmap_level.page_diagonal + clipmap_level.max_distance;
+
     uint intersect_count = 0;
     for (uint i = 0; i < grid.mesh_count; i += 64)
     {
@@ -77,7 +78,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
         uint mesh_id = invalidated_grid_meshes[grid.mesh_offset + mesh_offset];
 
         mesh_sdf mesh = meshes[mesh_id];
-        if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, page_min, page_max))
+        if (intersect_aabb(mesh.volume_bounds_min, mesh.volume_bounds_max, page_min, page_max, clipmap_level.max_distance))
         {
             distance_field distance_field = distance_fields[mesh.distance_field_id];
 
@@ -86,7 +87,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
             float3 to_box = (abs(center) - half_extent) * mesh.volume_to_world_scale.xyz;
 
             float distance = length(max(0.0, to_box)) + min(0.0, max3(to_box));
-            if (distance < page_extent)
+            if (distance < influence_radius)
             {
                 // TODO: sample sdf
                 ++intersect_count;
@@ -104,7 +105,7 @@ void cs_main(uint3 gid : SV_GroupID, uint group_index : SV_GroupIndex)
     {
         RWStructuredBuffer<clipmap_state> clipmap_state = ResourceDescriptorHeap[constant.clipmap_state];
 
-        uint3 page_table_coord = get_page_table_coord(page.coord, clipmap_level.origin, page.level);
+        uint3 page_table_coord = clipmap_level.get_page_table_coord(page.coord);
         clipmap_page_table_entry page_table_entry = clipmap_page_table_entry::unpack(page_table[page_table_coord]);
 
         if (gs_intersect_count > 0)

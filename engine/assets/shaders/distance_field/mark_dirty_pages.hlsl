@@ -70,7 +70,12 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
         if (intersect)
         {
             invalidation_region region = invalidation_regions[invalidation_region_index];
-            intersect = intersect_aabb(region.bounding_box_min, region.bounding_box_max, grid_min, grid_max);
+            intersect = intersect_aabb(
+                region.bounding_box_min,
+                region.bounding_box_max,
+                grid_min,
+                grid_max,
+                clipmap_level.max_distance);
         }
 
         if (intersect)
@@ -91,9 +96,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
 
     GroupMemoryBarrierWithGroupSync();
 
-    float page_extent = clipmap_level.extent / SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    float3 page_min = grid_min + gtid * page_extent;
-    float3 page_max = page_min + page_extent;
+    float3 page_min = grid_min + gtid * clipmap_level.page_extent;
+    float3 page_max = page_min + clipmap_level.page_extent;
 
     uint dirty_page_offset = 0xFFFFFFFF;
 
@@ -101,7 +105,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     for (uint i = 0; i < intersect_count; ++i)
     {
         invalidation_region region = invalidation_regions[gs_intersect_invalidation_bounds[i]];
-        if (intersect_aabb(region.bounding_box_min, region.bounding_box_max, page_min, page_max))
+        if (intersect_aabb(region.bounding_box_min, region.bounding_box_max, page_min, page_max, clipmap_level.max_distance))
         {
             InterlockedAdd(gs_dirty_page_count, 1, dirty_page_offset);
             break;
@@ -114,7 +118,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 gti
     {
         RWStructuredBuffer<clipmap_state> clipmap_state = ResourceDescriptorHeap[constant.clipmap_state];
 
-        RWStructuredBuffer<uint2> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
+        RWStructuredBuffer<uint4> invalidated_grids = ResourceDescriptorHeap[constant.invalidated_grids];
         RWStructuredBuffer<dispatch_command> invalidated_grid_indirect_args = ResourceDescriptorHeap[constant.invalidated_grid_indirect_args];
 
         InterlockedAdd(clipmap_state[0].invalidated_grid_count, 1, gs_grid_index);

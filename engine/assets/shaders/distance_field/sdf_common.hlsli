@@ -59,14 +59,6 @@ struct mesh_sdf
     uint padding0;
 };
 
-struct clipmap_level
-{
-    float3 position;
-    float extent;
-    int3 origin;
-    float max_distance;
-};
-
 struct clipmap_grid
 {
     uint3 coord;
@@ -75,7 +67,7 @@ struct clipmap_grid
     uint mesh_offset;
     uint mesh_count;
 
-    static clipmap_grid unpack(uint2 packed)
+    static clipmap_grid unpack(uint4 packed)
     {
         clipmap_grid grid;
 
@@ -94,21 +86,23 @@ struct clipmap_grid
 
         grid.level = packed.x / SDF_CLIPMAP_GRID_COUNT;
 
-        grid.mesh_offset = packed.y >> 16;
-        grid.mesh_count = packed.y & 0xFFFF;
+        grid.mesh_offset = packed.y;
+        grid.mesh_count = packed.z;
     
         return grid;
     }
 
-    uint2 pack()
+    uint4 pack()
     {
-        uint2 packed;
+        uint4 packed;
         packed.x =
             coord.x +
             coord.y * SDF_CLIPMAP_GRID_COUNT_PER_AXIS +
             coord.z * SDF_CLIPMAP_GRID_COUNT_PER_AXIS * SDF_CLIPMAP_GRID_COUNT_PER_AXIS +
             level * SDF_CLIPMAP_GRID_COUNT;
-        packed.y = (mesh_offset << 16) | mesh_count;
+        packed.y = mesh_offset;
+        packed.z = mesh_count;
+        packed.w = 0;
         return packed;
     }
 };
@@ -156,12 +150,25 @@ struct clipmap_page
     }
 };
 
-uint3 get_page_table_coord(uint3 local_coord, int3 clipmap_origin, uint clipmap_level)
+struct clipmap_level
 {
-    int3 coord = clipmap_origin + local_coord;
-    coord = ((coord % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS) + SDF_CLIPMAP_PAGE_COUNT_PER_AXIS) % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
-    return uint3(coord.xy, coord.z + clipmap_level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS);
-}
+    float3 position;
+    uint level;
+    uint3 origin_wrapped;
+    float extent;
+    float page_extent;
+    float page_diagonal;
+    float voxel_extent;
+    float max_distance;
+
+    uint3 get_page_table_coord(uint3 local_coord)
+    {
+        uint3 coord = (origin_wrapped + local_coord) % SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+        coord.z += level * SDF_CLIPMAP_PAGE_COUNT_PER_AXIS;
+
+        return coord;
+    }
+};
 
 static const uint SDF_CLIPMAP_PAGE_TABLE_ENTRY_FLAG_RESIDENT = 1 << 0;
 
