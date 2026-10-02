@@ -3,6 +3,7 @@
 #include "graphics/distance_field/distance_field.hpp"
 #include "graphics/gpu_array.hpp"
 #include "graphics/resources/persistent_buffer.hpp"
+#include "graphics/resources/persistent_texture.hpp"
 
 namespace violet
 {
@@ -33,7 +34,7 @@ public:
 
     rhi_texture* get_brick_atlas() const
     {
-        return m_brick_atlas.get();
+        return m_brick_atlas->get_rhi();
     }
 
 private:
@@ -77,7 +78,7 @@ private:
     gpu_sparse_array<gpu_distance_field> m_distance_fields;
 
     std::unique_ptr<persistent_buffer> m_brick_table;
-    rhi_ptr<rhi_texture> m_brick_atlas;
+    std::unique_ptr<persistent_texture> m_brick_atlas;
 
     index_allocator m_block_allocator;
 

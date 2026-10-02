@@ -47,11 +47,11 @@ void persistent_buffer::upload(
 {
     if (get_rhi()->get_size() < m_allocated_size)
     {
-        reserve();
+        reserve(stages, access);
     }
 
     rhi_buffer* buffer = get_rhi();
-    for (auto& command : m_copy_queue)
+    for (const auto& command : m_copy_queue)
     {
         rhi_buffer_region region = {
             .offset = command.offset,
@@ -64,7 +64,7 @@ void persistent_buffer::upload(
     m_copy_queue.clear();
 }
 
-void persistent_buffer::reserve()
+void persistent_buffer::reserve(rhi_pipeline_stage_flags stages, rhi_access_flags access)
 {
     rhi_buffer* old_buffer = get_rhi();
 
@@ -83,19 +83,29 @@ void persistent_buffer::reserve()
 
     rhi_command* command = device.allocate_command();
 
+    rhi_buffer_barrier barrier = {
+        .buffer = old_buffer,
+        .src_stages = stages,
+        .src_access = access,
+        .dst_stages = RHI_PIPELINE_STAGE_TRANSFER,
+        .dst_access = RHI_ACCESS_TRANSFER_READ,
+        .offset = 0,
+        .size = old_buffer->get_size(),
+    };
+    command->set_pipeline_barrier(&barrier, 1, nullptr, 0);
+
     rhi_buffer_region region = {
         .offset = 0,
         .size = old_buffer->get_size(),
     };
     command->copy_buffer(old_buffer, &region, new_buffer.get(), &region, 1);
 
-    rhi_buffer_barrier barrier = {
+    barrier = {
         .buffer = new_buffer.get(),
-        .src_stages = RHI_PIPELINE_STAGE_TRANSFER,
-        .src_access = RHI_ACCESS_TRANSFER_WRITE,
-        .dst_stages =
-            RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_FRAGMENT | RHI_PIPELINE_STAGE_COMPUTE,
-        .dst_access = RHI_ACCESS_SHADER_READ,
+        .src_stages = RHI_PIPELINE_STAGE_NONE,
+        .src_access = RHI_ACCESS_NONE,
+        .dst_stages = stages,
+        .dst_access = access,
         .offset = 0,
         .size = old_buffer->get_size(),
     };

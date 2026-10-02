@@ -563,6 +563,7 @@ struct rhi_attachment_desc
 
 enum rhi_pipeline_stage_flag : std::uint32_t
 {
+    RHI_PIPELINE_STAGE_NONE = 0,
     RHI_PIPELINE_STAGE_BEGIN = 1 << 0,
     RHI_PIPELINE_STAGE_VERTEX_INPUT = 1 << 1,
     RHI_PIPELINE_STAGE_VERTEX = 1 << 2,
@@ -580,6 +581,7 @@ using rhi_pipeline_stage_flags = std::uint32_t;
 
 enum rhi_access_flag : std::uint32_t
 {
+    RHI_ACCESS_NONE = 0,
     RHI_ACCESS_COLOR_READ = 1 << 0,
     RHI_ACCESS_COLOR_WRITE = 1 << 1,
     RHI_ACCESS_DEPTH_STENCIL_READ = 1 << 2,

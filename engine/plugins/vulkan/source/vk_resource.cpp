@@ -210,8 +210,8 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
     {
         rhi_texture_barrier barrier = {
             .texture = this,
-            .src_stages = RHI_PIPELINE_STAGE_BEGIN,
-            .src_access = 0,
+            .src_stages = RHI_PIPELINE_STAGE_NONE,
+            .src_access = RHI_ACCESS_NONE,
             .src_layout = RHI_TEXTURE_LAYOUT_UNDEFINED,
             .dst_stages = RHI_PIPELINE_STAGE_COMPUTE | RHI_PIPELINE_STAGE_VERTEX |
                           RHI_PIPELINE_STAGE_FRAGMENT,

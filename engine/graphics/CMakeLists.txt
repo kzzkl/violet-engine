@@ -47,6 +47,7 @@ add_library(violet-graphics STATIC
     private/resources/buffer.cpp
     private/resources/hilbert_lut.cpp
     private/resources/persistent_buffer.cpp
+    private/resources/persistent_texture.cpp
     private/resources/ramp_texture.cpp
     private/resources/spatiotemporal_blue_noise.cpp
     private/resources/texture.cpp

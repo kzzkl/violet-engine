@@ -6,24 +6,18 @@ namespace violet
 {
 distance_field_manager::distance_field_manager()
 {
-    m_brick_table = std::make_unique<persistent_buffer>(
-        sizeof(std::uint32_t) * 1024 * 1024,
-        RHI_BUFFER_STORAGE);
+    m_brick_table =
+        std::make_unique<persistent_buffer>(sizeof(std::uint32_t) * 1024 * 16, RHI_BUFFER_STORAGE);
 
-    auto& device = render_device::instance();
-    m_brick_atlas = device.create_texture({
-        .extent =
-            {
-                .width = 128 * SDF_BRICK_SIZE,
-                .height = 128 * SDF_BRICK_SIZE,
-                .depth = 32 * SDF_BRICK_SIZE,
-            },
-        .format = RHI_FORMAT_R8_UNORM,
-        .flags = RHI_TEXTURE_SHADER_RESOURCE | RHI_TEXTURE_TRANSFER_DST,
-        .level_count = 1,
-        .layer_count = 1,
-        .layout = RHI_TEXTURE_LAYOUT_SHADER_RESOURCE,
-    });
+    m_brick_atlas = std::make_unique<persistent_texture>(
+        rhi_extent{
+            .width = 128 * SDF_BRICK_SIZE,
+            .height = 128 * SDF_BRICK_SIZE,
+            .depth = 8 * SDF_BRICK_SIZE,
+
+        },
+        RHI_FORMAT_R8_UNORM,
+        RHI_TEXTURE_SHADER_RESOURCE);
 }
 
 render_id distance_field_manager::add_distance_field(const distance_field& distance_field_data)
@@ -99,18 +93,10 @@ void distance_field_manager::update(gpu_buffer_uploader* uploader)
     {
         const auto& distance_field = m_distance_fields[request.distance_field_id];
 
-        rhi_buffer_region brick_table_region = {
-            .offset = distance_field.brick_table.offset,
-            .size = request.brick_table.size() * sizeof(std::uint32_t),
-        };
-
-        uploader->upload(
-            m_brick_table->get_rhi(),
+        m_brick_table->copy(
             request.brick_table.data(),
-            brick_table_region.size,
-            brick_table_region,
-            RHI_PIPELINE_STAGE_COMPUTE,
-            RHI_ACCESS_SHADER_READ);
+            request.brick_table.size() * sizeof(std::uint32_t),
+            distance_field.brick_table.offset);
 
         auto brick_count =
             static_cast<std::uint32_t>(request.brick_data.size() / SDF_BRICK_VOXEL_COUNT);
@@ -140,16 +126,19 @@ void distance_field_manager::update(gpu_buffer_uploader* uploader)
                 .aspect = RHI_TEXTURE_ASPECT_COLOR,
             };
 
-            uploader->upload(
-                m_brick_atlas.get(),
+            m_brick_atlas->copy(
                 request.brick_data.data() + static_cast<std::size_t>(i * SDF_BRICK_VOXEL_COUNT),
                 SDF_BRICK_VOXEL_COUNT * sizeof(std::uint8_t),
-                region,
-                RHI_PIPELINE_STAGE_COMPUTE,
-                RHI_ACCESS_SHADER_READ,
-                RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
+                region);
         }
     }
+
+    m_brick_table->upload(uploader, RHI_PIPELINE_STAGE_COMPUTE, RHI_ACCESS_SHADER_READ);
+    m_brick_atlas->upload(
+        uploader,
+        RHI_PIPELINE_STAGE_COMPUTE,
+        RHI_ACCESS_SHADER_READ,
+        RHI_TEXTURE_LAYOUT_SHADER_RESOURCE);
 
     m_upload_queue.clear();
 
