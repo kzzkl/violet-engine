@@ -71,10 +71,8 @@ public:
         rhi_buffer* irradiance_sh;
     };
 
-    void render_skybox(rhi_command* command, const skybox_parameter& parameter)
+    void render_skybox(render_graph& graph, const skybox_parameter& parameter)
     {
-        render_graph graph("Update Skybox");
-
         m_environment_map = graph.add_texture(
             "Environment Map",
             parameter.environment_map,
@@ -103,9 +101,6 @@ public:
             .environment_map = m_environment_map,
             .irradiance_sh = m_irradiance_sh,
         });
-
-        graph.compile();
-        graph.record(command);
     }
 
     struct atmosphere_parameter
@@ -115,10 +110,8 @@ public:
         rhi_texture* multi_scattering_lut;
     };
 
-    void render_atmosphere(rhi_command* command, const atmosphere_parameter& parameter)
+    void render_atmosphere(render_graph& graph, const atmosphere_parameter& parameter)
     {
-        render_graph graph("Update Atmosphere");
-
         m_transmittance_lut = graph.add_texture(
             "Transmittance LUT",
             parameter.transmittance_lut,
@@ -133,9 +126,6 @@ public:
 
         add_transmittance_lut_pass(graph, parameter);
         add_multi_scattering_lut_pass(graph, parameter);
-
-        graph.compile();
-        graph.record(command);
     }
 
 private:
@@ -415,24 +405,31 @@ void environment_system::update(render_scene_manager& scene_manager)
     m_system_version = world.get_version();
 }
 
-void environment_system::record(rhi_command* command)
+void environment_system::record(render_graph& graph)
 {
+    if (m_skybox_update_queue.empty() && m_atmosphere_update_queue.empty())
+    {
+        return;
+    }
+
+    rdg_scope scope(graph, "Environment");
+
     for (auto entity : m_skybox_update_queue)
     {
-        update_skybox(command, entity);
+        update_skybox(graph, entity);
     }
 
     m_skybox_update_queue.clear();
 
     for (auto entity : m_atmosphere_update_queue)
     {
-        update_atmosphere(command, entity);
+        update_atmosphere(graph, entity);
     }
 
     m_atmosphere_update_queue.clear();
 }
 
-void environment_system::update_skybox(rhi_command* command, entity entity)
+void environment_system::update_skybox(render_graph& graph, entity entity)
 {
     auto& world = get_world();
     const auto& meta = world.get_component<const skybox_component_meta>(entity);
@@ -454,17 +451,17 @@ void environment_system::update_skybox(rhi_command* command, entity entity)
         parameter.environment_map = meta.environment_map.get();
     }
 
-    renderer.render_skybox(command, parameter);
+    renderer.render_skybox(graph, parameter);
 }
 
-void environment_system::update_atmosphere(rhi_command* command, entity entity)
+void environment_system::update_atmosphere(render_graph& graph, entity entity)
 {
     auto& world = get_world();
     const auto& meta = world.get_component<const atmosphere_component_meta>(entity);
 
     environment_renderer renderer;
     renderer.render_atmosphere(
-        command,
+        graph,
         environment_renderer::atmosphere_parameter{
             .atmosphere = meta.atmosphere,
             .transmittance_lut = meta.transmittance_lut.get(),

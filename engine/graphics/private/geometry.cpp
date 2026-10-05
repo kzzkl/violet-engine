@@ -1,4 +1,5 @@
 #include "graphics/geometry.hpp"
+#include "distance_field/distance_field_manager.hpp"
 #include "graphics/geometry_manager.hpp"
 
 namespace violet
@@ -13,14 +14,14 @@ geometry::~geometry()
 {
     clear_submeshes();
 
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    auto& device = render_device::instance();
 
     if (m_distance_field_id != INVALID_RENDER_ID)
     {
-        geometry_manager->remove_distance_field(m_distance_field_id);
+        device.get_distance_field_manager()->remove_distance_field(m_distance_field_id);
     }
 
-    geometry_manager->remove_geometry(m_geometry_id);
+    device.get_geometry_manager()->remove_geometry(m_geometry_id);
 }
 
 void geometry::set_positions(std::span<const vec3f> positions)
@@ -342,8 +343,8 @@ void geometry::update_distance_field()
 {
     assert(m_distance_field_id == INVALID_RENDER_ID);
 
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
-    m_distance_field_id = geometry_manager->add_distance_field(m_geometry_id, m_distance_field);
+    auto* distance_field_manager = render_device::instance().get_distance_field_manager();
+    m_distance_field_id = distance_field_manager->add_distance_field(m_distance_field);
 }
 
 void geometry::mark_dirty(dirty_flags dirty_flags)

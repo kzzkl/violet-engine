@@ -20,6 +20,7 @@ option(VIOLET_BUILD_EDITOR "Build editor" ON)
 if(WIN32)
     add_definitions(-DUNICODE)
     add_definitions(-D_UNICODE)
+    add_compile_definitions(NOMINMAX)
 endif()
 
 set(VIOLET_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})

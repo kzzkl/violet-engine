@@ -22,7 +22,7 @@ void render_scene_shadow::remove_shadow(render_id light_id)
     m_removed_lights.push_back(light_id);
 }
 
-void render_scene_shadow::update(render_scene_context& context, gpu_buffer_uploader& uploader)
+void render_scene_shadow::upload(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     deallocate_vsm(context);
     allocate_vsm(context);

@@ -169,8 +169,8 @@ struct shader
 
         vec2f jitter;
 
-        float near;
-        float far;
+        float near_z;
+        float far_z;
 
         float aspect;
         std::uint32_t type;

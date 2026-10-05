@@ -9,12 +9,15 @@ namespace violet
 {
 class render_scene_context;
 class gpu_buffer_uploader;
+class render_graph;
+
 class render_scene_module
 {
 public:
     virtual ~render_scene_module() = default;
 
-    virtual void update(render_scene_context& context, gpu_buffer_uploader& uploader) {}
+    virtual void upload(render_scene_context& context, gpu_buffer_uploader& uploader) {}
+    virtual void update(render_scene_context& context, render_graph& graph) {}
     virtual void reset() {}
 };
 
@@ -46,11 +49,19 @@ public:
         return *static_cast<const T*>(m_modules[render_scene_module_index::value<T>()].get());
     }
 
-    void update(gpu_buffer_uploader& uploader)
+    void upload(gpu_buffer_uploader& uploader)
     {
         for (auto& module : m_modules)
         {
-            module->update(*this, uploader);
+            module->upload(*this, uploader);
+        }
+    }
+
+    void update(render_graph& graph)
+    {
+        for (auto& module : m_modules)
+        {
+            module->update(*this, graph);
         }
     }
 

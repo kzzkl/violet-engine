@@ -626,8 +626,8 @@ public:
     using cpu_type = T;
     using gpu_type = T::gpu_type;
 
-    gpu_block_sparse_array(std::uint32_t level)
-        : m_allocator(level)
+    gpu_block_sparse_array(std::uint32_t max_size)
+        : m_allocator(max_size)
     {
         m_object_buffer = std::make_unique<structured_buffer>(
             64 * sizeof(gpu_type),
@@ -646,15 +646,17 @@ public:
 
     render_id add(std::uint32_t count = 1)
     {
-        render_id id = m_allocator.allocate(count);
-        if (id == buddy_allocator::no_space)
+        auto allocation = m_allocator.allocate(count);
+        if (allocation.offset == buffer_allocator::no_space)
         {
             throw std::runtime_error("gpu_block_sparse_array no space.");
         }
 
-        if (m_objects.size() <= id + count - 1)
+        render_id id = allocation.offset;
+
+        if (m_objects.size() <= id + count)
         {
-            m_objects.resize(id + count);
+            m_objects.resize(id + count + 1);
         }
 
         for (std::uint32_t i = 0; i < count; ++i)
@@ -663,31 +665,31 @@ public:
             mark_dirty(id + i);
         }
 
-        m_objects[id].block_size = count;
+        m_objects[id].allocation = allocation;
 
         m_size += count;
         m_request_size = std::max(m_request_size, id + count);
 
-        return id;
+        return allocation.offset;
     }
 
     void remove(render_id id)
     {
-        assert(m_objects[id].block_size != 0);
+        assert(m_objects[id].allocation.offset != buffer_allocator::no_space);
 
-        std::uint32_t count = m_allocator.get_size(id);
+        std::uint32_t count = m_allocator.get_size(m_objects[id].allocation);
         count = std::min(count, static_cast<std::uint32_t>(m_objects.size() - id));
 
         for (std::uint32_t i = 0; i < count; ++i)
         {
-            m_objects[id + i].block_size = 0;
+            m_objects[id + i].allocation.offset = buffer_allocator::no_space;
             m_objects[id + i].valid = false;
             m_objects[id + i].dirty = false;
         }
 
-        m_allocator.free(id);
+        m_allocator.free(m_objects[id].allocation);
 
-        m_size -= m_objects[id].block_size;
+        m_size -= count;
     }
 
     void mark_dirty(render_id id)
@@ -799,7 +801,7 @@ private:
     {
         cpu_type cpu_data;
 
-        std::uint32_t block_size{0};
+        buffer_allocation allocation;
 
         bool dirty;
         bool valid;
@@ -829,7 +831,7 @@ private:
     std::uint32_t m_size{0};
     std::uint32_t m_request_size{0};
 
-    buddy_allocator m_allocator;
+    buffer_allocator m_allocator;
     std::unique_ptr<structured_buffer> m_object_buffer;
 
     std::string m_name;

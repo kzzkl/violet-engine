@@ -3,6 +3,7 @@
 #include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
+#include "distance_field/distance_field_manager.hpp"
 #include "environment_system.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
@@ -15,6 +16,7 @@
 #include "rhi_plugin.hpp"
 #include "scene/scene_system.hpp"
 #include "skinning_system.hpp"
+#include "surface_cache/surface_cache_manager.hpp"
 #include "virtual_shadow_map/vsm_manager.hpp"
 #include <algorithm>
 
@@ -108,6 +110,7 @@ bool graphics_system::initialize(const dictionary& config)
                 auto& device = render_device::instance();
                 device.get_material_manager()->update(m_gpu_buffer_uploader.get());
                 device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
+                device.get_distance_field_manager()->update(m_gpu_buffer_uploader.get());
 
                 get_system<skinning_system>().pre_update();
                 device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
@@ -127,7 +130,6 @@ bool graphics_system::initialize(const dictionary& config)
             [this]()
             {
                 end_frame();
-                m_scene_manager->reset_states();
                 m_system_version = get_world().get_version();
             });
 
@@ -189,8 +191,9 @@ void graphics_system::end_frame()
 {
     std::vector<execute_batch> batches;
 
-    upload_gpu_data(batches);
-    prepare_rendering_data(batches);
+    upload_render_data(batches);
+    update_global_data(batches);
+    // update_scene_data(batches);
 
     std::vector<rhi_swapchain*> swapchains;
 
@@ -206,13 +209,24 @@ void graphics_system::end_frame()
         swapchain->present();
     }
 
+    m_scene_manager->each_scene(
+        [](render_scene& scene)
+        {
+            scene.reset_states();
+        });
+
     device.end_frame();
 }
 
-void graphics_system::upload_gpu_data(std::vector<execute_batch>& batches)
+void graphics_system::upload_render_data(std::vector<execute_batch>& batches)
 {
-    m_scene_manager->update(m_gpu_buffer_uploader.get());
-    m_vsm_manager->update(m_gpu_buffer_uploader.get());
+    m_scene_manager->each_scene(
+        [&](render_scene& scene)
+        {
+            scene.upload(m_gpu_buffer_uploader.get());
+        });
+
+    m_vsm_manager->upload(m_gpu_buffer_uploader.get());
 
     if (m_gpu_buffer_uploader->empty())
     {
@@ -236,36 +250,59 @@ void graphics_system::upload_gpu_data(std::vector<execute_batch>& batches)
     batches.push_back(batch);
 }
 
-void graphics_system::prepare_rendering_data(std::vector<execute_batch>& batches)
+void graphics_system::update_global_data(std::vector<execute_batch>& batches)
 {
+    render_graph graph("Prepare");
+
+    get_system<skinning_system>().record(graph);
+    get_system<environment_system>().record(graph);
+
     auto& device = render_device::instance();
+    // device.get_surface_cache_manager()->render(graph);
 
-    auto& skinning = get_system<skinning_system>();
-    auto& atmosphere = get_system<environment_system>();
-
-    if (!skinning.need_record() && !atmosphere.need_record())
+    if (graph.is_empty())
     {
         return;
     }
 
     rhi_command* command = device.allocate_command();
-    command->begin_label("Prepare");
+    graph.compile();
+    graph.record(command);
 
-    if (skinning.need_record())
+    execute_batch batch;
+    batch.commands.push_back(command);
+    batch.wait_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_TRANSFER,
+        .value = m_update_fence_value,
+    });
+    batch.signal_fences.push_back({
+        .fence = m_update_fence.get(),
+        .stages = RHI_PIPELINE_STAGE_END,
+        .value = ++m_update_fence_value,
+    });
+
+    batches.push_back(batch);
+}
+
+void graphics_system::update_scene_data(std::vector<execute_batch>& batches)
+{
+    render_graph graph("Update");
+
+    m_scene_manager->each_scene(
+        [&](render_scene& scene)
+        {
+            scene.update(graph);
+        });
+
+    if (graph.is_empty())
     {
-        command->begin_label("Skinning");
-        skinning.record(command);
-        command->end_label();
+        return;
     }
 
-    if (atmosphere.need_record())
-    {
-        command->begin_label("Atmosphere");
-        atmosphere.record(command);
-        command->end_label();
-    }
-
-    command->end_label();
+    rhi_command* command = render_device::instance().allocate_command();
+    graph.compile();
+    graph.record(command);
 
     execute_batch batch;
     batch.commands.push_back(command);

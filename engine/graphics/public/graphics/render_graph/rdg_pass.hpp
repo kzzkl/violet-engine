@@ -176,4 +176,34 @@ private:
 
     std::function<void(const data_type&, rdg_command&)> m_execute;
 };
+
+struct rdg_no_data
+{
+};
+
+template <>
+class rdg_lambda_pass<rdg_no_data> : public rdg_pass
+{
+public:
+    using data_type = rdg_no_data;
+
+    rdg_lambda_pass(rdg_allocator* allocator) noexcept
+        : rdg_pass(allocator)
+    {
+    }
+
+    template <typename Functor>
+    void set_execute(Functor&& functor) noexcept
+    {
+        m_execute = std::forward<Functor>(functor);
+    }
+
+private:
+    void on_execute(rdg_command& command) override
+    {
+        m_execute(command);
+    }
+
+    std::function<void(rdg_command&)> m_execute;
+};
 } // namespace violet

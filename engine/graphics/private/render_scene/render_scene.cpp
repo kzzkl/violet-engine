@@ -28,11 +28,11 @@ render_scene::render_scene(vsm_manager* vsm_manager)
 
 render_scene::~render_scene() {}
 
-void render_scene::end_frame(gpu_buffer_uploader* uploader)
+void render_scene::upload(gpu_buffer_uploader* uploader)
 {
     shader::scene_data scene_data = m_context.scene_data;
 
-    m_context.update(*uploader);
+    m_context.upload(*uploader);
 
     auto* material_manager = render_device::instance().get_material_manager();
     auto* geometry_manager = render_device::instance().get_geometry_manager();
@@ -52,6 +52,11 @@ void render_scene::end_frame(gpu_buffer_uploader* uploader)
     {
         m_scene_parameter->set_uniform(0, &m_context.scene_data, sizeof(shader::scene_data));
     }
+}
+
+void render_scene::update(render_graph& graph)
+{
+    m_context.update(graph);
 }
 
 void render_scene::reset_states()
@@ -113,8 +118,8 @@ render_context::render_context(
 
     m_camera_info.id = camera_meta->id;
     m_camera_info.type = camera->type;
-    m_camera_info.near = camera->near;
-    m_camera_info.far = camera->far;
+    m_camera_info.near_z = camera->near_z;
+    m_camera_info.far_z = camera->far_z;
     m_camera_info.perspective_fov = camera->perspective.fov;
     m_camera_info.orthographic_size = camera->orthographic.size;
     m_camera_info.position = camera_meta->position;

@@ -214,6 +214,16 @@ public:
         return m_dirty_flags;
     }
 
+    const std::string& get_name() const noexcept
+    {
+        return m_name;
+    }
+
+    const std::string& get_shader_path() const noexcept
+    {
+        return m_shader_path;
+    }
+
 protected:
     void set_material_path(material_path path)
     {

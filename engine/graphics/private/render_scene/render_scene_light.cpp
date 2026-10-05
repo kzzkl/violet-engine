@@ -37,7 +37,7 @@ void render_scene_light::set_light_shadow(render_id light_id, bool cast_shadow)
     m_lights.mark_dirty(light_id);
 }
 
-void render_scene_light::update(render_scene_context& context, gpu_buffer_uploader& uploader)
+void render_scene_light::upload(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     m_lights.update(
         [&](const light_data& light) -> shader::light_data

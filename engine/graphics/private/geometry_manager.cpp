@@ -1,13 +1,12 @@
 #include "graphics/geometry_manager.hpp"
-#include "distance_field/distance_field_manager.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include <queue>
 
 namespace violet
 {
 geometry_manager::geometry_manager()
-    : m_clusters(24),     // max cluster count is 16M(2^24)
-      m_cluster_nodes(21) // max cluster node count is 2M(2^21)
+    : m_clusters(16 * 1024 * 1024),
+      m_cluster_nodes(2 * 1024 * 1024)
 {
     m_vertex_buffer = std::make_unique<persistent_buffer>(
         1024 * 1024,
@@ -16,8 +15,6 @@ geometry_manager::geometry_manager()
     m_index_buffer = std::make_unique<persistent_buffer>(
         1024 * 1024,
         RHI_BUFFER_INDEX | RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
-
-    m_distance_field_manager = std::make_unique<distance_field_manager>();
 }
 
 geometry_manager::~geometry_manager() {}
@@ -272,23 +269,6 @@ void geometry_manager::set_shared_buffer(
     dst_buffer.src_geometry_id = src_geometry_id;
 }
 
-render_id geometry_manager::add_distance_field(
-    render_id geometry_id,
-    const distance_field& distance_field)
-{
-    return m_distance_field_manager->add_distance_field(distance_field);
-}
-
-void geometry_manager::remove_distance_field(render_id distance_field_id)
-{
-    m_distance_field_manager->remove_distance_field(distance_field_id);
-}
-
-box3f geometry_manager::get_distance_field_bounds(render_id distance_field_id) const
-{
-    return m_distance_field_manager->get_volume_bounds(distance_field_id);
-}
-
 void geometry_manager::update(gpu_buffer_uploader* uploader)
 {
     if (m_dirty_geometries.empty())
@@ -436,8 +416,6 @@ void geometry_manager::update(gpu_buffer_uploader* uploader)
             m_cluster_node_depth = std::max(m_cluster_node_depth, cluster_node.depth);
         });
     ++m_cluster_node_depth;
-
-    m_distance_field_manager->update(uploader);
 }
 
 void geometry_manager::mark_dirty(render_id geometry_id)
@@ -445,20 +423,5 @@ void geometry_manager::mark_dirty(render_id geometry_id)
     std::scoped_lock lock(m_mutex);
 
     m_dirty_geometries.push_back(geometry_id);
-}
-
-rhi_buffer* geometry_manager::get_distance_field_buffer() const
-{
-    return m_distance_field_manager->get_distance_field_buffer();
-}
-
-rhi_buffer* geometry_manager::get_distance_field_brick_table() const
-{
-    return m_distance_field_manager->get_brick_table();
-}
-
-rhi_texture* geometry_manager::get_distance_field_brick_atlas() const
-{
-    return m_distance_field_manager->get_brick_atlas();
 }
 } // namespace violet

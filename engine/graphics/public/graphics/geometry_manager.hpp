@@ -13,8 +13,6 @@ namespace violet
 class gpu_buffer_uploader;
 class gpu_geometry_buffer;
 
-class distance_field_manager;
-
 class geometry_manager
 {
 public:
@@ -48,11 +46,6 @@ public:
         render_id dst_geometry_id,
         render_id src_geometry_id,
         geometry_buffer_type type);
-
-    render_id add_distance_field(render_id geometry_id, const distance_field& distance_field);
-    void remove_distance_field(render_id distance_field_id);
-
-    box3f get_distance_field_bounds(render_id distance_field_id) const;
 
     void update(gpu_buffer_uploader* uploader);
 
@@ -122,10 +115,6 @@ public:
     {
         return static_cast<std::uint32_t>(m_geometries[geometry_id].buffers[type].size);
     }
-
-    rhi_buffer* get_distance_field_buffer() const;
-    rhi_buffer* get_distance_field_brick_table() const;
-    rhi_texture* get_distance_field_brick_atlas() const;
 
 private:
     struct geometry_buffer
@@ -227,8 +216,6 @@ private:
     gpu_block_sparse_array<gpu_cluster> m_clusters;
     gpu_block_sparse_array<gpu_cluster_node> m_cluster_nodes;
     std::uint32_t m_cluster_node_depth{0};
-
-    std::unique_ptr<distance_field_manager> m_distance_field_manager;
 
     std::mutex m_mutex;
 };

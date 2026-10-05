@@ -33,7 +33,6 @@ public:
         return m_cameras[camera_id];
     }
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
     void reset() override;
 
     template <typename Functor>

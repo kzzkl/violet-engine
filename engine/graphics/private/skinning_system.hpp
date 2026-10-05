@@ -2,6 +2,7 @@
 
 #include "core/engine.hpp"
 #include "graphics/morph_target.hpp"
+#include "graphics/render_graph/render_graph.hpp"
 
 namespace violet
 {
@@ -17,12 +18,7 @@ public:
 
     void update();
 
-    bool need_record() const noexcept
-    {
-        return !m_morphing_queue.empty() || !m_skinning_queue.empty();
-    }
-
-    void record(rhi_command* command);
+    void record(render_graph& graph);
 
 private:
     struct morphing_data
@@ -51,8 +47,8 @@ private:
     void update_skeleton();
     void update_morph();
 
-    void morphing(rhi_command* command);
-    void skinning(rhi_command* command);
+    void morphing(render_graph& graph);
+    void skinning(render_graph& graph);
 
     std::vector<morphing_data> m_morphing_queue;
     std::vector<skinning_data> m_skinning_queue;

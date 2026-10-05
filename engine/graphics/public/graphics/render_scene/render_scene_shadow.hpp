@@ -16,7 +16,7 @@ public:
     void add_shadow(render_id light_id);
     void remove_shadow(render_id light_id);
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void upload(render_scene_context& context, gpu_buffer_uploader& uploader) override;
 
     rhi_buffer* get_shadow_light_buffer() const noexcept
     {

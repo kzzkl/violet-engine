@@ -25,9 +25,8 @@ public:
     void remove_vsm(render_id vsm_id);
 
     void set_vsm(render_id vsm_id, const vsm_directional_light_data& light);
-    void invalidate_cache(render_id vsm_id);
 
-    void update(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
 
     rhi_buffer* get_vsm_buffer()
     {

@@ -27,7 +27,7 @@ void render_scene_environment::set_atmosphere(
     m_atmosphere_dirty = true;
 }
 
-void render_scene_environment::update(render_scene_context& context, gpu_buffer_uploader& uploader)
+void render_scene_environment::upload(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     if (m_sun_id == INVALID_RENDER_ID)
     {

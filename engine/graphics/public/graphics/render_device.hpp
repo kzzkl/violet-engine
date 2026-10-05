@@ -49,6 +49,9 @@ struct execute_batch
 
 class material_manager;
 class geometry_manager;
+class distance_field_manager;
+class surface_cache_manager;
+
 class shader_compiler;
 
 class raw_buffer;
@@ -141,6 +144,16 @@ public:
     geometry_manager* get_geometry_manager() const noexcept
     {
         return m_geometry_manager.get();
+    }
+
+    distance_field_manager* get_distance_field_manager() const noexcept
+    {
+        return m_distance_field_manager.get();
+    }
+
+    surface_cache_manager* get_surface_cache_manager() const noexcept
+    {
+        return m_surface_cache_manager.get();
     }
 
     rhi_ptr<rhi_render_pass> create_render_pass(const rhi_render_pass_desc& desc);
@@ -308,6 +321,8 @@ private:
 
     std::unique_ptr<material_manager> m_material_manager;
     std::unique_ptr<geometry_manager> m_geometry_manager;
+    std::unique_ptr<distance_field_manager> m_distance_field_manager;
+    std::unique_ptr<surface_cache_manager> m_surface_cache_manager;
 
     std::vector<std::unique_ptr<raw_texture>> m_global_textures;
     std::vector<rhi_ptr<rhi_sampler>> m_global_samplers;

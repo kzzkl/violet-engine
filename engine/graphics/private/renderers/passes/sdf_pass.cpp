@@ -1,5 +1,5 @@
 #include "graphics/renderers/passes/sdf_pass.hpp"
-#include "graphics/geometry_manager.hpp"
+#include "distance_field/distance_field_manager.hpp"
 #include "graphics/render_scene/render_scene_sdf.hpp"
 
 namespace violet
@@ -346,11 +346,11 @@ void sdf_pass::add(render_graph& graph, const parameter& parameter)
 
     auto& device = render_device::instance();
 
-    auto* geometry_manager = device.get_geometry_manager();
+    auto* distance_field_manager = device.get_distance_field_manager();
     m_distance_field_buffer =
-        geometry_manager->get_distance_field_buffer()->get_srv()->get_bindless();
-    m_brick_table = geometry_manager->get_distance_field_brick_table()->get_srv()->get_bindless();
-    m_brick_atlas = geometry_manager->get_distance_field_brick_atlas()
+        distance_field_manager->get_distance_field_buffer()->get_srv()->get_bindless();
+    m_brick_table = distance_field_manager->get_brick_table()->get_srv()->get_bindless();
+    m_brick_atlas = distance_field_manager->get_brick_atlas()
                         ->get_srv(RHI_TEXTURE_DIMENSION_3D)
                         ->get_bindless();
 

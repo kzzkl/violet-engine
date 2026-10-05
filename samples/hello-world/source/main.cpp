@@ -183,14 +183,14 @@ private:
                 if (camera_type == CAMERA_PERSPECTIVE)
                 {
                     main_camera.type = CAMERA_PERSPECTIVE;
-                    main_camera.near = 0.01f;
-                    main_camera.far = std::numeric_limits<float>::infinity();
+                    main_camera.near_z = 0.01f;
+                    main_camera.far_z = std::numeric_limits<float>::infinity();
                 }
                 else
                 {
                     main_camera.type = CAMERA_ORTHOGRAPHIC;
-                    main_camera.near = 0.0f;
-                    main_camera.far = 1000.0f;
+                    main_camera.near_z = 0.0f;
+                    main_camera.far_z = 1000.0f;
                 }
             }
 

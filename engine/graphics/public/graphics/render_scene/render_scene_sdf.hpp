@@ -1,6 +1,8 @@
 #pragma once
 
+#include "graphics/geometry.hpp"
 #include "graphics/gpu_array.hpp"
+#include "graphics/material.hpp"
 #include "graphics/render_scene/render_scene_module.hpp"
 #include "math/box.hpp"
 
@@ -28,11 +30,15 @@ public:
     render_scene_sdf();
 
     render_id add_mesh();
-    void set_mesh_distance_field(render_id mesh_sdf_id, render_id distance_field_id);
+    void set_mesh(
+        render_id mesh_sdf_id,
+        geometry* geometry,
+        std::span<std::pair<std::uint32_t, material*>> materials);
     void set_mesh_matrix(render_id mesh_sdf_id, const mat4f& matrix_m, const vec3f& scale);
     void remove_mesh(render_id mesh_sdf_id);
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void upload(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void update(render_scene_context& context, render_graph& graph) override;
 
     void reset() override;
 
@@ -116,6 +122,22 @@ private:
         float max_distance;
     };
 
+    struct surface_cache
+    {
+        struct gpu_type
+        {
+            mat4f matrix;
+
+            vec2u coord;
+            vec2u extent;
+        };
+
+        mat4f matrix;
+
+        vec2u coord;
+        vec2u extent;
+    };
+
     struct mesh_data
     {
         struct gpu_type
@@ -126,10 +148,13 @@ private:
             vec3f volume_bounds_min;
             std::uint32_t distance_field_id;
             vec3f volume_bounds_max;
-            std::uint32_t padding0;
+            std::uint32_t surface_cache_id;
         };
 
-        std::uint32_t distance_field_id;
+        geometry* geometry;
+        std::vector<std::pair<std::uint32_t, material*>> materials;
+
+        render_id surface_cache_id{INVALID_RENDER_ID};
 
         mat4f matrix_m;
         float scale;
@@ -152,11 +177,14 @@ private:
     void allocate_clipmaps(render_scene_context& context);
     void update_clipmap(render_scene_context& context, gpu_buffer_uploader& uploader);
 
+    void update_surface_caches(gpu_buffer_uploader& uploader);
     void update_meshes(gpu_buffer_uploader& uploader);
     void update_invalidation_regions(gpu_buffer_uploader& uploader);
 
     std::vector<clipmap_data> m_clipmaps;
     gpu_block_sparse_array<clipmap_level_data> m_clipmap_levels;
+
+    gpu_block_sparse_array<surface_cache> m_surface_caches;
 
     gpu_dense_array<mesh_data> m_meshes;
     gpu_append_array<invalidation_region> m_invalidation_regions;

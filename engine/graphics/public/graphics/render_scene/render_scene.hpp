@@ -8,6 +8,7 @@
 namespace violet
 {
 class gpu_buffer_uploader;
+class render_graph;
 class vsm_manager;
 
 class render_scene
@@ -32,7 +33,8 @@ public:
         return m_context.get_module<T>();
     }
 
-    void end_frame(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
+    void update(render_graph& graph);
     void reset_states();
 
 private:
@@ -51,8 +53,8 @@ public:
     {
         render_id id;
         camera_type type;
-        float near;
-        float far;
+        float near_z;
+        float far_z;
         float perspective_fov;
         float orthographic_size;
         vec3f position;

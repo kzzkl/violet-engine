@@ -70,11 +70,28 @@ public:
         add_pass(pass);
     }
 
+    template <typename ExecuteFunctor>
+        requires std::is_invocable_v<ExecuteFunctor, rdg_command&>
+    void add_pass(std::string_view name, rdg_pass_type pass_type, ExecuteFunctor&& execute)
+    {
+        auto* pass = m_allocator->allocate_pass<rdg_lambda_pass<rdg_no_data>>();
+        pass->set_name(name);
+        pass->set_pass_type(pass_type);
+        pass->set_execute(std::forward<ExecuteFunctor>(execute));
+
+        add_pass(pass);
+    }
+
     void begin_group(std::string_view group_name);
     void end_group();
 
     void compile();
     void record(rhi_command* command);
+
+    bool is_empty() const noexcept
+    {
+        return m_passes.empty();
+    }
 
     const render_context& get_context() const noexcept
     {

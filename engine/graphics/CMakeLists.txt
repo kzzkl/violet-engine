@@ -53,6 +53,8 @@ add_library(violet-graphics STATIC
     private/resources/texture.cpp
     private/shading_models/pbr_shading_model.cpp
     private/shading_models/unlit_shading_model.cpp
+    private/surface_cache/surface_cache_manager.cpp
+    private/surface_cache/surface_cache_renderer.cpp
     private/virtual_shadow_map/vsm_manager.cpp
     private/camera_system.cpp
     private/dds.cpp

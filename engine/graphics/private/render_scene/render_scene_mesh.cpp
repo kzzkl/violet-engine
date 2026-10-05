@@ -185,7 +185,7 @@ void render_scene_mesh::set_instance_material(render_id instance_id, material* m
     m_instances.mark_dirty(instance_id);
 }
 
-void render_scene_mesh::update(render_scene_context& context, gpu_buffer_uploader& uploader)
+void render_scene_mesh::upload(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     update_material();
     update_meshes(context, uploader);

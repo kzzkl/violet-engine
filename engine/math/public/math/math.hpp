@@ -114,4 +114,9 @@ template <typename T = float>
 
     return value + 1;
 }
+
+[[nodiscard]] static inline bool is_power_of_two(std::uint32_t value)
+{
+    return (value & (value - 1)) == 0;
+}
 } // namespace violet::math

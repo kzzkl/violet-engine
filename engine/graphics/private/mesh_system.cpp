@@ -104,9 +104,19 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 if (mesh.geometry->has_distance_field())
                 {
                     auto& sdf_module = mesh_meta.scene->get_module<render_scene_sdf>();
-                    sdf_module.set_mesh_distance_field(
-                        mesh_meta.mesh_sdf,
-                        mesh.geometry->get_distance_field_id());
+
+                    std::vector<std::pair<std::uint32_t, material*>> materials(
+                        mesh.submeshes.size());
+
+                    std::ranges::transform(
+                        mesh.submeshes,
+                        materials.begin(),
+                        [](const mesh_component::submesh& submesh)
+                        {
+                            return std::make_pair(submesh.index, submesh.material);
+                        });
+
+                    sdf_module.set_mesh(mesh_meta.mesh_sdf, mesh.geometry, materials);
                 }
 
                 std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;

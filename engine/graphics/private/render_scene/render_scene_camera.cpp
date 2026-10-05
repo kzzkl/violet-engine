@@ -98,8 +98,6 @@ void render_scene_camera::set_camera_background(
     }
 }
 
-void render_scene_camera::update(render_scene_context& context, gpu_buffer_uploader& uploader) {}
-
 void render_scene_camera::reset()
 {
     for (auto camera_id : m_removed_cameras)

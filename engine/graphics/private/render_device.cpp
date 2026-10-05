@@ -1,9 +1,11 @@
 #include "graphics/render_device.hpp"
 #include "common/utility.hpp"
+#include "distance_field/distance_field_manager.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
 #include "graphics/resources/texture.hpp"
 #include "shader_compiler.hpp"
+#include "surface_cache/surface_cache_manager.hpp"
 #include "transient_allocator.hpp"
 #include <fstream>
 
@@ -93,6 +95,8 @@ void render_device::initialize(rhi* rhi)
 
     m_material_manager = std::make_unique<material_manager>();
     m_geometry_manager = std::make_unique<geometry_manager>();
+    m_distance_field_manager = std::make_unique<distance_field_manager>();
+    m_surface_cache_manager = std::make_unique<surface_cache_manager>();
 
     m_transient_allocator = std::make_unique<transient_allocator>();
 
@@ -389,11 +393,11 @@ std::vector<std::uint8_t> render_device::compile_shader(
         L"assets/shaders",
         L"-Wno-ignored-attributes",
         L"-all-resources-bound",
-// #ifndef NDEBUG
+        // #ifndef NDEBUG
         L"-Zi",
         L"-Qembed_debug",
         L"-O0",
-// #endif
+        // #endif
     };
 
     if (m_rhi->get_backend() == RHI_BACKEND_VULKAN)

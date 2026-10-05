@@ -24,7 +24,7 @@ public:
     void set_instance_geometry(render_id instance_id, std::uint32_t submesh_index);
     void set_instance_material(render_id instance_id, material* material);
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void upload(render_scene_context& context, gpu_buffer_uploader& uploader) override;
     void reset() override
     {
         m_invalidation_regions.clear();

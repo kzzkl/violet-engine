@@ -1,13 +1,15 @@
 #include "graphics/render_scene/render_scene_sdf.hpp"
+#include "distance_field/distance_field_manager.hpp"
 #include "gpu_buffer_uploader.hpp"
-#include "graphics/geometry_manager.hpp"
 #include "graphics/render_scene/render_scene_camera.hpp"
 #include "math/vector.hpp"
+#include "surface_cache/surface_cache_manager.hpp"
 
 namespace violet
 {
 render_scene_sdf::render_scene_sdf()
-    : m_clipmap_levels(7)
+    : m_clipmap_levels(128),
+      m_surface_caches(16 * 1024 * 1024)
 {
 }
 
@@ -16,10 +18,23 @@ render_id render_scene_sdf::add_mesh()
     return m_meshes.add();
 }
 
-void render_scene_sdf::set_mesh_distance_field(render_id mesh_sdf_id, render_id distance_field_id)
+void render_scene_sdf::set_mesh(
+    render_id mesh_sdf_id,
+    geometry* geometry,
+    std::span<std::pair<std::uint32_t, material*>> materials)
 {
-    auto& instance = m_meshes[mesh_sdf_id];
-    instance.distance_field_id = distance_field_id;
+    auto& mesh = m_meshes[mesh_sdf_id];
+    mesh.geometry = geometry;
+    mesh.materials.assign(materials.begin(), materials.end());
+
+    auto* surface_cache_manager = render_device::instance().get_surface_cache_manager();
+    if (mesh.surface_cache_id != INVALID_RENDER_ID)
+    {
+        surface_cache_manager->remove_surface_cache(mesh.surface_cache_id);
+    }
+
+    mesh.surface_cache_id = surface_cache_manager->add_surface_cache(128, 128, geometry, materials);
+
     m_meshes.mark_dirty(mesh_sdf_id);
 }
 
@@ -28,18 +43,26 @@ void render_scene_sdf::set_mesh_matrix(
     const mat4f& matrix_m,
     const vec3f& scale)
 {
-    auto& instance = m_meshes[mesh_sdf_id];
-    instance.matrix_m = matrix_m;
-    instance.scale = vector::max(scale);
+    auto& mesh = m_meshes[mesh_sdf_id];
+    mesh.matrix_m = matrix_m;
+    mesh.scale = vector::max(scale);
     m_meshes.mark_dirty(mesh_sdf_id);
 }
 
 void render_scene_sdf::remove_mesh(render_id mesh_sdf_id)
 {
+    auto& mesh = m_meshes[mesh_sdf_id];
+
+    if (mesh.surface_cache_id != INVALID_RENDER_ID)
+    {
+        auto* surface_cache_manager = render_device::instance().get_surface_cache_manager();
+        surface_cache_manager->remove_surface_cache(mesh.surface_cache_id);
+    }
+
     m_meshes.remove(mesh_sdf_id);
 }
 
-void render_scene_sdf::update(render_scene_context& context, gpu_buffer_uploader& uploader)
+void render_scene_sdf::upload(render_scene_context& context, gpu_buffer_uploader& uploader)
 {
     deallocate_clipmaps(context);
     allocate_clipmaps(context);
@@ -48,6 +71,8 @@ void render_scene_sdf::update(render_scene_context& context, gpu_buffer_uploader
     update_meshes(uploader);
     update_invalidation_regions(uploader);
 }
+
+void render_scene_sdf::update(render_scene_context& context, render_graph& graph) {}
 
 void render_scene_sdf::reset()
 {
@@ -318,15 +343,17 @@ void render_scene_sdf::update_clipmap(render_scene_context& context, gpu_buffer_
         });
 }
 
+void render_scene_sdf::update_surface_caches(gpu_buffer_uploader& uploader) {}
+
 void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
 {
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    auto* distance_field_manager = render_device::instance().get_distance_field_manager();
 
     m_meshes.update(
         [&](const mesh_data& mesh) -> mesh_data::gpu_type
         {
             box3f volume_bounds =
-                geometry_manager->get_distance_field_bounds(mesh.distance_field_id);
+                distance_field_manager->get_volume_bounds(mesh.geometry->get_distance_field_id());
             vec3f volume_center = box::get_center(volume_bounds);
             vec3f volume_extent = box::get_extent(volume_bounds);
             float max_extent = vector::max(volume_extent);
@@ -354,8 +381,9 @@ void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
                 .volume_to_world = volume_to_world,
                 .volume_to_world_scale = volume_to_world_scale,
                 .volume_bounds_min = volume_bounds.min,
-                .distance_field_id = mesh.distance_field_id,
+                .distance_field_id = mesh.geometry->get_distance_field_id(),
                 .volume_bounds_max = volume_bounds.max,
+                .surface_cache_id = mesh.surface_cache_id,
             };
         },
         [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
