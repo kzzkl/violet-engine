@@ -47,7 +47,7 @@ public:
         return m_shading_models.empty() ? 0 : static_cast<render_id>(m_shading_models.size() - 1);
     }
 
-    void update(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
     void update_constant(render_id material_id, const void* data, std::size_t size);
 
     void mark_dirty(render_id material_id);

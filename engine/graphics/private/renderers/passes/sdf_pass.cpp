@@ -1,6 +1,7 @@
 #include "graphics/renderers/passes/sdf_pass.hpp"
 #include "distance_field/distance_field_manager.hpp"
 #include "graphics/render_scene/render_scene_sdf.hpp"
+#include "surface_cache/surface_cache_manager.hpp"
 
 namespace violet
 {
@@ -231,6 +232,10 @@ struct sdf_debug_mesh_sdf_cs : public shader_cs
         std::uint32_t distance_field_buffer;
         std::uint32_t brick_table;
         std::uint32_t brick_atlas;
+
+        std::uint32_t surface_cache_buffer;
+        std::uint32_t surface_cache_albedo;
+        std::uint32_t surface_cache_depth;
 
         std::uint32_t debug_output;
     };
@@ -1108,6 +1113,7 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
             [](const pass_data& data, rdg_command& command)
             {
                 auto& device = render_device::instance();
+                auto* surface_cache_manager = device.get_surface_cache_manager();
 
                 command.set_pipeline({
                     .compute_shader = device.get_shader<sdf_debug_mesh_sdf_cs>(),
@@ -1120,6 +1126,13 @@ void sdf_pass::add_debug_pass(render_graph& graph, const parameter& parameter)
                         .distance_field_buffer = data.distance_field_buffer,
                         .brick_table = data.brick_table,
                         .brick_atlas = data.brick_atlas,
+                        .surface_cache_buffer = surface_cache_manager->get_surface_cache_buffer()
+                                                    ->get_srv()
+                                                    ->get_bindless(),
+                        .surface_cache_albedo =
+                            surface_cache_manager->get_albedo_buffer()->get_srv()->get_bindless(),
+                        .surface_cache_depth =
+                            surface_cache_manager->get_depth_buffer()->get_srv()->get_bindless(),
                         .debug_output = data.debug_output.get_bindless(),
                     });
 

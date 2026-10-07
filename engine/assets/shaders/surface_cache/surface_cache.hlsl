@@ -29,9 +29,9 @@ struct vs_output
 vs_output vs_main(uint vertex_id : SV_VertexID)
 {
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[constant.geometry_buffer];
-    geometry_data geometry = geometries[constant.submesh_id];
 
     mesh mesh;
+    mesh.geometry = geometries[constant.submesh_id];
     mesh.data.matrix_m = float4x4(
         1, 0, 0, 0,
         0, 1, 0, 0,

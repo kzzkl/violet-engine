@@ -47,7 +47,7 @@ public:
         render_id src_geometry_id,
         geometry_buffer_type type);
 
-    void update(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
 
     void mark_dirty(render_id geometry_id);
 

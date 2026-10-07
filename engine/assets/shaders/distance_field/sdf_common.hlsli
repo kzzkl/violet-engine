@@ -56,7 +56,7 @@ struct mesh_sdf
     float3 volume_bounds_min;
     uint distance_field_id;
     float3 volume_bounds_max;
-    uint padding0;
+    uint surface_cache_id;
 };
 
 struct clipmap_grid

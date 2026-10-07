@@ -122,22 +122,6 @@ private:
         float max_distance;
     };
 
-    struct surface_cache
-    {
-        struct gpu_type
-        {
-            mat4f matrix;
-
-            vec2u coord;
-            vec2u extent;
-        };
-
-        mat4f matrix;
-
-        vec2u coord;
-        vec2u extent;
-    };
-
     struct mesh_data
     {
         struct gpu_type
@@ -183,8 +167,6 @@ private:
 
     std::vector<clipmap_data> m_clipmaps;
     gpu_block_sparse_array<clipmap_level_data> m_clipmap_levels;
-
-    gpu_block_sparse_array<surface_cache> m_surface_caches;
 
     gpu_dense_array<mesh_data> m_meshes;
     gpu_append_array<invalidation_region> m_invalidation_regions;
