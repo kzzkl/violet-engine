@@ -4,7 +4,7 @@
 
 namespace violet
 {
-template <typename T, typename Index, Index Initial = 0>
+template <typename T, typename Index = std::uint32_t, Index Initial = 0>
 class type_index
 {
 public:

@@ -14,7 +14,7 @@ render_id render_scene_camera::add_camera()
 
     m_cameras[camera_id] = {
         .position = {},
-        .dirty = true,
+        .moved = true,
         .valid = true,
     };
 
@@ -44,7 +44,7 @@ void render_scene_camera::set_camera_position(render_id camera_id, const vec3f& 
     assert(camera.valid);
 
     camera.position = position;
-    camera.dirty = true;
+    camera.moved = true;
 }
 
 void render_scene_camera::set_camera_background(
@@ -97,8 +97,6 @@ void render_scene_camera::set_camera_background(
         camera.prefilter_map->set_name("Prefilter Map");
     }
 }
-
-void render_scene_camera::update(render_scene_context& context, gpu_buffer_uploader& uploader) {}
 
 void render_scene_camera::reset()
 {

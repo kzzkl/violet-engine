@@ -1,4 +1,5 @@
 #include "graphics/renderers/passes/debug/bounds_projection_pass.hpp"
+#include "graphics/render_scene/render_scene_mesh.hpp"
 
 namespace violet
 {
@@ -36,7 +37,8 @@ void bounds_projection_pass::add(render_graph& graph, const parameter& parameter
         [&](pass_data& data, rdg_pass& pass)
         {
             pass.add_render_target(parameter.render_target, RHI_ATTACHMENT_LOAD_OP_LOAD);
-            data.instance_count = graph.get_context().get_scene().instance_count;
+            data.instance_count =
+                graph.get_context().get_module<render_scene_mesh>().get_instance_count();
         },
         [](const pass_data& data, rdg_command& command)
         {

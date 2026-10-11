@@ -58,6 +58,8 @@ struct box3<simd>
 };
 
 using box3f = box3<float>;
+using box3i = box3<int>;
+using box3u = box3<std::uint32_t>;
 using box3f_simd = box3<simd>;
 
 struct box
@@ -156,14 +158,14 @@ struct box
     static box3<T> transform(const box3<T>& box, const mat4<T>& matrix) noexcept
     {
         vec4<T> corners[8] = {
-            matrix::mul({box.min.x, box.min.y, box.min.z, 1.0}, matrix),
-            matrix::mul({box.min.x, box.max.y, box.min.z, 1.0}, matrix),
-            matrix::mul({box.min.x, box.min.y, box.max.z, 1.0}, matrix),
-            matrix::mul({box.min.x, box.max.y, box.max.z, 1.0}, matrix),
-            matrix::mul({box.max.x, box.min.y, box.min.z, 1.0}, matrix),
-            matrix::mul({box.max.x, box.max.y, box.min.z, 1.0}, matrix),
-            matrix::mul({box.max.x, box.min.y, box.max.z, 1.0}, matrix),
-            matrix::mul({box.max.x, box.max.y, box.max.z, 1.0}, matrix),
+            matrix::mul(vec4f(box.min.x, box.min.y, box.min.z, 1.0), matrix),
+            matrix::mul(vec4f(box.min.x, box.max.y, box.min.z, 1.0), matrix),
+            matrix::mul(vec4f(box.min.x, box.min.y, box.max.z, 1.0), matrix),
+            matrix::mul(vec4f(box.min.x, box.max.y, box.max.z, 1.0), matrix),
+            matrix::mul(vec4f(box.max.x, box.min.y, box.min.z, 1.0), matrix),
+            matrix::mul(vec4f(box.max.x, box.max.y, box.min.z, 1.0), matrix),
+            matrix::mul(vec4f(box.max.x, box.min.y, box.max.z, 1.0), matrix),
+            matrix::mul(vec4f(box.max.x, box.max.y, box.max.z, 1.0), matrix),
         };
 
         box3<T> result;

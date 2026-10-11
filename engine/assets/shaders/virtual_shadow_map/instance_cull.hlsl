@@ -8,8 +8,8 @@ struct constant_data
     uint vsm_info;
     uint visible_vsm_list;
     uint vsm_buffer;
-    uint vsm_virtual_page_table;
-    uint vsm_physical_page_table;
+    uint virtual_page_table;
+    uint physical_page_table;
     uint vsm_bounds_buffer;
     uint hzb;
     uint hzb_sampler;
@@ -44,10 +44,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     instance_data instance = instances[instance_id];
 
     StructuredBuffer<geometry_data> geometries = ResourceDescriptorHeap[scene.geometry_buffer];
-    geometry_data geometry = geometries[instance.geometry_index];
+    geometry_data geometry = geometries[instance.submesh_id];
 
     StructuredBuffer<mesh_data> meshes = ResourceDescriptorHeap[scene.mesh_buffer];
-    mesh_data mesh = meshes[instance.mesh_index];
+    mesh_data mesh = meshes[instance.mesh_id];
 
     bool static_mesh = (mesh.flags & MESH_STATIC) != 0;
 
@@ -74,9 +74,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
         float4 sphere_vs = mul(vsm.matrix_v, mul(mesh.matrix_m, float4(geometry.bounding_sphere.xyz, 1.0)));
         sphere_vs.w = sphere_vs_radius;
 
-        StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+        StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 #ifdef USE_OCCLUSION
-        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
+        StructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
         Texture2D<float> hzb = ResourceDescriptorHeap[constant.hzb];
         SamplerState hzb_sampler = ResourceDescriptorHeap[constant.hzb_sampler];
         if (vsm_cull(vsm_id, page_bounds, sphere_vs, static_mesh, vsm, virtual_page_table, physical_page_table, hzb, hzb_sampler))

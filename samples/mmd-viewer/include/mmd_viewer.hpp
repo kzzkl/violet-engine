@@ -2,7 +2,6 @@
 
 #include "core/engine.hpp"
 #include "mmd_loader.hpp"
-#include "mmd_renderer.hpp"
 #include "sample/deferred_renderer_imgui.hpp"
 
 namespace violet

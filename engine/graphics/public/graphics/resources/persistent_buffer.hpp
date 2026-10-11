@@ -15,13 +15,14 @@ public:
     void free(buffer_allocation allocation);
 
     void copy(const void* data, std::size_t size, std::size_t offset);
+
     void upload(
         gpu_buffer_uploader* uploader,
         rhi_pipeline_stage_flags stages,
         rhi_access_flags access);
 
 private:
-    void reserve();
+    void reserve(rhi_pipeline_stage_flags stages, rhi_access_flags access);
 
     std::size_t m_allocated_size{0};
 

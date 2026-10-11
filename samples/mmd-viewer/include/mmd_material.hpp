@@ -18,7 +18,7 @@ struct mmd_material_constant
     std::uint32_t ramp_texture;
 };
 
-class mmd_material : public material_instance<mmd_material_constant, MATERIAL_PATH_DEFERRED>
+class mmd_material : public material_instance<mmd_material_constant>
 {
 public:
     mmd_material();
@@ -33,10 +33,6 @@ public:
     void set_environment_blend(std::uint32_t mode);
 
     void set_ramp(const texture_2d* texture);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
 struct mmd_outline_material_constant
@@ -47,8 +43,7 @@ struct mmd_outline_material_constant
     float strength;
 };
 
-class mmd_outline_material
-    : public material_instance<mmd_outline_material_constant, MATERIAL_PATH_DEFERRED>
+class mmd_outline_material : public material_instance<mmd_outline_material_constant>
 {
 public:
     mmd_outline_material();
@@ -57,21 +52,11 @@ public:
     void set_width(float width);
     void set_z_offset(float z_offset);
     void set_strength(float strength);
-
-private:
-    rhi_shader* get_vertex_shader(std::span<std::wstring> defines) const override;
-    rhi_shader* get_fragment_shader(std::span<std::wstring> defines) const override;
 };
 
-class toon_shading_model : public shading_model<toon_shading_model>
+class toon_shading_model : public shading_model
 {
 public:
     toon_shading_model();
-
-    const rdg_compute_pipeline& get_pipeline();
-
-private:
-    rdg_compute_pipeline m_pipeline_with_ao{};
-    rdg_compute_pipeline m_pipeline_without_ao{};
 };
 } // namespace violet

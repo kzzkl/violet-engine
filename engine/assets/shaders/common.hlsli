@@ -81,8 +81,8 @@ struct mesh_data
 
 struct instance_data
 {
-    uint mesh_index;
-    uint geometry_index;
+    uint mesh_id;
+    uint submesh_id;
     uint batch_index;
     uint material_address;
 };
@@ -183,6 +183,16 @@ SamplerState get_linear_clamp_sampler()
     return SamplerDescriptorHeap[5];
 }
 
+float max3(float3 v)
+{
+    return max(max(v.x, v.y), v.z);
+}
+
+float min3(float3 v)
+{
+    return min(min(v.x, v.y), v.z);
+}
+
 float3 get_morph_position(uint morph_vertex_buffer, uint vertex_index)
 {
     StructuredBuffer<int> buffer = ResourceDescriptorHeap[morph_vertex_buffer];
@@ -232,12 +242,11 @@ float2 get_compute_uv(uint2 texel_coord, uint width, uint height)
     return (float2(texel_coord) + 0.5) / float2(width, height);
 }
 
-#define MATERIAL_PATH_FORWARD 1
-#define MATERIAL_PATH_DEFERRED 2
-#define MATERIAL_PATH_VISIBILITY 3
-
-#ifndef VIOLET_MATERIAL_PATH
-#define VIOLET_MATERIAL_PATH MATERIAL_PATH_VISIBILITY
-#endif
+uint get_dispatch_group_count(uint offset, uint count, uint group_size)
+{
+    uint prev = offset + group_size - 1;
+    uint next = prev + count;
+    return next / group_size - prev / group_size;
+}
 
 #endif

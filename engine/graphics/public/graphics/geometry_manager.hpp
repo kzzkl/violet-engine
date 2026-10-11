@@ -32,9 +32,9 @@ public:
         std::span<const cluster> clusters,
         std::span<const cluster_node> cluster_nodes);
     void remove_submesh(render_id submesh_id);
-    sphere3f get_bounding_sphere(render_id submesh_id) const;
 
-    void update(gpu_buffer_uploader* uploader);
+    box3f get_bounding_box(render_id submesh_id) const;
+    sphere3f get_bounding_sphere(render_id submesh_id) const;
 
     void set_buffer(
         render_id geometry_id,
@@ -46,6 +46,8 @@ public:
         render_id dst_geometry_id,
         render_id src_geometry_id,
         geometry_buffer_type type);
+
+    void upload(gpu_buffer_uploader* uploader);
 
     void mark_dirty(render_id geometry_id);
 
@@ -98,7 +100,12 @@ public:
 
         if (buffer.src_geometry_id != INVALID_RENDER_ID)
         {
-            return geometry_manager::get_buffer_address(buffer.src_geometry_id, type, offset);
+            return get_buffer_address(buffer.src_geometry_id, type, offset);
+        }
+
+        if (buffer.size == 0)
+        {
+            return 0xFFFFFFFF;
         }
 
         return static_cast<std::uint32_t>(buffer.offset + (buffer.stride * offset));

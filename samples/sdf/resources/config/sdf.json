@@ -1,0 +1,10 @@
+{
+    "window": {
+        "title": "SDF Viewer",
+        "width": 1300,
+        "height": 800
+    },
+    "sdf_viewer": {
+        "model": "D:/Workspace/assets/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf"
+    }
+}

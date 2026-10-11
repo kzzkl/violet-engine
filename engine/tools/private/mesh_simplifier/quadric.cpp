@@ -12,7 +12,7 @@ void quadric_edge::set(const vec3f& p0, const vec3f& p1, float edge_weight)
     float length = vector::length(m_n);
     if (length < 1e-12f)
     {
-        m_n = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+        m_n = 0.0f;
     }
     else
     {
@@ -45,7 +45,7 @@ void quadric::set(
     float length = vector::length(n);
     if (length < 1e-12f)
     {
-        n = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+        n = 0.0f;
     }
     else
     {
@@ -65,10 +65,10 @@ void quadric::set(
     m_dd = distance * distance;
 
     mat4f m = {
-        {.x = p0.x, .y = p0.y, .z = p0.z, .w = 1.0f},
-        {.x = p1.x, .y = p1.y, .z = p1.z, .w = 1.0f},
-        {.x = p2.x, .y = p2.y, .z = p2.z, .w = 1.0f},
-        {.x = n.x, .y = n.y, .z = n.z, .w = 0.0f},
+        {p0.x, p0.y, p0.z, 1.0f},
+        {p1.x, p1.y, p1.z, 1.0f},
+        {p2.x, p2.y, p2.z, 1.0f},
+        {n.x, n.y, n.z, 0.0f},
     };
 
     float det;
@@ -96,7 +96,7 @@ void quadric::set(
         }
         else
         {
-            g[i] = {.x = 0.0f, .y = 0.0f, .z = 0.0f};
+            g[i] = 0.0f;
             d[i] = s0;
         }
 

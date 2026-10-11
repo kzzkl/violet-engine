@@ -31,6 +31,11 @@ public:
         m_allocator.free(allocation);
     }
 
+    std::uint32_t get_size(buffer_allocation allocation) const
+    {
+        return m_allocator.allocationSize(allocation);
+    }
+
     void reset()
     {
         m_allocator.reset();

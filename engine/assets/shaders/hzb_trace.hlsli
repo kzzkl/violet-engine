@@ -2,10 +2,10 @@
 #define HZB_TRACE_HLSLI
 
 #include "common.hlsli"
+#include "ray.hlsli"
 
-float4 hzb_trace(
-    float3 ray_origin_ts,
-    float3 ray_direction_ts,
+ray_hit hzb_trace(
+    ray ray,
     float thickness,
     uint iteration_count,
     Texture2D<float> hzb,
@@ -15,14 +15,14 @@ float4 hzb_trace(
     float near_plane)
 {
     {
-        float3 boundary = select(ray_direction_ts < 0.0, 0.0, 1.0);
-        float3 delta = (boundary - ray_origin_ts) / ray_direction_ts;
+        float3 boundary = select(ray.direction < 0.0, 0.0, 1.0);
+        float3 delta = (boundary - ray.origin) / ray.direction;
         float intersection_time = min(min(delta.x, delta.y), delta.z);
 
-        ray_direction_ts *= intersection_time;
+        ray.direction *= intersection_time;
     }
 
-    float2 floor_offset = select(ray_direction_ts.xy < 0, 0.0, 1.0);
+    float2 floor_offset = select(ray.direction.xy < 0, 0.0, 1.0);
 
     int level = hzb_start_level;
 
@@ -32,15 +32,15 @@ float4 hzb_trace(
         float2 texel_count = 1.0 / texel_size;
 
         float2 boundary_offset = 0.005 * texel_size;
-        boundary_offset = select(ray_direction_ts.xy < 0.0, -boundary_offset, boundary_offset);
+        boundary_offset = select(ray.direction.xy < 0.0, -boundary_offset, boundary_offset);
         
-        float2 boundary = floor(ray_origin_ts.xy * texel_count) + floor_offset;
+        float2 boundary = floor(ray.origin.xy * texel_count) + floor_offset;
         boundary = boundary * texel_size + boundary_offset;
 
-        float2 delta = (boundary - ray_origin_ts.xy) / ray_direction_ts.xy;
+        float2 delta = (boundary - ray.origin.xy) / ray.direction.xy;
         float intersection_time = min(delta.x, delta.y);
 
-        ray_ts = ray_origin_ts + ray_direction_ts * intersection_time;
+        ray_ts = ray.origin + ray.direction * intersection_time;
     }
 
     SamplerState point_clamp_sampler = get_point_clamp_sampler();
@@ -56,15 +56,15 @@ float4 hzb_trace(
         float depth = hzb.SampleLevel(point_clamp_sampler, ray_ts.xy, level);
         
         float2 boundary_offset = 0.005 * texel_size;
-        boundary_offset = select(ray_direction_ts.xy < 0, -boundary_offset, boundary_offset);
+        boundary_offset = select(ray.direction.xy < 0, -boundary_offset, boundary_offset);
 
         float3 boundary;
         boundary.xy = floor(ray_ts.xy * texel_count) + floor_offset;
         boundary.xy = boundary.xy * texel_size + boundary_offset;
         boundary.z = depth;
 
-        float3 delta = (boundary - ray_ts) / ray_direction_ts;
-        delta.z = ray_direction_ts.z < 0.0 ? delta.z : 1.0;
+        float3 delta = (boundary - ray_ts) / ray.direction;
+        delta.z = ray.direction.z < 0.0 ? delta.z : 1.0;
         float intersection_time = min(min(delta.x, delta.y), delta.z);
 
         if (ray_ts.z <= depth)
@@ -73,7 +73,7 @@ float4 hzb_trace(
         }
         else
         {
-            ray_ts += ray_direction_ts * intersection_time;
+            ray_ts += ray.direction * intersection_time;
             total_intersection_time += intersection_time;
             level = min(level + 1, hzb_end_level);
         }
@@ -90,7 +90,10 @@ float4 hzb_trace(
         hit = delta <= thickness;
     }
 
-    return float4(ray_ts, hit ? 1.0 : 0.0);
+    ray_hit result;
+    result.position = ray_ts;
+    result.is_hit = hit;
+    return result;
 }
 
 #endif

@@ -31,7 +31,7 @@ public:
         const vec3f& direction);
     void set_light_shadow(render_id light_id, bool cast_shadow);
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void upload(render_scene_context& context, gpu_buffer_uploader& uploader) override;
 
     const light_data& get_light(render_id light_id) const
     {

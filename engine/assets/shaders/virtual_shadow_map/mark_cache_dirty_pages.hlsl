@@ -5,9 +5,9 @@
 struct constant_data
 {
     uint vsm_buffer;
-    uint vsm_physical_page_table;
-    uint vsm_invalidation_buffer;
-    uint vsm_invalidation_count;
+    uint physical_page_table;
+    uint invalidation_regions_buffer;
+    uint invalidation_region_count;
 };
 PushConstant(constant_data, constant);
 
@@ -21,8 +21,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 {
     uint physical_page_index = dtid.x;
 
-    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.vsm_physical_page_table];
-    StructuredBuffer<float4> invalidation_buffer = ResourceDescriptorHeap[constant.vsm_invalidation_buffer];
+    RWStructuredBuffer<uint4> physical_page_table = ResourceDescriptorHeap[constant.physical_page_table];
+    StructuredBuffer<float4> invalidation_bounds_buffer = ResourceDescriptorHeap[constant.invalidation_regions_buffer];
     StructuredBuffer<vsm_data> vsms = ResourceDescriptorHeap[constant.vsm_buffer];
 
     vsm_physical_page physical_page;
@@ -42,18 +42,18 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
     bool dirty = false;
 
-    for (uint batch_start = 0; batch_start < constant.vsm_invalidation_count; batch_start += INVALIDATION_BATCH_SIZE)
+    for (uint batch_start = 0; batch_start < constant.invalidation_region_count; batch_start += INVALIDATION_BATCH_SIZE)
     {
         uint load_index = batch_start + group_index;
-        if (load_index < constant.vsm_invalidation_count)
+        if (load_index < constant.invalidation_region_count)
         {
-            gs_spheres[group_index] = invalidation_buffer[load_index];
+            gs_spheres[group_index] = invalidation_bounds_buffer[load_index];
         }
         GroupMemoryBarrierWithGroupSync();
 
         if (is_resident && !dirty)
         {
-            uint batch_count = min(INVALIDATION_BATCH_SIZE, constant.vsm_invalidation_count - batch_start);
+            uint batch_count = min(INVALIDATION_BATCH_SIZE, constant.invalidation_region_count - batch_start);
             for (uint i = 0; i < batch_count; ++i)
             {
                 float4 sphere_ws = gs_spheres[i];

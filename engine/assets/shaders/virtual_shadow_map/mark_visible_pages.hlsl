@@ -9,7 +9,7 @@ struct constant_data
     uint vsm_info;
     uint visible_light_list;
     uint visible_vsm_list;
-    uint vsm_virtual_page_table;
+    uint virtual_page_table;
     uint vsm_buffer;
     uint vsm_directional_buffer;
 };
@@ -61,7 +61,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     
     StructuredBuffer<light_data> lights = ResourceDescriptorHeap[scene.light_buffer];
 
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     float2 uv = get_compute_uv(dtid.xy, width, height);
     float4 position_ws = reconstruct_position(depth, uv, camera.matrix_vp_inv);

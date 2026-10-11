@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/engine.hpp"
+#include "graphics/render_graph/render_graph.hpp"
 #include "render_scene/render_scene_manager.hpp"
 
 namespace violet
@@ -15,16 +16,11 @@ public:
 
     void update(render_scene_manager& scene_manager);
 
-    bool need_record() const noexcept
-    {
-        return !m_skybox_update_queue.empty() || !m_atmosphere_update_queue.empty();
-    }
-
-    void record(rhi_command* command);
+    void record(render_graph& graph);
 
 private:
-    void update_skybox(rhi_command* command, entity entity);
-    void update_atmosphere(rhi_command* command, entity entity);
+    void update_skybox(render_graph& graph, entity entity);
+    void update_atmosphere(render_graph& graph, entity entity);
 
     std::uint32_t m_system_version{0};
 

@@ -60,8 +60,10 @@ void skybox_pass::add(render_graph& graph, const parameter& parameter)
             pass.add_render_target(parameter.render_target, load_op);
             pass.set_depth_stencil(parameter.depth_buffer, load_op);
 
-            const auto& scene = graph.get_context().get_scene();
-            data.environment_map = scene.environment_map->get_srv(RHI_TEXTURE_DIMENSION_CUBE);
+            const auto& environment_module =
+                graph.get_context().get_module<render_scene_environment>();
+            data.environment_map =
+                environment_module.get_environment_map()->get_srv(RHI_TEXTURE_DIMENSION_CUBE);
         },
         [](const pass_data& data, rdg_command& command)
         {

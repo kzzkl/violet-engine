@@ -214,6 +214,16 @@ public:
         return m_dirty_flags;
     }
 
+    const std::string& get_name() const noexcept
+    {
+        return m_name;
+    }
+
+    const std::string& get_shader_path() const noexcept
+    {
+        return m_shader_path;
+    }
+
 protected:
     void set_material_path(material_path path)
     {
@@ -300,8 +310,8 @@ class material_instance : public material
 public:
     using constant_type = Constant;
 
-    material_instance(std::string_view name)
-        : material(name, sizeof(Constant))
+    material_instance(std::string_view name, std::string_view shader_path = "")
+        : material(name, sizeof(Constant), shader_path)
     {
     }
 

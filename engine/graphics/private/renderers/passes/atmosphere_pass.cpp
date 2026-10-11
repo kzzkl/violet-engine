@@ -172,6 +172,13 @@ void atmosphere_lut_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Atmosphere LUT");
 
+    const auto& environment_module = graph.get_context().get_module<render_scene_environment>();
+    m_atmosphere = environment_module.get_atmosphere();
+    m_sun_direction = environment_module.get_sun_direction();
+    m_sun_irradiance = environment_module.get_sun_irradiance();
+    m_transmittance_lut = environment_module.get_transmittance_lut()->get_srv();
+    m_multi_scattering_lut = environment_module.get_multi_scattering_lut()->get_srv();
+
     add_sky_view_lut_pass(graph, parameter);
     add_aerial_perspective_lut_pass(graph, parameter);
 
@@ -217,16 +224,14 @@ void atmosphere_lut_pass::add_sky_view_lut_pass(render_graph& graph, const param
         RDG_PASS_COMPUTE,
         [&](pass_data& data, rdg_pass& pass)
         {
-            const auto& scene = graph.get_context().get_scene();
-
             data.sky_view_lut =
                 pass.add_texture_uav(parameter.sky_view_lut, RHI_PIPELINE_STAGE_COMPUTE);
-            data.atmosphere = scene.atmosphere;
-            data.sun_direction = scene.sun_direction;
-            data.sun_irradiance = scene.sun_irradiance;
-            data.transmittance_lut = scene.transmittance_lut->get_srv();
+            data.atmosphere = m_atmosphere;
+            data.sun_direction = m_sun_direction;
+            data.sun_irradiance = m_sun_irradiance;
+            data.transmittance_lut = m_transmittance_lut;
             data.multi_scattering_lut =
-                parameter.enable_multi_scattering ? scene.multi_scattering_lut->get_srv() : nullptr;
+                parameter.enable_multi_scattering ? m_multi_scattering_lut : nullptr;
         },
         [](const pass_data& data, rdg_command& command)
         {
@@ -309,21 +314,12 @@ void atmosphere_lut_pass::add_aerial_perspective_lut_pass(
                 RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_TEXTURE_DIMENSION_3D);
 
-            const auto& scene = graph.get_context().get_scene();
-
-            data.atmosphere = scene.atmosphere;
-            data.sun_direction = scene.sun_direction;
-            data.sun_irradiance = scene.sun_irradiance;
-            data.transmittance_lut = scene.transmittance_lut->get_srv();
-
-            if (parameter.enable_multi_scattering)
-            {
-                data.multi_scattering_lut = scene.multi_scattering_lut->get_srv();
-            }
-            else
-            {
-                data.multi_scattering_lut = nullptr;
-            }
+            data.atmosphere = m_atmosphere;
+            data.sun_direction = m_sun_direction;
+            data.sun_irradiance = m_sun_irradiance;
+            data.transmittance_lut = m_transmittance_lut;
+            data.multi_scattering_lut =
+                parameter.enable_multi_scattering ? m_multi_scattering_lut : nullptr;
 
             if (parameter.vsm_buffer != nullptr)
             {
@@ -447,6 +443,12 @@ void atmosphere_pass::add(render_graph& graph, const parameter& parameter)
 {
     rdg_scope scope(graph, "Atmosphere");
 
+    const auto& environment_module = graph.get_context().get_module<render_scene_environment>();
+    m_atmosphere = environment_module.get_atmosphere();
+    m_sun_direction = environment_module.get_sun_direction();
+    m_sun_irradiance = environment_module.get_sun_irradiance();
+    m_transmittance_lut = environment_module.get_transmittance_lut()->get_srv();
+
     add_sky_pass(graph, parameter);
     add_aerial_perspective_pass(graph, parameter);
 }
@@ -480,13 +482,12 @@ void atmosphere_pass::add_sky_pass(render_graph& graph, const parameter& paramet
                 pass.add_texture_srv(parameter.sky_view_lut, RHI_PIPELINE_STAGE_FRAGMENT);
 
             const auto& camera = graph.get_context().get_camera();
-            const auto& scene = graph.get_context().get_scene();
 
-            data.atmosphere = scene.atmosphere;
-            data.sun_direction = scene.sun_direction;
-            data.sun_irradiance = scene.sun_irradiance;
+            data.atmosphere = m_atmosphere;
+            data.sun_direction = m_sun_direction;
+            data.sun_irradiance = m_sun_irradiance;
 
-            data.transmittance_lut = scene.transmittance_lut->get_srv();
+            data.transmittance_lut = m_transmittance_lut;
             data.transmittance_lut_uv = get_transmittance_lut_uv(
                 camera.position,
                 data.sun_direction,

@@ -15,6 +15,17 @@ struct vec2
 
     value_type x;
     value_type y;
+    constexpr vec2(value_type v = static_cast<value_type>(0))
+        : x(v),
+          y(v)
+    {
+    }
+
+    constexpr vec2(value_type x, value_type y)
+        : x(x),
+          y(y)
+    {
+    }
 
     [[nodiscard]] value_type& operator[](std::size_t index)
     {
@@ -35,6 +46,12 @@ struct vec2
     {
         return {-x, -y};
     }
+
+    template <typename U>
+    operator vec2<U>() const noexcept
+    {
+        return {static_cast<U>(x), static_cast<U>(y)};
+    }
 };
 
 template <typename T>
@@ -46,6 +63,20 @@ struct vec3
     value_type x;
     value_type y;
     value_type z;
+
+    constexpr vec3(value_type v = static_cast<value_type>(0))
+        : x(v),
+          y(v),
+          z(v)
+    {
+    }
+
+    constexpr vec3(value_type x, value_type y, value_type z)
+        : x(x),
+          y(y),
+          z(z)
+    {
+    }
 
     [[nodiscard]] value_type& operator[](std::size_t index)
     {
@@ -71,6 +102,12 @@ struct vec3
     {
         return {x, y};
     }
+
+    template <typename U>
+    operator vec3<U>() const noexcept
+    {
+        return {static_cast<U>(x), static_cast<U>(y), static_cast<U>(z)};
+    }
 };
 
 template <typename T>
@@ -83,6 +120,22 @@ struct vec4
     value_type y;
     value_type z;
     value_type w;
+
+    constexpr vec4(value_type v = static_cast<value_type>(0))
+        : x(v),
+          y(v),
+          z(v),
+          w(v)
+    {
+    }
+
+    constexpr vec4(value_type x, value_type y, value_type z, value_type w)
+        : x(x),
+          y(y),
+          z(z),
+          w(w)
+    {
+    }
 
     [[nodiscard]] value_type& operator[](std::size_t index)
     {
@@ -112,6 +165,12 @@ struct vec4
     operator vec3<T>() const noexcept
     {
         return {x, y, z};
+    }
+
+    template <typename U>
+    operator vec4<U>() const noexcept
+    {
+        return {static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)};
     }
 };
 
@@ -224,12 +283,12 @@ struct mat4x4
 
     row_type row[4];
 
-    mat4x4()
+    constexpr mat4x4()
         : row{}
     {
     }
 
-    mat4x4(value_type value)
+    constexpr mat4x4(value_type value)
         : row{
               {value, 0, 0, 0},
               {0, value, 0, 0},
@@ -239,13 +298,9 @@ struct mat4x4
     {
     }
 
-    mat4x4(const std::initializer_list<row_type>& rows)
+    constexpr mat4x4(row_type r0, row_type r1, row_type r2, row_type r3)
+        : row{r0, r1, r2, r3}
     {
-        std::size_t i = 0;
-        for (auto& r : rows)
-        {
-            row[i++] = r;
-        }
     }
 
     [[nodiscard]] row_type& operator[](std::size_t index)

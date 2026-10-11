@@ -45,7 +45,7 @@ bool physics_system::initialize(const dictionary& config)
     }
     else
     {
-        m_gravity = {.x = 0.0f, .y = -9.8f, .z = 0.0f};
+        m_gravity = {0.0f, -9.8f, 0.0f};
     }
 
     auto& task_graph = get_task_graph();

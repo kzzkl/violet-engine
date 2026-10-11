@@ -18,14 +18,24 @@ public:
         rhi_buffer* buffer,
         const void* data,
         std::size_t size,
-        std::size_t offset,
+        const rhi_buffer_region& region,
         rhi_pipeline_stage_flags stages,
         rhi_access_flags access);
+
+    void upload(
+        rhi_texture* texture,
+        const void* data,
+        std::size_t size,
+        const rhi_texture_region& region,
+        rhi_pipeline_stage_flags stages,
+        rhi_access_flags access,
+        rhi_texture_layout layout);
+
     void record(rhi_command* command);
 
     bool empty() const noexcept
     {
-        return m_upload_commands.empty();
+        return m_buffer_requests.empty() && m_texture_requests.empty();
     }
 
 private:
@@ -52,10 +62,46 @@ private:
         }
     };
 
-    staging_page& allocate_staging_page();
+    struct buffer_upload_request
+    {
+        rhi_buffer* src;
+        rhi_buffer_region src_region;
+
+        rhi_buffer* dst;
+        rhi_buffer_region dst_region;
+    };
+
+    struct buffer_sync_state
+    {
+        rhi_pipeline_stage_flags stages;
+        rhi_access_flags access;
+    };
+
+    struct texture_upload_request
+    {
+        rhi_buffer* src;
+        rhi_buffer_region src_region;
+
+        rhi_texture* dst;
+        rhi_texture_region dst_region;
+
+        rhi_texture_layout layout;
+    };
+
+    struct texture_sync_state
+    {
+        rhi_pipeline_stage_flags stages;
+        rhi_access_flags access;
+        rhi_texture_layout layout;
+    };
+
+    staging_page& allocate_staging_page(std::size_t expected_size = 0);
 
     void flush();
     void reset_active_staging_pages(std::uint32_t frame_resource_index);
+
+    void record_buffer_request(rhi_command* command);
+    void record_texture_request(rhi_command* command);
 
     std::vector<std::vector<std::size_t>> m_active_staging_pages;
     std::vector<std::size_t> m_free_staging_pages;
@@ -65,17 +111,10 @@ private:
     const std::size_t m_staging_page_size;
     const std::size_t m_staging_page_count;
 
-    struct upload_command
-    {
-        rhi_buffer* src;
-        std::uint32_t src_offset;
-        rhi_buffer* dst;
-        std::uint32_t dst_offset;
-        std::size_t size;
-    };
-    std::vector<upload_command> m_upload_commands;
+    std::vector<buffer_upload_request> m_buffer_requests;
+    std::unordered_map<rhi_buffer*, buffer_sync_state> m_dst_buffers;
 
-    std::unordered_map<rhi_buffer*, std::pair<rhi_pipeline_stage_flags, rhi_access_flags>>
-        m_dst_buffers;
+    std::vector<texture_upload_request> m_texture_requests;
+    std::unordered_map<rhi_texture*, texture_sync_state> m_dst_textures;
 };
 } // namespace violet

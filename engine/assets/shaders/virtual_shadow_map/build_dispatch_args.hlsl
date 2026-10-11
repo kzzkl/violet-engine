@@ -8,7 +8,7 @@ struct constant_data
     uint visible_virtual_page_list;
     uint visible_virtual_page_indirect_args;
     uint visible_virtual_page_texels_indirect_args;
-    uint vsm_virtual_page_table;
+    uint virtual_page_table;
 };
 PushConstant(constant_data, constant);
 
@@ -27,7 +27,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     GroupMemoryBarrierWithGroupSync();
 
     StructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
-    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    StructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     uint vsm_id = visible_vsm_list[dtid.z];
 
@@ -50,12 +50,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
 
         RWStructuredBuffer<dispatch_command> visible_virtual_page_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_indirect_args];
 
-        uint start = gs_visible_virtual_page_offset;
-        uint end = gs_visible_virtual_page_offset + gs_visible_virtual_page_count;
-        uint dispatch_count = (end + 63) / 64 - (start + 63) / 64;
-        if (dispatch_count > 0)
+        uint dispatch_group_count = get_dispatch_group_count(gs_visible_virtual_page_offset, gs_visible_virtual_page_count, 64);
+        if (dispatch_group_count > 0)
         {
-            InterlockedAdd(visible_virtual_page_indirect_args[0].x, dispatch_count);
+            InterlockedAdd(visible_virtual_page_indirect_args[0].x, dispatch_group_count);
         }
 
         RWStructuredBuffer<dispatch_command> visible_virtual_page_texels_indirect_args = ResourceDescriptorHeap[constant.visible_virtual_page_texels_indirect_args];

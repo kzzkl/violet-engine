@@ -352,10 +352,10 @@ bool vk_context::initialize_physical_device(
     rhi_features desired_features,
     std::span<const char*> desired_extensions)
 {
-    std::uint32_t devices_count = 0;
-    vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, nullptr));
-    std::vector<VkPhysicalDevice> available_devices(devices_count);
-    vk_check(vkEnumeratePhysicalDevices(m_instance, &devices_count, available_devices.data()));
+    std::uint32_t device_count = 0;
+    vk_check(vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr));
+    std::vector<VkPhysicalDevice> available_devices(device_count);
+    vk_check(vkEnumeratePhysicalDevices(m_instance, &device_count, available_devices.data()));
 
     std::uint32_t physical_device_score = 0;
     for (VkPhysicalDevice device : available_devices)

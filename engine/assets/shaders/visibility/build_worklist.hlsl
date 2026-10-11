@@ -93,12 +93,10 @@ void cs_main(uint3 dtid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint grou
     {
         InterlockedAdd(worklist_sizes[0], gs_material_count, gs_worklist_offset);
 
-        uint start = gs_worklist_offset;
-        uint end = gs_worklist_offset + gs_material_count;
-        uint dispatch_count = (end + 63) / 64 - (start + 63) / 64;
-        if (dispatch_count > 0)
+        uint dispatch_group_count = get_dispatch_group_count(gs_worklist_offset, gs_material_count, 64);
+        if (dispatch_group_count > 0)
         {
-            InterlockedAdd(sort_dispatch_commands[0].x, dispatch_count);
+            InterlockedAdd(sort_dispatch_commands[0].x, dispatch_group_count);
         }
     }
 

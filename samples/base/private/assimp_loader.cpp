@@ -89,9 +89,9 @@ void process_node(aiNode* node, std::int32_t parnet, mesh_loader::scene_data& sc
     aiQuaternion rotation;
     aiVector3f position;
     node->mTransformation.Decompose(scale, rotation, position);
-    node_data.position = {.x = position.x, .y = position.y, .z = position.z};
-    node_data.rotation = {.x = rotation.x, .y = rotation.y, .z = rotation.z, .w = rotation.w};
-    node_data.scale = {.x = scale.x, .y = scale.y, .z = scale.z};
+    node_data.position = {position.x, position.y, position.z};
+    node_data.rotation = {rotation.x, rotation.y, rotation.z, rotation.w};
+    node_data.scale = {scale.x, scale.y, scale.z};
 
     assert(node->mNumMeshes <= 1);
 

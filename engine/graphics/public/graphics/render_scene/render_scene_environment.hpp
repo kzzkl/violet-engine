@@ -20,7 +20,8 @@ public:
         rhi_texture* transmittance_lut,
         rhi_texture* multi_scattering_lut);
 
-    void update(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+    void upload(render_scene_context& context, gpu_buffer_uploader& uploader) override;
+
     void reset() override
     {
         m_atmosphere_dirty = false;

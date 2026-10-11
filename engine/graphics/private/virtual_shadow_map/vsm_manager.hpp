@@ -25,36 +25,35 @@ public:
     void remove_vsm(render_id vsm_id);
 
     void set_vsm(render_id vsm_id, const vsm_directional_light_data& light);
-    void invalidate_cache(render_id vsm_id);
 
-    void update(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
 
     rhi_buffer* get_vsm_buffer()
     {
         return m_vsms.get_buffer()->get_rhi();
     }
 
-    rhi_buffer* get_vsm_virtual_page_table()
+    rhi_buffer* get_virtual_page_table()
     {
         return m_virtual_page_table.get();
     }
 
-    rhi_buffer* get_vsm_physical_page_table()
+    rhi_buffer* get_physical_page_table()
     {
         return m_physical_page_table.get();
     }
 
-    rhi_texture* get_vsm_physical_shadow_map_static()
+    rhi_texture* get_physical_shadow_map_static()
     {
         return m_physical_shadow_map_static.get();
     }
 
-    rhi_texture* get_vsm_physical_shadow_map_final()
+    rhi_texture* get_physical_shadow_map_final()
     {
         return m_physical_shadow_map_final.get();
     }
 
-    rhi_texture* get_vsm_hzb()
+    rhi_texture* get_hzb()
     {
         return m_hzb.get();
     }

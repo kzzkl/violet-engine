@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/cluster.hpp"
+#include "graphics/distance_field/distance_field.hpp"
 #include "graphics/resources/texture.hpp"
 
 namespace violet
@@ -72,7 +73,7 @@ public:
         std::vector<texture_data> textures;
         std::vector<material_data> materials;
         std::vector<geometry_data> geometries;
-        std::vector<texture_data> distance_fields;
+        std::vector<distance_field> distance_fields;
 
         std::vector<mesh_data> meshes;
         std::vector<node_data> nodes;

@@ -33,6 +33,31 @@ struct vector
     }
 
     template <typename T>
+    [[nodiscard]] static vec2<T> add(const vec2<T>& a, vec2<T>::value_type b) noexcept
+    {
+        return {a.x + b, a.y + b};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> add(const vec3<T>& a, vec3<T>::value_type b) noexcept
+    {
+        return {a.x + b, a.y + b, a.z + b};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> add(const vec4<T>& a, vec4<T>::value_type b) noexcept
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            return _mm_add_ps(a, _mm_set_ps1(b));
+        }
+        else
+        {
+            return {a.x + b, a.y + b, a.z + b, a.w + b};
+        }
+    }
+
+    template <typename T>
     [[nodiscard]] static vec2<T> sub(const vec2<T>& a, const vec2<T>& b) noexcept
     {
         return {a.x - b.x, a.y - b.y};
@@ -54,6 +79,56 @@ struct vector
         else
         {
             return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+        }
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec2<T> sub(const vec2<T>& a, vec2<T>::value_type b) noexcept
+    {
+        return {a.x - b, a.y - b};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec2<T> sub(vec2<T>::value_type a, const vec2<T>& b) noexcept
+    {
+        return {a - b.x, a - b.y};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> sub(const vec3<T>& a, vec3<T>::value_type b) noexcept
+    {
+        return {a.x - b, a.y - b, a.z - b};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> sub(vec3<T>::value_type a, const vec3<T>& b) noexcept
+    {
+        return {a - b.x, a - b.y, a - b.z};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> sub(const vec4<T>& a, vec4<T>::value_type b) noexcept
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            return _mm_sub_ps(a, _mm_set_ps1(b));
+        }
+        else
+        {
+            return {a.x - b, a.y - b, a.z - b, a.w - b};
+        }
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> sub(vec4<T>::value_type a, const vec4<T>& b) noexcept
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            return _mm_sub_ps(_mm_set_ps1(a), b);
+        }
+        else
+        {
+            return {a - b.x, a - b.y, a - b.z, a - b.w};
         }
     }
 
@@ -154,6 +229,32 @@ struct vector
         else
         {
             return {v.x / scale, v.y / scale, v.z / scale, v.w / scale};
+        }
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec2<T> div(vec2<T>::value_type scale, const vec2<T>& v) noexcept
+    {
+        return {scale / v.x, scale / v.y};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> div(vec3<T>::value_type scale, const vec3<T>& v) noexcept
+    {
+        return {scale / v.x, scale / v.y, scale / v.z};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> div(vec4<T>::value_type scale, const vec4<T>& v) noexcept
+    {
+        if constexpr (std::is_same_v<T, simd>)
+        {
+            __m128 s = _mm_set_ps1(scale);
+            return _mm_div_ps(s, v);
+        }
+        else
+        {
+            return {scale / v.x, scale / v.y, scale / v.z, scale / v.w};
         }
     }
 
@@ -374,6 +475,58 @@ struct vector
     }
 
     template <typename T>
+    [[nodiscard]] static vec2<T> floor(const vec2<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::floor(v.x), std::floor(v.y)};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> floor(const vec3<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::floor(v.x), std::floor(v.y), std::floor(v.z)};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> floor(const vec4<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::floor(v.x), std::floor(v.y), std::floor(v.z), std::floor(v.w)};
+    }
+
+    [[nodiscard]] static vec4f_simd floor(vec4f_simd v) noexcept
+    {
+        return _mm_floor_ps(v);
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec2<T> round(const vec2<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::round(v.x), std::round(v.y)};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec3<T> round(const vec3<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::round(v.x), std::round(v.y), std::round(v.z)};
+    }
+
+    template <typename T>
+    [[nodiscard]] static vec4<T> round(const vec4<T>& v) noexcept
+        requires std::is_floating_point_v<T>
+    {
+        return {std::round(v.x), std::round(v.y), std::round(v.z), std::round(v.w)};
+    }
+
+    [[nodiscard]] static vec4f_simd round(vec4f_simd v) noexcept
+    {
+        return _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT);
+    }
+
+    template <typename T>
     [[nodiscard]] static T min(const vec2<T>& v) noexcept
     {
         return std::min(v.x, v.y);
@@ -533,7 +686,25 @@ inline T operator+(const T& a, const T& b)
 }
 
 template <is_vector T>
+inline T operator+(const T& a, typename T::value_type b)
+{
+    return vector::add(a, b);
+}
+
+template <is_vector T>
+inline T operator+(typename T::value_type a, const T& b)
+{
+    return vector::add(b, a);
+}
+
+template <is_vector T>
 inline T& operator+=(T& a, const T& b)
+{
+    return a = vector::add(a, b);
+}
+
+template <is_vector T>
+inline T& operator+=(T& a, typename T::value_type b)
 {
     return a = vector::add(a, b);
 }
@@ -545,7 +716,25 @@ inline T operator-(const T& a, const T& b)
 }
 
 template <is_vector T>
+inline T operator-(const T& a, typename T::value_type b)
+{
+    return vector::sub(a, b);
+}
+
+template <is_vector T>
+inline T operator-(typename T::value_type a, const T& b)
+{
+    return vector::sub(a, b);
+}
+
+template <is_vector T>
 inline T& operator-=(T& a, const T& b)
+{
+    return a = vector::sub(a, b);
+}
+
+template <is_vector T>
+inline T& operator-=(T& a, typename T::value_type b)
 {
     return a = vector::sub(a, b);
 }
@@ -601,7 +790,7 @@ inline T operator/(const T& a, typename T::value_type scale)
 template <is_vector T>
 inline T operator/(typename T::value_type scale, const T& a)
 {
-    return vector::div(a, scale);
+    return vector::div(scale, a);
 }
 
 template <is_vector T>

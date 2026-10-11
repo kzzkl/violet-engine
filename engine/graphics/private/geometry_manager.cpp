@@ -5,8 +5,8 @@
 namespace violet
 {
 geometry_manager::geometry_manager()
-    : m_clusters(24),     // max cluster count is 16M(2^24)
-      m_cluster_nodes(21) // max cluster node count is 2M(2^21)
+    : m_clusters(16 * 1024 * 1024),
+      m_cluster_nodes(2 * 1024 * 1024)
 {
     m_vertex_buffer = std::make_unique<persistent_buffer>(
         1024 * 1024,
@@ -30,6 +30,7 @@ render_id geometry_manager::add_geometry(geometry* geometry)
         m_geometries.resize(geometry_id + 1);
     }
 
+    m_geometries[geometry_id] = {};
     m_geometries[geometry_id].geometry = geometry;
 
     return geometry_id;
@@ -179,143 +180,14 @@ void geometry_manager::remove_submesh(render_id submesh_id)
     m_submeshes.remove(submesh_id);
 }
 
+box3f geometry_manager::get_bounding_box(render_id submesh_id) const
+{
+    return m_submeshes[submesh_id].bounding_box;
+}
+
 sphere3f geometry_manager::get_bounding_sphere(render_id submesh_id) const
 {
     return m_submeshes[submesh_id].bounding_sphere;
-}
-
-void geometry_manager::update(gpu_buffer_uploader* uploader)
-{
-    if (m_dirty_geometries.empty())
-    {
-        return;
-    }
-
-    for (render_id geometry_id : m_dirty_geometries)
-    {
-        geometry* geometry = m_geometries[geometry_id].geometry;
-        if (geometry != nullptr)
-        {
-            geometry->update();
-        }
-    }
-
-    m_dirty_geometries.clear();
-
-    m_vertex_buffer->upload(uploader, RHI_PIPELINE_STAGE_VERTEX, RHI_ACCESS_SHADER_READ);
-    m_index_buffer->upload(uploader, RHI_PIPELINE_STAGE_VERTEX_INPUT, RHI_ACCESS_INDEX_READ);
-
-    m_submeshes.update(
-        [&](const gpu_geometry& geometry) -> shader::geometry_data
-        {
-            return {
-                .position_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_POSITION,
-                    geometry.vertex_offset),
-                .normal_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_NORMAL,
-                    geometry.vertex_offset),
-                .tangent_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_TANGENT,
-                    geometry.vertex_offset),
-                .uv_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_UV,
-                    geometry.vertex_offset),
-                .custom0_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_CUSTOM_0,
-                    geometry.vertex_offset),
-                .custom1_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_CUSTOM_1,
-                    geometry.vertex_offset),
-                .custom2_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_CUSTOM_2,
-                    geometry.vertex_offset),
-                .custom3_address = get_buffer_address(
-                    geometry.geometry_id,
-                    GEOMETRY_BUFFER_CUSTOM_3,
-                    geometry.vertex_offset),
-                .index_offset =
-                    (get_buffer_address(geometry.geometry_id, GEOMETRY_BUFFER_INDEX) / 4) +
-                    geometry.index_offset,
-                .index_count = geometry.index_count,
-                .cluster_root = static_cast<std::uint32_t>(geometry.cluster_root_id),
-                .bounding_box_min = geometry.bounding_box.min,
-                .bounding_box_max = geometry.bounding_box.max,
-                .bounding_sphere = m_submeshes[geometry.submesh_id].bounding_sphere,
-            };
-        },
-        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
-        {
-            uploader->upload(
-                buffer,
-                data,
-                size,
-                offset,
-                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
-                RHI_ACCESS_SHADER_READ);
-        });
-
-    m_clusters.update(
-        [&](const gpu_cluster& cluster) -> gpu_cluster::gpu_type
-        {
-            return {
-                .bounding_sphere = cluster.bounding_sphere,
-                .lod_bounds = cluster.lod_bounds,
-                .lod_error = cluster.lod_error,
-                .index_offset = cluster.index_offset,
-                .index_count = cluster.index_count,
-                .cluster_node = cluster.cluster_node,
-            };
-        },
-        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
-        {
-            uploader->upload(
-                buffer,
-                data,
-                size,
-                offset,
-                RHI_PIPELINE_STAGE_COMPUTE,
-                RHI_ACCESS_SHADER_READ);
-        });
-
-    m_cluster_nodes.update(
-        [&](const gpu_cluster_node& cluster_node) -> gpu_cluster_node::gpu_type
-        {
-            return {
-                .bounding_sphere = cluster_node.bounding_sphere,
-                .lod_bounds = cluster_node.lod_bounds,
-                .min_lod_error = cluster_node.min_lod_error,
-                .max_parent_lod_error = cluster_node.max_parent_lod_error,
-                .is_leaf = cluster_node.is_leaf,
-                .child_offset = cluster_node.child_offset,
-                .child_count = cluster_node.child_count,
-            };
-        },
-        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
-        {
-            uploader->upload(
-                buffer,
-                data,
-                size,
-                offset,
-                RHI_PIPELINE_STAGE_COMPUTE,
-                RHI_ACCESS_SHADER_READ);
-        });
-
-    m_cluster_node_depth = 0;
-    m_cluster_nodes.each(
-        [&](render_id id, const gpu_cluster_node& cluster_node)
-        {
-            m_cluster_node_depth = std::max(m_cluster_node_depth, cluster_node.depth);
-        });
-    ++m_cluster_node_depth;
 }
 
 void geometry_manager::set_buffer(
@@ -395,6 +267,155 @@ void geometry_manager::set_shared_buffer(
     }
 
     dst_buffer.src_geometry_id = src_geometry_id;
+}
+
+void geometry_manager::upload(gpu_buffer_uploader* uploader)
+{
+    if (m_dirty_geometries.empty())
+    {
+        return;
+    }
+
+    for (render_id geometry_id : m_dirty_geometries)
+    {
+        geometry* geometry = m_geometries[geometry_id].geometry;
+        if (geometry != nullptr)
+        {
+            geometry->update();
+        }
+    }
+
+    m_dirty_geometries.clear();
+
+    m_vertex_buffer->upload(uploader, RHI_PIPELINE_STAGE_VERTEX, RHI_ACCESS_SHADER_READ);
+    m_index_buffer->upload(uploader, RHI_PIPELINE_STAGE_VERTEX_INPUT, RHI_ACCESS_INDEX_READ);
+
+    m_submeshes.update(
+        [&](const gpu_geometry& geometry) -> shader::geometry_data
+        {
+            return {
+                .position_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_POSITION,
+                    geometry.vertex_offset),
+                .normal_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_NORMAL,
+                    geometry.vertex_offset),
+                .tangent_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_TANGENT,
+                    geometry.vertex_offset),
+                .uv_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_UV,
+                    geometry.vertex_offset),
+                .custom0_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_CUSTOM_0,
+                    geometry.vertex_offset),
+                .custom1_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_CUSTOM_1,
+                    geometry.vertex_offset),
+                .custom2_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_CUSTOM_2,
+                    geometry.vertex_offset),
+                .custom3_address = get_buffer_address(
+                    geometry.geometry_id,
+                    GEOMETRY_BUFFER_CUSTOM_3,
+                    geometry.vertex_offset),
+                .index_offset =
+                    (get_buffer_address(geometry.geometry_id, GEOMETRY_BUFFER_INDEX) / 4) +
+                    geometry.index_offset,
+                .index_count = geometry.index_count,
+                .cluster_root = static_cast<std::uint32_t>(geometry.cluster_root_id),
+                .bounding_box_min = geometry.bounding_box.min,
+                .bounding_box_max = geometry.bounding_box.max,
+                .bounding_sphere = m_submeshes[geometry.submesh_id].bounding_sphere,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                region,
+                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
+
+    m_clusters.update(
+        [&](const gpu_cluster& cluster) -> gpu_cluster::gpu_type
+        {
+            return {
+                .bounding_sphere = cluster.bounding_sphere,
+                .lod_bounds = cluster.lod_bounds,
+                .lod_error = cluster.lod_error,
+                .index_offset = cluster.index_offset,
+                .index_count = cluster.index_count,
+                .cluster_node = cluster.cluster_node,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                region,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
+
+    m_cluster_nodes.update(
+        [&](const gpu_cluster_node& cluster_node) -> gpu_cluster_node::gpu_type
+        {
+            return {
+                .bounding_sphere = cluster_node.bounding_sphere,
+                .lod_bounds = cluster_node.lod_bounds,
+                .min_lod_error = cluster_node.min_lod_error,
+                .max_parent_lod_error = cluster_node.max_parent_lod_error,
+                .is_leaf = cluster_node.is_leaf,
+                .child_offset = cluster_node.child_offset,
+                .child_count = cluster_node.child_count,
+            };
+        },
+        [&](rhi_buffer* buffer, const void* data, std::size_t size, std::size_t offset)
+        {
+            rhi_buffer_region region = {
+                .offset = offset,
+                .size = size,
+            };
+
+            uploader->upload(
+                buffer,
+                data,
+                size,
+                region,
+                RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_ACCESS_SHADER_READ);
+        });
+
+    m_cluster_node_depth = 0;
+    m_cluster_nodes.each(
+        [&](render_id id, const gpu_cluster_node& cluster_node)
+        {
+            m_cluster_node_depth = std::max(m_cluster_node_depth, cluster_node.depth);
+        });
+    ++m_cluster_node_depth;
 }
 
 void geometry_manager::mark_dirty(render_id geometry_id)

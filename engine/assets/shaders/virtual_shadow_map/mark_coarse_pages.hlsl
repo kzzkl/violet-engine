@@ -6,7 +6,7 @@ struct constant_data
     uint vsm_info;
     uint visible_vsm_list;
     uint vsm_buffer;
-    uint vsm_virtual_page_table;
+    uint virtual_page_table;
 };
 PushConstant(constant_data, constant);
 
@@ -41,7 +41,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     uint2 virtual_page_coord_min = floor(virtual_page_coord);
     uint2 virtual_page_coord_max = ceil(virtual_page_coord);
 
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
     uint4 virtual_page_indices = uint4(
         get_virtual_page_index(vsm_id, virtual_page_coord_min),
         get_virtual_page_index(vsm_id, uint2(virtual_page_coord_max.x, virtual_page_coord_min.y)),

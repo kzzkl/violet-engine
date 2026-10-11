@@ -36,8 +36,8 @@ public:
         float fov{math::to_radians(50.0f)};
     } perspective;
 
-    float near{0.1f};
-    float far{std::numeric_limits<float>::infinity()};
+    float near_z{0.1f};
+    float far_z{std::numeric_limits<float>::infinity()};
 
     float priority{0.0f};
 

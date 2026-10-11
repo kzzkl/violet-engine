@@ -201,16 +201,15 @@ struct texture_block
 ```
 struct distance_field
 {
-    uint32 format; // rhi_format
-    uint32 width;
-    uint32 height;
-    uint32 depth;
+    vec3u brick_count;
+    vec3f volume_bounds_min;
+    vec3f volume_bounds_max;
 
-    uint32 layer_count;
-    uint32 level_count;
+    uint32 brick_table_size; // brick_count.x * brick_count.y * brick_count.z
+    uint32 brick_table[brick_table_size];
 
-    uint32 data_size;
-    char data[data_size];
+    uint32 brick_data_size;
+    uint8 brick_data[brick_data_size];
 };
 
 struct distance_field_block

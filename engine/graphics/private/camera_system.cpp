@@ -30,8 +30,8 @@ shader::camera_data get_camera_data(
 
     shader::camera_data result = {
         .position = transform.get_position(),
-        .near = camera.near,
-        .far = camera.far,
+        .near_z = camera.near_z,
+        .far_z = camera.far_z,
         .aspect = width / height,
         .type = static_cast<std::uint32_t>(camera.type),
         .perspective_fov = camera.perspective.fov,
@@ -49,8 +49,8 @@ shader::camera_data get_camera_data(
         matrix_p = matrix::perspective<simd>(
             camera.perspective.fov,
             result.aspect,
-            camera.far,
-            camera.near);
+            camera.far_z,
+            camera.near_z);
 
         mat4f_simd matrix_p_t = matrix::transpose(matrix_p);
 
@@ -67,7 +67,7 @@ shader::camera_data get_camera_data(
     {
         float height = camera.orthographic.size * 2.0f;
         float width = height * result.aspect;
-        matrix_p = matrix::orthographic<simd>(width, height, camera.far, camera.near);
+        matrix_p = matrix::orthographic<simd>(width, height, camera.far_z, camera.near_z);
     }
     mat4f_simd matrix_v = matrix::inverse(math::load(transform.matrix));
 

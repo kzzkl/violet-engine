@@ -74,6 +74,7 @@ application::application(std::string_view config_path)
         std::ifstream fin(file);
         if (!fin.is_open())
         {
+            log::error("[engine] config file not found: {}.", file);
             continue;
         }
 

@@ -23,11 +23,11 @@ public:
         rdg_buffer* shadow_light_buffer;
 
         rdg_buffer* vsm_buffer{nullptr};
-        rdg_buffer* vsm_virtual_page_table{nullptr};
-        rdg_buffer* vsm_physical_page_table{nullptr};
-        rdg_texture* vsm_physical_shadow_map_static{nullptr};
-        rdg_texture* vsm_physical_shadow_map_final{nullptr};
-        rdg_texture* vsm_hzb{nullptr};
+        rdg_buffer* virtual_page_table{nullptr};
+        rdg_buffer* physical_page_table{nullptr};
+        rdg_texture* physical_shadow_map_static{nullptr};
+        rdg_texture* physical_shadow_map_final{nullptr};
+        rdg_texture* hzb{nullptr};
         rdg_buffer* vsm_directional_buffer{nullptr};
 
         rdg_buffer* lru_state;

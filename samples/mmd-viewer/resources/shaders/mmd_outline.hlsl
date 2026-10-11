@@ -1,31 +1,6 @@
-#include "mesh.hlsli"
-#include "shading/shading_model.hlsli"
+#include "material.hlsli"
 
-struct constant_data
-{
-    uint draw_info_buffer;
-};
-PushConstant(constant_data, constant);
-
-ConstantBuffer<scene_data> scene : register(b0, space1);
-ConstantBuffer<camera_data> camera : register(b0, space2);
-
-struct vs_output
-{
-    float4 position_cs : SV_POSITION;
-    float3 color : COLOR;
-    uint shading_model : SHADING_MODEL;
-};
-
-struct mmd_outline_material
-{
-    float3 color;
-    float width;
-    float z_offset;
-    float strength;
-};
-
-float3 get_smooth_normal(vertex vertex, float3 smooth_normal)
+float3 get_smooth_normal(mesh_vertex vertex, float3 smooth_normal)
 {
     float3 n = normalize(vertex.normal);
     float3 t = normalize(vertex.tangent.xyz);
@@ -34,51 +9,53 @@ float3 get_smooth_normal(vertex vertex, float3 smooth_normal)
 
     return normalize(mul(tbn, smooth_normal));
 }
-
-vs_output vs_main(uint vertex_id : SV_VertexID, uint draw_id : SV_InstanceID)
+struct mmd_outline_material
 {
-    StructuredBuffer<draw_info> draw_infos = ResourceDescriptorHeap[constant.draw_info_buffer];
-    uint instance_id = draw_infos[draw_id].instance_id;
+    struct varying
+    {
+        float4 position_cs : SV_POSITION;
+        float3 color : COLOR;
+    };
 
-    mesh mesh = mesh::create(instance_id, scene);
-    vertex vertex = mesh.fetch_vertex(vertex_id, camera.matrix_vp);
-    
-    mmd_outline_material material = load_material<mmd_outline_material>(scene.material_buffer, mesh.get_material_address());
-    material_info material_info = load_material_info(scene.material_buffer, mesh.get_material_address());
+    float3 color;
+    float width;
+    float z_offset;
+    float strength;
 
-    float4 smooth_normal_and_outline = mesh.fetch_custom_attribute<float4>(vertex_id, 0);
-    float3 smooth_normal_ws = mul((float3x3)mesh.get_model_matrix(), get_smooth_normal(vertex, smooth_normal_and_outline.xyz));
+    varying evaluate_varying(material_context context, mesh mesh)
+    {
+        float4 smooth_normal_and_outline = mesh.fetch_attribute<float4>(GEOMETRY_ATTRIBUTE_CUSTOM0);
+        float3 smooth_normal_ws = mul((float3x3)mesh.get_model_matrix(), get_smooth_normal(mesh.vertex, smooth_normal_and_outline.xyz));
 
-    float4 position_vs = mul(camera.matrix_v, float4(vertex.position_ws, 1.0));
+        float4 position_ws = mul(mesh.get_model_matrix(), float4(mesh.vertex.position, 1.0));
+        float4 position_vs = mul(context.camera.matrix_v, position_ws);
 
-    // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloOutlineUtil.hlsl
-    float camera_mul_fix = abs(position_vs.z);
-    camera_mul_fix = saturate(camera_mul_fix);
-    camera_mul_fix *= camera.perspective_fov / PI * 180.0;
-    camera_mul_fix *= 0.001;
-    vertex.position_ws += smooth_normal_ws * material.width *  camera_mul_fix;
+        // https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample/blob/master/NiloOutlineUtil.hlsl
+        float camera_mul_fix = abs(position_vs.z);
+        camera_mul_fix = saturate(camera_mul_fix);
+        camera_mul_fix *= context.camera.perspective_fov / PI * 180.0;
+        camera_mul_fix *= 0.001;
+        position_ws.xyz += smooth_normal_ws * width * camera_mul_fix;
 
-    // z offset.
-    position_vs = mul(camera.matrix_v, float4(vertex.position_ws, 1.0));
-    position_vs.xyz += normalize(position_vs.xyz) * material.z_offset;
+        // z offset.
+        position_vs = mul(context.camera.matrix_v, position_ws);
+        position_vs.xyz += normalize(position_vs.xyz) * z_offset;
 
-    vs_output output;
-    output.position_cs = mul(camera.matrix_p, position_vs);
-    output.color = material.color * material.strength;
-    output.shading_model = material_info.shading_model;
+        varying varying;
+        varying.position_cs = mul(context.camera.matrix_p, position_vs);
+        varying.color = color * strength;
 
-    return output;
-}
+        return varying;
+    }
 
-fs_output fs_main(vs_output input)
-{
-    gbuffer gbuffer;
-    gbuffer.albedo = input.color;
-    gbuffer.roughness = 0.0;
-    gbuffer.metallic = 0.0;
-    gbuffer.normal = 0.0;
-    gbuffer.emissive = 0.0;
-    gbuffer.shading_model = input.shading_model;
-
-    return fs_output::create(gbuffer);
-}
+    surface evaluate_surface(material_context context, varying varying)
+    {
+        surface surface;
+        surface.albedo = varying.color;
+        surface.roughness = 0.0;
+        surface.metallic = 0.0;
+        surface.emissive = 0.0;
+        surface.normal_ws = 0.0;
+        return surface;
+    }
+};

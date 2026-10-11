@@ -108,8 +108,8 @@ struct shader
 
     struct instance_data
     {
-        std::uint32_t mesh_index;
-        std::uint32_t geometry_index;
+        std::uint32_t mesh_id;
+        std::uint32_t submesh_id;
         std::uint32_t batch_index;
         std::uint32_t material_address;
     };
@@ -169,8 +169,8 @@ struct shader
 
         vec2f jitter;
 
-        float near;
-        float far;
+        float near_z;
+        float far_z;
 
         float aspect;
         std::uint32_t type;

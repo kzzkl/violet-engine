@@ -3,32 +3,8 @@
 
 namespace violet
 {
-struct mmd_material_vs : public mesh_vs
-{
-    static constexpr std::string_view path = "assets/shaders/mmd_material.hlsl";
-};
-
-struct mmd_material_fs : public mesh_fs
-{
-    static constexpr std::string_view path = "assets/shaders/mmd_material.hlsl";
-};
-
-struct mmd_outline_vs : public mesh_vs
-{
-    static constexpr std::string_view path = "assets/shaders/mmd_outline.hlsl";
-};
-
-struct mmd_outline_fs : public mesh_fs
-{
-    static constexpr std::string_view path = "assets/shaders/mmd_outline.hlsl";
-};
-
-struct toon_cs : public shading_model_cs
-{
-    static constexpr std::string_view path = "assets/shaders/mmd_toon.hlsl";
-};
-
 mmd_material::mmd_material()
+    : material_instance("mmd_material", "assets/shaders/mmd_material.hlsl")
 {
     set_cull_mode(RHI_CULL_MODE_BACK);
     set_surface_type(SURFACE_TYPE_OPAQUE);
@@ -77,17 +53,8 @@ void mmd_material::set_ramp(const texture_2d* texture)
     get_constant().ramp_texture = texture->get_srv()->get_bindless();
 }
 
-rhi_shader* mmd_material::get_vertex_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<mmd_material_vs>(defines);
-}
-
-rhi_shader* mmd_material::get_fragment_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<mmd_material_fs>(defines);
-}
-
 mmd_outline_material::mmd_outline_material()
+    : material_instance("mmd_outline_material", "assets/shaders/mmd_outline.hlsl")
 {
     set_cull_mode(RHI_CULL_MODE_FRONT);
     set_surface_type(SURFACE_TYPE_OPAQUE);
@@ -127,40 +94,8 @@ void mmd_outline_material::set_strength(float strength)
     constant.strength = strength;
 }
 
-rhi_shader* mmd_outline_material::get_vertex_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<mmd_outline_vs>(defines);
-}
-
-rhi_shader* mmd_outline_material::get_fragment_shader(std::span<std::wstring> defines) const
-{
-    return render_device::instance().get_shader<mmd_outline_fs>(defines);
-}
-
 toon_shading_model::toon_shading_model()
-    : shading_model(
-          "Toon",
-          {SHADING_GBUFFER_ALBEDO, SHADING_GBUFFER_NORMAL, SHADING_GBUFFER_EMISSIVE},
-          {SHADING_AUXILIARY_BUFFER_AO})
+    : shading_model("toon_shading_model", 0, "assets/shaders/mmd_toon.hlsl")
 {
-}
-
-const rdg_compute_pipeline& toon_shading_model::get_pipeline()
-{
-    auto& device = render_device::instance();
-
-    bool has_ao = has_auxiliary_buffer(SHADING_AUXILIARY_BUFFER_AO);
-
-    if (has_ao && m_pipeline_without_ao.compute_shader == nullptr)
-    {
-        std::vector<std::wstring> defines = {L"-DUSE_AO_BUFFER"};
-        m_pipeline_with_ao.compute_shader = device.get_shader<toon_cs>(defines);
-    }
-    else if (!has_ao && m_pipeline_without_ao.compute_shader == nullptr)
-    {
-        m_pipeline_without_ao.compute_shader = device.get_shader<toon_cs>();
-    }
-
-    return has_ao ? m_pipeline_with_ao : m_pipeline_without_ao;
 }
 } // namespace violet

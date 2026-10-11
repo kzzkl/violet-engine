@@ -75,7 +75,8 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     SamplerState point_repeat_sampler = get_point_repeat_sampler();
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
-    float3 ray_origin_ts = float3(uv, depth);
+    ray ray;
+    ray.origin = float3(uv, depth);
 
     float3 color = 0.0;
 
@@ -95,10 +96,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         ray_end_cs /= ray_end_cs.w;
         ray_end_cs.xy = ray_end_cs.xy * float2(0.5, -0.5) + 0.5;
 
-        float3 ray_direction_ts = normalize(ray_end_cs.xyz - ray_origin_ts.xyz);
-        float4 hit = hzb_trace(
-            ray_origin_ts,
-            ray_direction_ts,
+        ray.direction = normalize(ray_end_cs.xyz - ray.origin);
+        ray_hit hit = hzb_trace(
+            ray,
             constant.thickness,
             constant.iteration_count,
             hzb,
@@ -112,9 +112,9 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
         if (constant.scene_color_valid != 0)
         {
-            float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, hit.xy, 0.0).xy;
-            float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.xy + velocity, 0.0).rgb;
-            trace_color = lerp(sky, scene, hit.w);
+            float2 velocity = motion_vector.SampleLevel(linear_clamp_sampler, hit.position.xy, 0.0).xy;
+            float3 scene = scene_color.SampleLevel(linear_clamp_sampler, hit.position.xy + velocity, 0.0).rgb;
+            trace_color = lerp(sky, scene, hit.is_hit ? 1.0 : 0.0);
         }
 
         color += trace_color;

@@ -4,7 +4,7 @@
 struct constant_data
 {
     uint visible_vsm_list;
-    uint vsm_virtual_page_table;
+    uint virtual_page_table;
     uint vsm_buffer;
     uint vsm_bounds_buffer;
     uint render_coarse_page;
@@ -16,7 +16,7 @@ PushConstant(constant_data, constant);
 void cs_main(uint3 dtid : SV_DispatchThreadID)
 {
     StructuredBuffer<uint> visible_vsm_list = ResourceDescriptorHeap[constant.visible_vsm_list];
-    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.vsm_virtual_page_table];
+    RWStructuredBuffer<uint> virtual_page_table = ResourceDescriptorHeap[constant.virtual_page_table];
 
     uint vsm_id = visible_vsm_list[dtid.z];
 

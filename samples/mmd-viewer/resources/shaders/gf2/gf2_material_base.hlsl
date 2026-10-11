@@ -1,48 +1,47 @@
 #include "gf2/gf2_material.hlsli"
-#include "shading/shading_model.hlsli"
 
 struct gf2_material_base
 {
-    uint diffuse_texture;
-    uint normal_texture;
-    uint rmo_texture;
-    uint ramp_texture;
-    uint brdf_lut;
+    using varying = gf2_varying;
+
+    uint diffuse_texture_id;
+    uint normal_texture_id;
+    uint rmo_texture_id;
+    uint ramp_texture_id;
+    uint brdf_lut_id;
+
+    varying evaluate_varying(material_context context, mesh mesh)
+    {
+        return gf2_evaluate_varying(context, mesh);
+    }
+
+    surface evaluate_surface(material_context context, varying varying)
+    {
+        SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
+
+        Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[diffuse_texture_id];
+        Texture2D<float4> normal_texture = ResourceDescriptorHeap[normal_texture_id];
+        Texture2D<float4> rmo_texture = ResourceDescriptorHeap[rmo_texture_id];
+
+        float3 albedo = context.sample_texture(diffuse_texture, linear_repeat_sampler, varying.uv).rgb;
+        float3 rmo = context.sample_texture(rmo_texture, linear_repeat_sampler, varying.uv).rgb;
+
+        float roughness = rmo.r;
+        float metallic = rmo.g;
+        float ao = rmo.b;
+
+        float3 V = normalize(context.camera.position - varying.position_ws);
+        float3 N = gf2_get_normal(varying, context.sample_texture(normal_texture, linear_repeat_sampler, varying.uv).xyz);
+
+        float3 lighting = gf2_evaluate_lighting(context, N, V, albedo, roughness, metallic, ramp_texture_id, varying.position_ws) * ao;
+
+        surface surface;
+        surface.albedo = 0.0;
+        surface.roughness = 0.0;
+        surface.metallic = 0.0;
+        surface.emissive = lighting;
+        surface.normal_ws = N;
+
+        return surface;
+    }
 };
-
-fs_output fs_main(vs_output input)
-{
-    SamplerState linear_repeat_sampler = get_linear_repeat_sampler();
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
-    
-    gf2_material_base material = load_material<gf2_material_base>(scene.material_buffer, input.material_address);
-
-    Texture2D<float4> diffuse_texture = ResourceDescriptorHeap[material.diffuse_texture];
-    Texture2D<float4> normal_texture = ResourceDescriptorHeap[material.normal_texture];
-    Texture2D<float4> rmo_texture = ResourceDescriptorHeap[material.rmo_texture];
-
-    float3 albedo = diffuse_texture.Sample(linear_repeat_sampler, input.uv).rgb;
-    float3 rmo = rmo_texture.Sample(linear_repeat_sampler, input.uv).rgb;
-
-    float roughness = rmo.r;
-    float metallic = rmo.g;
-    float ao = rmo.b;
-
-    float3 V = normalize(camera.position - input.position_ws);
-    float3 N = get_normal(input, normal_texture.Sample(linear_repeat_sampler, input.uv).xyz);
-
-    float3 direct_lighting = direct_light(N, V, albedo, roughness, metallic, material.ramp_texture, input.position_ws);
-    float3 indirect_lighting = indirect_light(N, V, albedo, roughness, metallic, material.brdf_lut) * ao;
-
-    material_info material_info = load_material_info(scene.material_buffer, input.material_address);
-
-    gbuffer gbuffer;
-    gbuffer.albedo = 0.0;
-    gbuffer.roughness = 0.0;
-    gbuffer.metallic = 0.0;
-    gbuffer.emissive = direct_lighting + indirect_lighting;
-    gbuffer.normal = N;
-    gbuffer.shading_model = material_info.shading_model;
-
-    return fs_output::create(gbuffer);
-}

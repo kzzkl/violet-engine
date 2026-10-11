@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     ./source/test_misc.cpp
     ./source/test_quaternion.cpp
     ./source/test_simd.cpp
+    ./source/test_types.cpp
     ./source/test_vector.cpp)
 
 target_include_directories(${PROJECT_NAME}

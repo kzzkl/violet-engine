@@ -21,6 +21,9 @@ public:
         DEBUG_MODE_BLOOM_PREFILTER,
         DEBUG_MODE_EYE_ADAPTATION,
         DEBUG_MODE_SSGI,
+        DEBUG_MODE_SDF_PAGE,
+        DEBUG_MODE_SDF_MESH_SDF,
+        DEBUG_MODE_SDF_GLOBAL_SDF,
     };
 
     deferred_renderer();
@@ -63,6 +66,7 @@ private:
     void add_culling_hzb_pass(render_graph& graph);
     void add_tracing_hzb_pass(render_graph& graph);
 
+    void add_sdf_pass(render_graph& graph);
     void add_ssgi_pass(render_graph& graph);
 
     void add_sky_lut_pass(render_graph& graph);
