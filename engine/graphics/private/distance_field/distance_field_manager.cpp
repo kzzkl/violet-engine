@@ -87,7 +87,7 @@ void distance_field_manager::remove_distance_field(render_id distance_field_id)
     m_distance_fields.remove(distance_field_id);
 }
 
-void distance_field_manager::update(gpu_buffer_uploader* uploader)
+void distance_field_manager::upload(gpu_buffer_uploader* uploader)
 {
     for (const auto& request : m_upload_queue)
     {
@@ -171,7 +171,7 @@ void distance_field_manager::update(gpu_buffer_uploader* uploader)
                 data,
                 size,
                 region,
-                RHI_PIPELINE_STAGE_VERTEX | RHI_PIPELINE_STAGE_COMPUTE,
+                RHI_PIPELINE_STAGE_COMPUTE,
                 RHI_ACCESS_SHADER_READ);
         });
 }

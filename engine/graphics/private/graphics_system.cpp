@@ -108,18 +108,20 @@ bool graphics_system::initialize(const dictionary& config)
 #endif
 
                 auto& device = render_device::instance();
-                device.get_material_manager()->update(m_gpu_buffer_uploader.get());
-                device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
-                device.get_distance_field_manager()->update(m_gpu_buffer_uploader.get());
+                device.get_material_manager()->upload(m_gpu_buffer_uploader.get());
+                device.get_geometry_manager()->upload(m_gpu_buffer_uploader.get());
+                device.get_distance_field_manager()->upload(m_gpu_buffer_uploader.get());
 
                 get_system<skinning_system>().pre_update();
-                device.get_geometry_manager()->update(m_gpu_buffer_uploader.get());
+                device.get_geometry_manager()->upload(m_gpu_buffer_uploader.get());
 
                 get_system<mesh_system>().update(*m_scene_manager);
                 get_system<skinning_system>().update();
                 get_system<light_system>().update(*m_scene_manager);
                 get_system<environment_system>().update(*m_scene_manager);
                 get_system<camera_system>().update(*m_scene_manager);
+
+                device.get_surface_cache_manager()->upload(m_gpu_buffer_uploader.get());
             });
 
     task_graph.add_task()
@@ -193,7 +195,7 @@ void graphics_system::end_frame()
 
     upload_render_data(batches);
     update_global_data(batches);
-    // update_scene_data(batches);
+    update_scene_data(batches);
 
     std::vector<rhi_swapchain*> swapchains;
 
@@ -258,7 +260,7 @@ void graphics_system::update_global_data(std::vector<execute_batch>& batches)
     get_system<environment_system>().record(graph);
 
     auto& device = render_device::instance();
-    // device.get_surface_cache_manager()->render(graph);
+    device.get_surface_cache_manager()->render(graph);
 
     if (graph.is_empty())
     {

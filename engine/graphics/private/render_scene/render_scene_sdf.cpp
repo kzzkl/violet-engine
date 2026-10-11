@@ -8,8 +8,7 @@
 namespace violet
 {
 render_scene_sdf::render_scene_sdf()
-    : m_clipmap_levels(128),
-      m_surface_caches(16 * 1024 * 1024)
+    : m_clipmap_levels(128)
 {
 }
 
@@ -33,7 +32,7 @@ void render_scene_sdf::set_mesh(
         surface_cache_manager->remove_surface_cache(mesh.surface_cache_id);
     }
 
-    mesh.surface_cache_id = surface_cache_manager->add_surface_cache(128, 128, geometry, materials);
+    mesh.surface_cache_id = surface_cache_manager->add_surface_cache(geometry, materials);
 
     m_meshes.mark_dirty(mesh_sdf_id);
 }

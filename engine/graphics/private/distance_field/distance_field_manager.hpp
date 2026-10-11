@@ -20,7 +20,7 @@ public:
         return m_distance_fields[distance_field_id].volume_bounds;
     }
 
-    void update(gpu_buffer_uploader* uploader);
+    void upload(gpu_buffer_uploader* uploader);
 
     rhi_buffer* get_distance_field_buffer() const
     {

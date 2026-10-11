@@ -2,9 +2,10 @@
 
 #include "common/allocator.hpp"
 #include "graphics/geometry.hpp"
+#include "graphics/gpu_array.hpp"
 #include "graphics/material.hpp"
-#include "graphics/render_device.hpp"
 #include "graphics/render_graph/render_graph.hpp"
+#include "surface_cache/surface_cache_renderer.hpp"
 
 namespace violet
 {
@@ -14,13 +15,23 @@ public:
     surface_cache_manager();
 
     render_id add_surface_cache(
-        std::uint32_t width,
-        std::uint32_t height,
         geometry* geometry,
         std::span<std::pair<std::uint32_t, material*>> materials);
     void remove_surface_cache(render_id surface_cache_id);
 
+    void upload(gpu_buffer_uploader* uploader);
+
     void render(render_graph& graph);
+
+    rhi_buffer* get_surface_cache_buffer() const
+    {
+        return m_surface_caches.get_buffer()->get_rhi();
+    }
+
+    rhi_texture* get_albedo_buffer() const
+    {
+        return m_albedo_buffer.get();
+    }
 
     rhi_texture* get_depth_buffer() const
     {
@@ -28,22 +39,14 @@ public:
     }
 
 private:
-    static constexpr std::uint32_t atlas_resolution = 4096;
-    static constexpr std::uint32_t page_resolution = 126;
-    static constexpr std::uint32_t page_count =
-        (atlas_resolution / page_resolution) * (atlas_resolution / page_resolution);
-
     struct surface_cache_key
     {
-        std::uint32_t width;
-        std::uint32_t height;
         geometry* geometry;
         std::vector<std::pair<std::uint32_t, material*>> materials;
 
         bool operator==(const surface_cache_key& other) const
         {
-            return width == other.width && height == other.height && geometry == other.geometry &&
-                   materials == other.materials;
+            return geometry == other.geometry && materials == other.materials;
         }
     };
 
@@ -51,16 +54,11 @@ private:
     {
         std::size_t operator()(const surface_cache_key& key) const
         {
-            std::size_t hash = hash::combine(
-                std::hash<std::uint32_t>()(key.width),
-                std::hash<std::uint32_t>()(key.height));
-            hash = hash::combine(hash, std::hash<void*>()(key.geometry));
-            hash = hash::combine(
-                hash,
+            return hash::combine(
+                std::hash<void*>()(key.geometry),
                 hash::xx_hash(
                     key.materials.data(),
                     key.materials.size() * sizeof(std::pair<std::uint32_t, material*>)));
-            return hash;
         }
     };
 
@@ -78,14 +76,19 @@ private:
     {
         struct gpu_type
         {
-            std::uint32_t page_offset;
+            std::uint32_t extent;
             std::uint32_t page_count;
-            vec2f uv_offset;
+            std::array<std::uint32_t, SURFACE_CACHE_FACE_MAX_PAGE_COUNT> pages;
         };
 
         surface_flags flags{SURFACE_FLAG_NONE};
 
         buffer_allocation allocation;
+
+        std::uint32_t width;
+        std::uint32_t height;
+        std::uint32_t page_count_x;
+        std::uint32_t page_count_y;
 
         std::uint32_t reference_count;
 
@@ -139,19 +142,18 @@ private:
     std::vector<std::uint32_t> m_free_pages;
 
     std::unordered_map<surface_cache_key, std::uint32_t, surface_cache_hash> m_surface_cache_map;
-    std::vector<surface_cache> m_surface_caches;
-    index_allocator m_surface_cache_allocator;
+    gpu_block_sparse_array<surface_cache> m_surface_caches;
 
     struct render_queue_item
     {
         std::uint32_t surface_cache_id;
-        std::uint32_t width;
-        std::uint32_t height;
         geometry* geometry;
         std::vector<std::pair<std::uint32_t, material*>> materials;
+        std::array<surface_cache_render_item::face, SURFACE_CACHE_FACE_COUNT> faces;
     };
     std::vector<render_queue_item> m_render_queue;
 
+    rhi_ptr<rhi_texture> m_albedo_buffer;
     rhi_ptr<rhi_texture> m_depth_buffer;
 };
 } // namespace violet

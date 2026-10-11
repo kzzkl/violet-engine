@@ -269,7 +269,7 @@ void geometry_manager::set_shared_buffer(
     dst_buffer.src_geometry_id = src_geometry_id;
 }
 
-void geometry_manager::update(gpu_buffer_uploader* uploader)
+void geometry_manager::upload(gpu_buffer_uploader* uploader)
 {
     if (m_dirty_geometries.empty())
     {

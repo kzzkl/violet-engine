@@ -187,7 +187,7 @@ shading_model* material_manager::get_shading_model(render_id shading_model_id) c
     return m_shading_models[shading_model_id].get();
 }
 
-void material_manager::update(gpu_buffer_uploader* uploader)
+void material_manager::upload(gpu_buffer_uploader* uploader)
 {
     if (m_dirty_materials.empty())
     {
