@@ -152,6 +152,7 @@ private:
         std::array<surface_cache_render_item::face, SURFACE_CACHE_FACE_COUNT> faces;
     };
     std::vector<render_queue_item> m_render_queue;
+    std::uint32_t m_render_queue_offset{0};
 
     rhi_ptr<rhi_texture> m_albedo_buffer;
     rhi_ptr<rhi_texture> m_depth_buffer;

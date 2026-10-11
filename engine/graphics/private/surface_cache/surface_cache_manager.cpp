@@ -297,10 +297,18 @@ void surface_cache_manager::render(render_graph& graph)
         return;
     }
 
-    std::vector<surface_cache_render_item> items;
-    items.reserve(m_render_queue.size());
+    static constexpr std::uint32_t max_render_item_per_frame = 4;
 
-    for (const auto& item : m_render_queue)
+    std::uint32_t item_count = std::min(
+        static_cast<std::uint32_t>(m_render_queue.size()) - m_render_queue_offset,
+        max_render_item_per_frame);
+
+    std::vector<surface_cache_render_item> items;
+    items.reserve(item_count);
+
+    for (const auto& item : std::ranges::subrange(
+             m_render_queue.begin() + m_render_queue_offset,
+             m_render_queue.begin() + m_render_queue_offset + item_count))
     {
         items.push_back({
             .faces = item.faces,
@@ -312,7 +320,13 @@ void surface_cache_manager::render(render_graph& graph)
     surface_cache_renderer renderer;
     renderer.render(graph, items, m_albedo_buffer.get(), m_depth_buffer.get());
 
-    m_render_queue.clear();
+    m_render_queue_offset += item_count;
+
+    if (m_render_queue_offset == m_render_queue.size())
+    {
+        m_render_queue_offset = 0;
+        m_render_queue.clear();
+    }
 }
 
 surface_cache_manager::surface_cache surface_cache_manager::allocate_sub_page(

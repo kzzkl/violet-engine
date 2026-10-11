@@ -56,14 +56,15 @@ float2 get_surface_cache_uv(
     uint2 extent = surface_cache.get_extent();
     uint2 page_count = surface_cache.get_page_count();
 
-    uint2 texel = min(uint2(uv * float2(extent)), extent - 1);
+    float2 texel_f = min(uv * float2(extent), extent - 1);
+    uint2 texel = floor(texel_f);
     uint2 page_coord = min(texel / SURFACE_CACHE_PAGE_RESOLUTION, page_count - 1);
     uint2 page_offset = texel - page_coord * SURFACE_CACHE_PAGE_RESOLUTION;
 
     uint2 atlas_texel =
         surface_cache.get_page(page_coord.y * page_count.x + page_coord.x) + page_offset;
 
-    return (float2(atlas_texel) + 0.5) / SURFACE_CACHE_ATLAS_RESOLUTION;
+    return (float2(atlas_texel) + texel_f - texel + 0.5) / SURFACE_CACHE_ATLAS_RESOLUTION;
 }
 
 uint get_surface_cache_face(
@@ -72,16 +73,23 @@ uint get_surface_cache_face(
     StructuredBuffer<surface_cache> surface_caches,
     Texture2D<float> surface_cache_depth)
 {
-    SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
+    SamplerState point_clamp_sampler = get_point_clamp_sampler();
 
     uint result = 0xFFFFFFFF;
     float min_error = 10000.0;
 
-    for (uint face = 0; face < SURFACE_CACHE_FACE_COUNT; ++face)
+    uint3 faces;
+    faces[0] = volume_uv.x >= 0.0 ? 0 : 1;
+    faces[1] = volume_uv.y >= 0.0 ? 2 : 3;
+    faces[2] = volume_uv.z >= 0.0 ? 4 : 5;
+
+    for (uint i = 0; i < 3; ++i)
     {
+        uint face = faces[i];
+
         float2 uv = get_surface_cache_uv(surface_caches[surface_cache_id + face], face, volume_uv);
 
-        float depth = surface_cache_depth.SampleLevel(linear_clamp_sampler, uv, 0.0) * 2.0 - 1.0;
+        float depth = surface_cache_depth.SampleLevel(point_clamp_sampler, uv, 0.0) * 2.0 - 1.0;
         float point_depth = face % 2 == 0 ? -volume_uv[face / 2] : volume_uv[face / 2];
 
         float error = abs(depth - point_depth);
@@ -105,11 +113,21 @@ surface_cache_data get_surface_cache(
 {
     SamplerState linear_clamp_sampler = get_linear_clamp_sampler();
 
+    float3 debug_color[6] = {
+        float3(1.0, 0.0, 0.0),
+        float3(0.0, 1.0, 0.0),
+        float3(0.0, 0.0, 1.0),
+        float3(1.0, 1.0, 0.0),
+        float3(1.0, 0.5, 0.0),
+        float3(1.0, 1.0, 1.0),
+    };
+
     uint face = get_surface_cache_face(surface_cache_id, volume_uv, surface_caches, surface_cache_depth);
     float2 uv = get_surface_cache_uv(surface_caches[surface_cache_id + face], face, volume_uv);
 
     surface_cache_data result;
     result.albedo = surface_cache_albedo.SampleLevel(linear_clamp_sampler, uv, 0.0).rgb;
+    // result.albedo = debug_color[face];
 
     return result;
 }
