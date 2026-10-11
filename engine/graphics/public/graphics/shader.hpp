@@ -1,7 +1,7 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
 #include "math/types.hpp"
+#include "rhi/rhi.hpp"
 #include <cassert>
 #include <initializer_list>
 #include <string_view>

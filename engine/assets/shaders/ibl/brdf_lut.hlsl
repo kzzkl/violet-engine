@@ -27,7 +27,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
     float3 N = float3(0.0, 0.0, 1.0);
 
     const uint sample_count = 1024;
-    for(uint i = 0; i < sample_count; ++i)
+    for (uint i = 0; i < sample_count; ++i)
     {
         float2 xi = hammersley(i, sample_count);
         float3 H = importance_sample_ggx(xi, N, roughness);
@@ -37,7 +37,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
         float NdotH = saturate(H.z);
         float VdotH = saturate(dot(V, H));
 
-        if(NdotL > 0.0)
+        if (NdotL > 0.0)
         {
             float g = g_smith(N, V, L, roughness);
             float g_vis = (g * VdotH) / (NdotH * NdotV);

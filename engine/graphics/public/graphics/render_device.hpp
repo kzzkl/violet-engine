@@ -47,6 +47,40 @@ struct execute_batch
     std::vector<rhi_command_batch_fence> wait_fences;
 };
 
+class render_device_extension
+{
+public:
+    render_device_extension(std::string_view name)
+        : m_name(name)
+    {
+    }
+
+    virtual ~render_device_extension() = default;
+
+    void initialize(rhi_backend backend);
+
+    bool is_enabled() const
+    {
+        return m_rhi != nullptr;
+    }
+
+    const std::string& get_name() const
+    {
+        return m_name;
+    }
+
+    rhi_extension* get_rhi() const
+    {
+        return m_rhi.get();
+    }
+
+private:
+    virtual std::unique_ptr<rhi_extension> create_rhi(rhi_backend backend) = 0;
+
+    std::string m_name;
+    std::unique_ptr<rhi_extension> m_rhi;
+};
+
 class material_manager;
 class geometry_manager;
 class distance_field_manager;
@@ -66,8 +100,37 @@ public:
 
     static render_device& instance();
 
-    void initialize(rhi* rhi);
+    bool initialize(rhi_backend backend, std::uint32_t frame_resource_count = 2);
     void reset();
+
+    template <typename T, typename... Args>
+    T& add_extension(Args&&... args)
+    {
+        static const std::uint32_t index = extension_index::value<T>();
+
+        if (m_extensions.size() <= index)
+        {
+            m_extensions.resize(index + 1);
+        }
+
+        m_extensions[index] = std::make_unique<T>(std::forward<Args>(args)...);
+
+        return *static_cast<T*>(m_extensions[index].get());
+    }
+
+    template <typename T>
+    T& get_extension()
+    {
+        static const std::uint32_t index = extension_index::value<T>();
+        return *static_cast<T*>(m_extensions[index]);
+    }
+
+    template <typename T>
+    bool has_extension() const
+    {
+        static const std::uint32_t index = extension_index::value<T>();
+        return index < m_extensions.size() && m_extensions[index] != nullptr;
+    }
 
     rhi_command* allocate_command();
     void execute(std::span<execute_batch> batches);
@@ -268,6 +331,10 @@ public:
     }
 
 private:
+    struct extension_index : public type_index<extension_index>
+    {
+    };
+
     struct shader_key
     {
         std::string path;
@@ -314,6 +381,8 @@ private:
 
     rhi* m_rhi{nullptr};
     rhi_deleter m_rhi_deleter;
+
+    std::vector<std::unique_ptr<render_device_extension>> m_extensions;
 
     std::unordered_map<shader_key, rhi_ptr<rhi_shader>, shader_hash> m_shaders;
 

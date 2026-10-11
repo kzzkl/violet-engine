@@ -17,6 +17,8 @@ class vk_bindless_manager;
 class vk_framebuffer_manager;
 class vk_deletion_queue;
 
+class vk_extension_registry;
+
 class vk_context
 {
 public:
@@ -112,15 +114,11 @@ public:
     }
 
 private:
-    bool initialize_instance(
-        std::span<const char*> desired_layers,
-        std::span<const char*> desired_extensions);
+    bool initialize_instance(std::span<rhi_extension*> extensions, vk_extension_registry& registry);
     bool initialize_physical_device(
-        rhi_features desired_features,
-        std::span<const char*> desired_extensions);
-    void initialize_logic_device(
-        rhi_features desired_features,
-        std::span<const char*> enabled_extensions);
+        std::span<rhi_extension*> extensions,
+        vk_extension_registry& registry);
+    void initialize_device(vk_extension_registry& registry);
     void initialize_vma();
     void initialize_descriptor_pool(bool bindless);
 

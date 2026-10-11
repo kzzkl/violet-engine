@@ -12,7 +12,6 @@ namespace violet
 {
 class camera_component;
 class camera_component_meta;
-class rhi_plugin;
 class vsm_manager;
 class render_scene_manager;
 class gpu_buffer_uploader;
@@ -48,8 +47,6 @@ private:
         std::vector<rhi_swapchain*>& swapchains);
 
     rhi_fence* allocate_fence();
-
-    std::unique_ptr<rhi_plugin> m_plugin;
 
     std::unique_ptr<vsm_manager> m_vsm_manager;
     std::unique_ptr<render_scene_manager> m_scene_manager;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/render_graph/rdg_node.hpp"
-#include "graphics/render_interface.hpp"
+#include "rhi/rhi.hpp"
 #include <vector>
 
 namespace violet

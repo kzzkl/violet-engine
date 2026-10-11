@@ -1,10 +1,12 @@
 #include "vk_context.hpp"
 #include "common/log.hpp"
+#include "rhi/vulkan/rhi_vulkan.hpp"
 #include "vk_bindless.hpp"
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_layout.hpp"
 #include "vk_parameter.hpp"
+#include <algorithm>
 #include <set>
 
 #ifdef _WIN32
@@ -25,84 +27,17 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     return VK_FALSE;
 }
 
-template <typename T>
-void enable_feature(VkPhysicalDeviceFeatures2& device_features, T& feature)
+template <typename Functor>
+void each_extension(std::span<rhi_extension*> extensions, Functor&& functor)
 {
-    feature.pNext = device_features.pNext;
-    device_features.pNext = &feature;
-};
-
-bool check_extension_support(
-    std::span<const char*> desired_extensions,
-    std::span<VkExtensionProperties> available_extensions)
-{
-    for (const char* extension : desired_extensions)
+    for (auto& extension : extensions)
     {
-        bool found = false;
-        for (const VkExtensionProperties& available : available_extensions)
+        if (extension->is_enabled())
         {
-            if (std::strcmp(extension, available.extensionName) == 0)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            return false;
+            auto* vk = static_cast<vk_extension*>(extension);
+            functor(vk);
         }
     }
-
-    return true;
-}
-
-bool check_feature_support(rhi_features desired_features, VkPhysicalDevice device)
-{
-    VkPhysicalDeviceFeatures2 device_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    };
-
-    VkPhysicalDeviceVulkan12Features vulkan12_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-    };
-    enable_feature(device_features, vulkan12_features);
-
-    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-    };
-    if (desired_features & RHI_FEATURE_BINDLESS)
-    {
-        enable_feature(device_features, mutable_descriptor_type_features);
-    }
-
-    vkGetPhysicalDeviceFeatures2(device, &device_features);
-
-    if (!device_features.features.samplerAnisotropy || !vulkan12_features.timelineSemaphore)
-    {
-        return false;
-    }
-
-    if (desired_features & RHI_FEATURE_BINDLESS)
-    {
-        if (!vulkan12_features.runtimeDescriptorArray ||
-            !vulkan12_features.shaderSampledImageArrayNonUniformIndexing ||
-            !vulkan12_features.descriptorBindingSampledImageUpdateAfterBind ||
-            !vulkan12_features.shaderUniformBufferArrayNonUniformIndexing ||
-            !vulkan12_features.descriptorBindingUniformBufferUpdateAfterBind ||
-            !vulkan12_features.shaderStorageBufferArrayNonUniformIndexing ||
-            !vulkan12_features.descriptorBindingStorageBufferUpdateAfterBind)
-        {
-            return false;
-        }
-
-        if (!mutable_descriptor_type_features.mutableDescriptorType)
-        {
-            return false;
-        }
-    }
-
-    return true;
 }
 } // namespace
 
@@ -138,47 +73,22 @@ bool vk_context::initialize(const rhi_desc& desc)
 
     m_frame_resource_count = desc.frame_resource_count;
 
-    std::vector<const char*> instance_desired_layers;
-    std::vector<const char*> instance_desired_extensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-    };
+    std::span<rhi_extension*> extensions(desc.extensions, desc.extension_count);
+    vk_extension_registry registry;
 
-#ifdef _WIN32
-    instance_desired_extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#endif
-
-#ifndef NDEBUG
-    instance_desired_layers.push_back("VK_LAYER_KHRONOS_validation");
-    instance_desired_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
-
-    if (!initialize_instance(instance_desired_layers, instance_desired_extensions))
+    if (!initialize_instance(extensions, registry))
     {
         return false;
     }
 
-    std::vector<const char*> device_desired_extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-    // VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
-#ifndef NDEBUG
-        VK_KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION_EXTENSION_NAME, // for shader debug.
-#endif
-    };
-
-    if (desc.features & RHI_FEATURE_BINDLESS)
-    {
-        device_desired_extensions.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
-    }
-
-    if (!initialize_physical_device(desc.features, device_desired_extensions))
+    if (!initialize_physical_device(extensions, registry))
     {
         return false;
     }
 
-    initialize_logic_device(desc.features, device_desired_extensions);
+    initialize_device(registry);
     initialize_vma();
-    initialize_descriptor_pool(desc.features & RHI_FEATURE_BINDLESS);
+    initialize_descriptor_pool(true);
 
     m_deletion_queue = std::make_unique<vk_deletion_queue>(this);
 
@@ -250,32 +160,13 @@ void vk_context::setup_present_queue(VkSurfaceKHR surface)
 }
 
 bool vk_context::initialize_instance(
-    std::span<const char*> desired_layers,
-    std::span<const char*> desired_extensions)
+    std::span<rhi_extension*> extensions,
+    vk_extension_registry& registry)
 {
     std::uint32_t available_layer_count = 0;
     vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, nullptr));
     std::vector<VkLayerProperties> available_layers(available_layer_count);
     vk_check(vkEnumerateInstanceLayerProperties(&available_layer_count, available_layers.data()));
-
-    for (const char* layer : desired_layers)
-    {
-        bool found = false;
-
-        for (const VkLayerProperties& available : available_layers)
-        {
-            if (std::strcmp(available.layerName, layer) == 0)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            return false;
-        }
-    }
 
     std::uint32_t available_extension_count = 0;
     vk_check(vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr));
@@ -284,29 +175,64 @@ bool vk_context::initialize_instance(
         nullptr,
         &available_extension_count,
         available_extensions.data()));
-    if (!check_extension_support(desired_extensions, available_extensions))
+
+    for (const auto& layer : available_layers)
     {
-        return false;
+        registry.m_available_layers.insert(layer.layerName);
     }
 
+    for (const auto& extension : available_extensions)
+    {
+        registry.m_available_instance_extensions.insert(extension.extensionName);
+    }
+
+    each_extension(
+        extensions,
+        [&registry](vk_extension* extension)
+        {
+            if (!extension->evaluate_for_instance(registry))
+            {
+                extension->m_enabled = false;
+            }
+        });
+
+    std::vector<const char*> requested_layers(registry.m_requested_layers.size());
+    std::ranges::transform(
+        registry.m_requested_layers,
+        requested_layers.begin(),
+        [](const std::string& layer)
+        {
+            return layer.c_str();
+        });
+
+    std::vector<const char*> requested_instance_extensions(
+        registry.m_requested_instance_extensions.size());
+    std::ranges::transform(
+        registry.m_requested_instance_extensions,
+        requested_instance_extensions.begin(),
+        [](const std::string& extension)
+        {
+            return extension.c_str();
+        });
+
     VkApplicationInfo app_info = {
-        VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        nullptr,
-        "violet app",
-        VK_MAKE_VERSION(1, 0, 0),
-        "violet engine",
-        VK_MAKE_VERSION(1, 0, 0),
-        VK_API_VERSION_1_3};
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "violet app",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "violet engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_3,
+    };
 
     VkInstanceCreateInfo instance_info = {
-        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        nullptr,
-        0,
-        &app_info,
-        static_cast<std::uint32_t>(desired_layers.size()),
-        desired_layers.size() > 0 ? desired_layers.data() : nullptr,
-        static_cast<std::uint32_t>(desired_extensions.size()),
-        desired_extensions.size() > 0 ? desired_extensions.data() : nullptr};
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pApplicationInfo = &app_info,
+        .enabledLayerCount = static_cast<std::uint32_t>(requested_layers.size()),
+        .ppEnabledLayerNames = requested_layers.empty() ? nullptr : requested_layers.data(),
+        .enabledExtensionCount = static_cast<std::uint32_t>(requested_instance_extensions.size()),
+        .ppEnabledExtensionNames =
+            requested_instance_extensions.empty() ? nullptr : requested_instance_extensions.data(),
+    };
 
 #ifndef NDEBUG
     std::vector<VkValidationFeatureEnableEXT> validation_features = {
@@ -349,16 +275,15 @@ bool vk_context::initialize_instance(
 }
 
 bool vk_context::initialize_physical_device(
-    rhi_features desired_features,
-    std::span<const char*> desired_extensions)
+    std::span<rhi_extension*> extensions,
+    vk_extension_registry& registry)
 {
     std::uint32_t device_count = 0;
     vk_check(vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr));
     std::vector<VkPhysicalDevice> available_devices(device_count);
     vk_check(vkEnumeratePhysicalDevices(m_instance, &device_count, available_devices.data()));
 
-    std::uint32_t physical_device_score = 0;
-    for (VkPhysicalDevice device : available_devices)
+    auto set_registry_device = [&](VkPhysicalDevice device)
     {
         std::uint32_t available_extension_count = 0;
         vk_check(vkEnumerateDeviceExtensionProperties(
@@ -373,13 +298,44 @@ bool vk_context::initialize_physical_device(
             &available_extension_count,
             available_extensions.data()));
 
-        if (!check_extension_support(desired_extensions, available_extensions) ||
-            !check_feature_support(desired_features, device))
+        registry.m_available_device_extensions.clear();
+        for (const auto& extension : available_extensions)
         {
-            continue;
+            registry.m_available_device_extensions.insert(extension.extensionName);
         }
 
+        registry.m_available_features.clear();
+        registry.m_requested_features.clear();
+
+        registry.add_feature<VkPhysicalDeviceFeatures2>();
+        each_extension(
+            extensions,
+            [&](vk_extension* extension)
+            {
+                extension->add_feature_query(registry);
+            });
+
+        vkGetPhysicalDeviceFeatures2(
+            device,
+            registry.m_available_features.get<VkPhysicalDeviceFeatures2>());
+    };
+
+    std::uint32_t max_score = 0;
+    for (VkPhysicalDevice device : available_devices)
+    {
+        set_registry_device(device);
+
         std::uint32_t score = 0;
+
+        each_extension(
+            extensions,
+            [&](vk_extension* extension)
+            {
+                if (extension->evaluate_for_device(registry))
+                {
+                    score += 10;
+                }
+            });
 
         VkPhysicalDeviceProperties properties = {};
         vkGetPhysicalDeviceProperties(device, &properties);
@@ -389,22 +345,30 @@ bool vk_context::initialize_physical_device(
             score += 1000;
         }
 
-        score += properties.limits.maxImageDimension2D;
-
-        if (physical_device_score < score)
+        if (max_score < score)
         {
             m_physical_device = device;
             m_physical_device_properties = properties;
-            physical_device_score = score;
+            max_score = score;
         }
     }
+
+    set_registry_device(m_physical_device);
+
+    each_extension(
+        extensions,
+        [&](vk_extension* extension)
+        {
+            if (!extension->evaluate_for_device(registry))
+            {
+                extension->m_enabled = false;
+            }
+        });
 
     return m_physical_device != VK_NULL_HANDLE;
 }
 
-void vk_context::initialize_logic_device(
-    rhi_features desired_features,
-    std::span<const char*> enabled_extensions)
+void vk_context::initialize_device(vk_extension_registry& registry)
 {
     std::uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);
@@ -438,76 +402,23 @@ void vk_context::initialize_logic_device(
         queue_infos.push_back(queue_info);
     }
 
-    VkPhysicalDeviceFeatures2 device_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .features =
-            {
-                .geometryShader = VK_TRUE,
-                .fillModeNonSolid = VK_TRUE,
-                .samplerAnisotropy = VK_TRUE,
-                .fragmentStoresAndAtomics = VK_TRUE, // For VSM write physical shadow map.
-            },
-    };
-
-    VkPhysicalDeviceVulkan12Features vulkan12_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .samplerFilterMinmax = VK_TRUE,
-        .hostQueryReset = VK_TRUE,
-        .timelineSemaphore = VK_TRUE,
-    };
-
-    VkPhysicalDeviceVulkan13Features vulkan13_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .shaderDemoteToHelperInvocation = VK_TRUE, // For hlsl clip, alpha test.
-        .synchronization2 = VK_TRUE,
-    };
-
-    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-    };
-
-    if (desired_features & RHI_FEATURE_INDIRECT_DRAW || desired_features & RHI_FEATURE_BINDLESS)
-    {
-        if (desired_features & RHI_FEATURE_INDIRECT_DRAW)
+    std::vector<const char*> requested_device_extensions(
+        registry.m_requested_device_extensions.size());
+    std::ranges::transform(
+        registry.m_requested_device_extensions,
+        requested_device_extensions.begin(),
+        [](const std::string& extension)
         {
-            vulkan12_features.drawIndirectCount = VK_TRUE;
-        }
-
-        if (desired_features & RHI_FEATURE_BINDLESS)
-        {
-            vulkan12_features.runtimeDescriptorArray = VK_TRUE;
-            vulkan12_features.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
-            vulkan12_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-            vulkan12_features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
-            vulkan12_features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
-            vulkan12_features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-            vulkan12_features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
-            vulkan12_features.descriptorBindingPartiallyBound = VK_TRUE;
-
-            mutable_descriptor_type_features.mutableDescriptorType = VK_TRUE;
-        }
-
-        enable_feature(device_features, mutable_descriptor_type_features);
-    }
-
-    enable_feature(device_features, vulkan12_features);
-    enable_feature(device_features, vulkan13_features);
-
-#ifndef NDEBUG
-    VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR shader_relaxed_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR,
-        .shaderRelaxedExtendedInstruction = VK_TRUE,
-    };
-    enable_feature(device_features, shader_relaxed_features);
-#endif
+            return extension.c_str();
+        });
 
     VkDeviceCreateInfo device_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &device_features,
+        .pNext = registry.m_requested_features.get<VkPhysicalDeviceFeatures2>(),
         .queueCreateInfoCount = static_cast<std::uint32_t>(queue_infos.size()),
         .pQueueCreateInfos = queue_infos.data(),
-        .enabledExtensionCount = static_cast<std::uint32_t>(enabled_extensions.size()),
-        .ppEnabledExtensionNames = enabled_extensions.data(),
+        .enabledExtensionCount = static_cast<std::uint32_t>(requested_device_extensions.size()),
+        .ppEnabledExtensionNames = requested_device_extensions.data(),
     };
 
     vk_check(vkCreateDevice(m_physical_device, &device_info, nullptr, &m_device));

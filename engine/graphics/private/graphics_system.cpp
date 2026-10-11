@@ -5,6 +5,7 @@
 #include "components/scene_component.hpp"
 #include "distance_field/distance_field_manager.hpp"
 #include "environment_system.hpp"
+#include "extensions/core_extension.hpp"
 #include "gpu_buffer_uploader.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
@@ -13,7 +14,6 @@
 #include "light_system.hpp"
 #include "mesh_system.hpp"
 #include "render_scene/render_scene_manager.hpp"
-#include "rhi_plugin.hpp"
 #include "scene/scene_system.hpp"
 #include "skinning_system.hpp"
 #include "surface_cache/surface_cache_manager.hpp"
@@ -40,7 +40,6 @@ graphics_system::~graphics_system()
     m_update_fence = nullptr;
     m_allocator = nullptr;
     render_device::instance().reset();
-    m_plugin->unload();
 }
 
 void graphics_system::install(application& app)
@@ -59,18 +58,26 @@ bool graphics_system::initialize(const dictionary& config)
         config["max_draw_commands"],
         config["max_candidate_clusters"]);
 
-    m_plugin = std::make_unique<rhi_plugin>();
-    m_plugin->load(config["rhi"]);
-
-    if (!m_plugin->get_rhi()->initialize({
-            .features = RHI_FEATURE_INDIRECT_DRAW | RHI_FEATURE_BINDLESS,
-            .frame_resource_count = config["frame_resource_count"],
-        }))
+    rhi_backend backend;
+    if (config["rhi"] == "vulkan")
+    {
+        backend = RHI_BACKEND_VULKAN;
+    }
+    else
     {
         return false;
     }
 
-    render_device::instance().initialize(m_plugin->get_rhi());
+    auto& device = render_device::instance();
+
+    auto& core = device.add_extension<core_extension>();
+
+    device.initialize(backend, config["frame_resource_count"]);
+
+    if (!core.is_enabled())
+    {
+        return false;
+    }
 
     auto& task_graph = get_task_graph();
     auto& pre_update_group = task_graph.get_group("PreUpdate");
@@ -101,13 +108,12 @@ bool graphics_system::initialize(const dictionary& config)
     update_scene_task.set_name("Update Scene")
         .set_group(rendering_group)
         .set_execute(
-            [this]()
+            [&]()
             {
 #ifndef NDEBUG
                 m_debug_drawer->tick();
 #endif
 
-                auto& device = render_device::instance();
                 device.get_material_manager()->upload(m_gpu_buffer_uploader.get());
                 device.get_geometry_manager()->upload(m_gpu_buffer_uploader.get());
                 device.get_distance_field_manager()->upload(m_gpu_buffer_uploader.get());
@@ -137,7 +143,6 @@ bool graphics_system::initialize(const dictionary& config)
 
     m_allocator = std::make_unique<rdg_allocator>();
 
-    auto& device = render_device::instance();
     m_used_fences.resize(device.get_frame_resource_count());
     m_frame_fence_values.resize(device.get_frame_resource_count());
 

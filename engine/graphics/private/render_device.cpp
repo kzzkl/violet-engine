@@ -76,6 +76,11 @@ void rhi_deleter::operator()(rhi_query_pool* query_pool)
     m_rhi->destroy_query_pool(query_pool);
 }
 
+void render_device_extension::initialize(rhi_backend backend)
+{
+    m_rhi = create_rhi(backend);
+}
+
 render_device::render_device() = default;
 
 render_device::~render_device() {}
@@ -86,10 +91,36 @@ render_device& render_device::instance()
     return instance;
 }
 
-void render_device::initialize(rhi* rhi)
+bool render_device::initialize(rhi_backend backend, std::uint32_t frame_resource_count)
 {
-    m_rhi = rhi;
-    m_rhi_deleter = rhi_deleter(rhi);
+    assert(m_rhi == nullptr);
+
+    m_rhi = rhi::create(backend);
+
+    std::vector<rhi_extension*> extensions;
+    for (auto& extension : m_extensions)
+    {
+        extension->initialize(backend);
+
+        auto* extension_rhi = extension->get_rhi();
+        if (extension_rhi != nullptr)
+        {
+            extensions.push_back(extension_rhi);
+        }
+    }
+
+    rhi_desc desc = {
+        .extensions = extensions.data(),
+        .extension_count = static_cast<std::uint32_t>(extensions.size()),
+        .frame_resource_count = frame_resource_count,
+    };
+
+    if (!m_rhi->initialize(desc))
+    {
+        return false;
+    }
+
+    m_rhi_deleter = rhi_deleter(m_rhi);
 
     m_shader_compiler = std::make_unique<shader_compiler>();
 
@@ -101,6 +132,8 @@ void render_device::initialize(rhi* rhi)
     m_transient_allocator = std::make_unique<transient_allocator>();
 
     create_global_resources();
+
+    return true;
 }
 
 void render_device::reset()
@@ -112,11 +145,18 @@ void render_device::reset()
     m_material_manager = nullptr;
     m_geometry_manager = nullptr;
 
+    m_distance_field_manager = nullptr;
+    m_surface_cache_manager = nullptr;
+
     m_global_textures.clear();
     m_global_samplers.clear();
 
     m_rhi_deleter = {};
-    m_rhi = nullptr;
+
+    if (m_rhi != nullptr)
+    {
+        rhi::destroy(m_rhi);
+    }
 }
 
 rhi_command* render_device::allocate_command()

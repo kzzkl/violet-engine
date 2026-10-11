@@ -1,7 +1,7 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
 #include "math/math.hpp"
+#include "rhi/rhi.hpp"
 #include <memory>
 #include <variant>
 #include <vector>

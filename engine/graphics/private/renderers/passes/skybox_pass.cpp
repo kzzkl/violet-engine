@@ -1,5 +1,4 @@
 #include "graphics/renderers/passes/skybox_pass.hpp"
-#include "graphics/render_interface.hpp"
 #include "graphics/render_scene/render_scene_environment.hpp"
 
 namespace violet

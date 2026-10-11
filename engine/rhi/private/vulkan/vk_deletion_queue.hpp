@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/render_interface.hpp"
+#include "rhi/rhi.hpp"
 #include <queue>
 
 namespace violet::vk

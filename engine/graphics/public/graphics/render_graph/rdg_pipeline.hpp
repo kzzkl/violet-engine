@@ -1,7 +1,7 @@
 #pragma once
 
 #include "algorithm/hash.hpp"
-#include "graphics/render_interface.hpp"
+#include "rhi/rhi.hpp"
 #include <functional>
 
 namespace violet

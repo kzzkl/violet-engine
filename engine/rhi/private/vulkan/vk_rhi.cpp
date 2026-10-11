@@ -1,5 +1,4 @@
 #include "vk_rhi.hpp"
-#include "core/plugin_interface.hpp"
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_pipeline.hpp"
@@ -173,29 +172,3 @@ void vk_rhi::destroy_query_pool(rhi_query_pool* query_pool)
     m_context->get_deletion_queue()->push(query_pool);
 }
 } // namespace violet::vk
-
-extern "C"
-{
-    PLUGIN_API violet::plugin_info get_plugin_info()
-    {
-        violet::plugin_info info = {};
-
-        char name[] = "graphics-vk";
-        memcpy(info.name, name, sizeof(name));
-
-        info.version.major = 1;
-        info.version.minor = 0;
-
-        return info;
-    }
-
-    PLUGIN_API violet::rhi* create_rhi()
-    {
-        return new violet::vk::vk_rhi();
-    }
-
-    PLUGIN_API void destroy_rhi(violet::rhi* rhi)
-    {
-        delete rhi;
-    }
-}

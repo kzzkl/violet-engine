@@ -1161,16 +1161,22 @@ enum rhi_backend : std::uint8_t
     RHI_BACKEND_VULKAN
 };
 
-enum rhi_feature : std::uint32_t
+class rhi_extension
 {
-    RHI_FEATURE_INDIRECT_DRAW = 1 << 0,
-    RHI_FEATURE_BINDLESS = 1 << 1,
+public:
+    virtual ~rhi_extension() = default;
+
+    virtual bool is_enabled() const
+    {
+        return true;
+    }
 };
-using rhi_features = std::uint32_t;
 
 struct rhi_desc
 {
-    rhi_features features;
+    rhi_extension** extensions;
+    std::uint32_t extension_count;
+
     std::uint32_t frame_resource_count;
 };
 
@@ -1178,6 +1184,9 @@ class rhi
 {
 public:
     virtual ~rhi() = default;
+
+    static rhi* create(rhi_backend backend);
+    static void destroy(rhi* rhi);
 
     virtual bool initialize(const rhi_desc& desc) = 0;
 
@@ -1232,6 +1241,4 @@ public:
     virtual rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) = 0;
     virtual void destroy_query_pool(rhi_query_pool* query_pool) = 0;
 };
-using create_rhi = rhi* (*)();
-using destroy_rhi = void (*)(rhi*);
 } // namespace violet

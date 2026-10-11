@@ -1,5 +1,6 @@
 add_library(violet-graphics STATIC
     private/distance_field/distance_field_manager.cpp
+    private/extensions/core_extension.cpp
     private/geometries/box_geometry.cpp
     private/geometries/plane_geometry.cpp
     private/geometries/sphere_geometry.cpp
@@ -72,7 +73,6 @@ add_library(violet-graphics STATIC
     private/morph_target.cpp
     private/render_device.cpp
     private/renderer.cpp
-    private/rhi_plugin.cpp
     private/shader_compiler.cpp
     private/shading_model.cpp
     private/skinning_system.cpp
@@ -92,6 +92,7 @@ target_link_libraries(violet-graphics
         violet::task
         violet::math
         violet::scene
+        violet::rhi
     PRIVATE
         dxcompiler)
 

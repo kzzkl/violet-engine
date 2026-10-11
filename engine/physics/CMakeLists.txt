@@ -20,7 +20,7 @@ target_link_libraries(violet-physics
         violet::scene
         violet::task)
 
-if(${VIOLET_PHYSICS_DEBUG_DRAW})
+if (${VIOLET_PHYSICS_DEBUG_DRAW})
     target_compile_definitions(violet-physics PRIVATE VIOLET_PHYSICS_DEBUG_DRAW)
     target_link_libraries(violet-physics PUBLIC violet::graphics)
 endif()
