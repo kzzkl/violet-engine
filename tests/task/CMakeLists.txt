@@ -2,11 +2,14 @@ project(test-task)
 
 add_executable(${PROJECT_NAME}
     ./source/test_main.cpp
-    ./source/test_task.cpp)
+    ./source/test_task_graph.cpp
+    ./source/test_task_queue.cpp
+    ./source/test_task_scheduler.cpp)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    ./include)
+    ./include
+    ../../engine/task/private)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

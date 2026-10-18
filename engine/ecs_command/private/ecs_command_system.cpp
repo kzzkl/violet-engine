@@ -14,37 +14,37 @@ bool ecs_command_system::initialize(const dictionary& config)
     task_group& update = task_graph.get_group("Update");
     task_group& post_update = task_graph.get_group("PostUpdate");
 
-    task& pre_update_sync = task_graph.add_task()
-                                .set_name("ECS Sync Point - PreUpdate")
-                                .add_dependency(pre_update)
-                                .set_options(TASK_OPTION_MAIN_THREAD)
-                                .set_execute(
-                                    [this]()
-                                    {
-                                        execute_commands();
-                                    });
+    task_node& pre_update_sync = task_graph.add_task();
+    pre_update_sync.set_name("ECS Sync Point - PreUpdate")
+        .add_dependency(pre_update)
+        .set_affinity(TASK_AFFINITY_MAIN)
+        .set_execute(
+            [this]()
+            {
+                execute_commands();
+            });
     update.add_dependency(pre_update_sync);
 
-    task& update_sync = task_graph.add_task()
-                            .set_name("ECS Sync Point - Update")
-                            .add_dependency(update)
-                            .set_options(TASK_OPTION_MAIN_THREAD)
-                            .set_execute(
-                                [this]()
-                                {
-                                    execute_commands();
-                                });
+    task_node& update_sync = task_graph.add_task();
+    update_sync.set_name("ECS Sync Point - Update")
+        .add_dependency(update)
+        .set_affinity(TASK_AFFINITY_MAIN)
+        .set_execute(
+            [this]()
+            {
+                execute_commands();
+            });
     post_update.add_dependency(update_sync);
 
-    task& post_update_sync = task_graph.add_task()
-                                 .set_name("ECS Sync Point - PostUpdate")
-                                 .add_dependency(post_update)
-                                 .set_options(TASK_OPTION_MAIN_THREAD)
-                                 .set_execute(
-                                     [this]()
-                                     {
-                                         execute_commands();
-                                     });
+    task_node& post_update_sync = task_graph.add_task();
+    post_update_sync.set_name("ECS Sync Point - PostUpdate")
+        .add_dependency(post_update)
+        .set_affinity(TASK_AFFINITY_MAIN)
+        .set_execute(
+            [this]()
+            {
+                execute_commands();
+            });
 
     return true;
 }

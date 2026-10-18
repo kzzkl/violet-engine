@@ -32,7 +32,7 @@ bool transform_system::initialize(const dictionary& config)
     task_graph.add_task()
         .set_name("Update Transform")
         .set_group(transform_group)
-        .set_options(TASK_OPTION_MAIN_THREAD)
+        .set_affinity(TASK_AFFINITY_MAIN)
         .set_execute(
             [this]()
             {

@@ -102,7 +102,7 @@ bool sample_system::initialize(const dictionary& config)
     task_graph.add_task()
         .set_name(get_name())
         .set_group(update)
-        .set_options(TASK_OPTION_MAIN_THREAD)
+        .set_affinity(TASK_AFFINITY_MAIN)
         .set_execute(
             [this]()
             {

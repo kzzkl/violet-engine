@@ -159,7 +159,7 @@ public:
                 continue;
             }
 
-            if (task->get_options() & TASK_OPTION_MAIN_THREAD)
+            if (task->get_affinity() & TASK_AFFINITY_MAIN)
             {
                 std::cout << "style " << info.id << " fill:#668" << '\n';
             }

@@ -1,7 +1,6 @@
 #include "core/engine.hpp"
 #include "common/log.hpp"
 #include "engine_context.hpp"
-#include "task/task_graph_printer.hpp"
 #include <algorithm>
 #include <fstream>
 #include <ranges>
@@ -58,11 +57,6 @@ task_graph& system::get_task_graph() noexcept
     return m_context->get_task_graph();
 }
 
-task_executor& system::get_task_executor() noexcept
-{
-    return m_context->get_task_executor();
-}
-
 application::application(std::string_view config_path)
 {
     std::vector<std::string> config_files;
@@ -89,6 +83,9 @@ application::application(std::string_view config_path)
     }
 
     m_context = std::make_unique<engine_context>();
+
+    auto& scheduler = task_scheduler::instance();
+    scheduler.run(m_config["engine"]["task_thread_count"]);
 }
 
 application::~application() = default;
@@ -107,19 +104,19 @@ void application::run()
     time.tick(timer::point::FRAME_START);
     time.tick(timer::point::FRAME_END);
 
-    auto& executor = m_context->get_task_executor();
+    auto& scheduler = task_scheduler::instance();
+
     auto& world = m_context->get_world();
 
-    m_context->get_task_graph().reset();
-    task_graph_printer::print(m_context->get_task_graph());
-
-    executor.run(m_config["engine"]["task_thread_count"]);
+    auto& graph = m_context->get_task_graph();
+    graph.print();
 
     while (!m_exit)
     {
         time.tick(timer::point::FRAME_START);
 
-        executor.execute_sync(m_context->get_task_graph());
+        graph.execute_sync(scheduler);
+
         world.add_version();
 
         time.tick(timer::point::FRAME_END);
@@ -127,7 +124,7 @@ void application::run()
         // frame_rater.sleep();
     }
 
-    executor.stop();
+    scheduler.stop();
     world.clear();
 
     // shutdown

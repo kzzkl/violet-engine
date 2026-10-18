@@ -1,23 +1,25 @@
 #pragma once
 
-#include "task/task_group.hpp"
-#include <future>
+#include "task/task_graph/task_group.hpp"
+#include "task/task_scheduler.hpp"
+#include <algorithm>
 #include <memory>
 
 namespace violet
 {
-class task_wrapper : public task
+class task_wrapper : public task_node
 {
 public:
     task_wrapper(task_graph* graph) noexcept
-        : task(graph)
+        : task_node(graph)
     {
     }
 
     std::vector<task_wrapper*> dependencies;
     std::vector<task_wrapper*> successors;
 
-    std::atomic<std::uint32_t> uncompleted_dependency_count{0};
+    task_event event;
+    task_handle handle;
 };
 
 class task_graph
@@ -26,7 +28,7 @@ public:
     task_graph() noexcept;
     virtual ~task_graph() = default;
 
-    task& add_task()
+    task_node& add_task()
     {
         auto node = std::make_unique<task_wrapper>(this);
         m_tasks.push_back(std::move(node));
@@ -44,14 +46,19 @@ public:
         return *m_groups.back();
     }
 
-    std::future<void> reset() noexcept;
+    task_handle execute(task_scheduler& scheduler);
+
+    void execute_sync(task_scheduler& scheduler)
+    {
+        execute(scheduler).wait();
+    }
 
     const std::vector<task_wrapper*>& get_root_tasks() const noexcept
     {
         return m_roots;
     }
 
-    task& get_task(std::string_view name) const
+    task_node& get_task(std::string_view name) const
     {
         for (const auto& t : m_tasks)
         {
@@ -102,23 +109,21 @@ public:
         return static_cast<std::uint32_t>(m_tasks.size());
     }
 
-    std::uint32_t get_main_thread_task_count() const noexcept
-    {
-        return m_main_thread_task_count;
-    }
-
-    void notify_task_complete();
-
     void notify_task_change()
     {
         m_dirty = true;
     }
 
-    void print_graph();
+    void print();
 
     auto& get_tasks()
     {
-        compile();
+        if (m_dirty)
+        {
+            compile();
+            m_dirty = false;
+        }
+
         return m_tasks;
     }
 
@@ -131,13 +136,10 @@ private:
 
     std::vector<task_wrapper*> m_roots;
 
-    bool m_dirty;
+    task_event m_done;
 
-    std::atomic<std::uint32_t> m_incomplete_count;
+    bool m_executing{false};
 
-    std::uint32_t m_main_thread_task_count{0};
-    std::uint32_t m_worker_thread_task_count{0};
-
-    std::promise<void> m_promise;
+    bool m_dirty{false};
 };
 } // namespace violet

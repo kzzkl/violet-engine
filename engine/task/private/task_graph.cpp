@@ -1,15 +1,66 @@
 #include "task/task_graph.hpp"
+#include "task_graph/task_graph_printer.hpp"
+#include <algorithm>
+#include <cassert>
 #include <stack>
 
 namespace violet
 {
-task_graph::task_graph() noexcept
-    : m_dirty(false),
-      m_incomplete_count(0)
+task_graph::task_graph() noexcept = default;
+
+task_handle task_graph::execute(task_scheduler& scheduler)
 {
+    assert(m_executing == false);
+
+    if (m_dirty)
+    {
+        compile();
+        m_dirty = false;
+    }
+
+    m_executing = true;
+
+    std::uint32_t leaf_count = 0;
+
+    for (auto& task : m_tasks)
+    {
+        task->event.reset();
+        task->event.add(static_cast<std::uint32_t>(task->dependencies.size()));
+
+        leaf_count += task->successors.empty() ? 1 : 0;
+    }
+
+    m_done.reset();
+    m_done.add(leaf_count);
+
+    for (auto& task : m_tasks)
+    {
+        task->handle = task->event.then(
+            [n = task.get(), this]()
+            {
+                n->execute();
+
+                for (task_wrapper* successor : n->successors)
+                {
+                    successor->event.notify();
+                }
+
+                if (n->successors.empty())
+                {
+                    m_done.notify();
+                }
+            },
+            task->get_affinity());
+    }
+
+    return m_done.then(
+        [&]()
+        {
+            m_executing = false;
+        });
 }
 
-std::future<void> task_graph::reset() noexcept
+void task_graph::print()
 {
     if (m_dirty)
     {
@@ -17,45 +68,17 @@ std::future<void> task_graph::reset() noexcept
         m_dirty = false;
     }
 
-    m_incomplete_count = m_main_thread_task_count + m_worker_thread_task_count;
-    m_promise = std::promise<void>();
-
-    return m_promise.get_future();
-}
-
-void task_graph::notify_task_complete()
-{
-    m_incomplete_count.fetch_sub(1);
-
-    std::uint32_t expected = 0;
-    if (m_incomplete_count.compare_exchange_strong(
-            expected,
-            static_cast<std::uint32_t>(m_tasks.size())))
-    {
-        m_promise.set_value();
-    }
+    task_graph_printer::print(*this);
 }
 
 void task_graph::compile()
 {
+    assert(m_executing == false);
+
     m_roots.clear();
-    m_main_thread_task_count = 0;
-    m_worker_thread_task_count = 0;
 
     for (auto& task : m_tasks)
     {
-        if (!task->is_empty())
-        {
-            if (task->get_options() & TASK_OPTION_MAIN_THREAD)
-            {
-                ++m_main_thread_task_count;
-            }
-            else // if (!task->is_empty())
-            {
-                ++m_worker_thread_task_count;
-            }
-        }
-
         task->dependencies.clear();
         task->successors.clear();
 
@@ -66,23 +89,18 @@ void task_graph::compile()
     }
 
     transitive_reduction();
-
-    for (auto& task : m_tasks)
-    {
-        task->uncompleted_dependency_count = static_cast<std::uint32_t>(task->dependencies.size());
-    }
 }
 
 void task_graph::transitive_reduction()
 {
     // Topological sort.
-    std::unordered_map<task*, std::size_t> in_edge;
+    std::unordered_map<task_node*, std::size_t> in_edge;
     for (auto& task : m_tasks)
     {
         in_edge[task.get()] = task->get_dependencies().size();
     }
 
-    std::stack<task*> stack;
+    std::stack<task_node*> stack;
     for (task_wrapper* root : m_roots)
     {
         stack.push(root);
@@ -91,10 +109,10 @@ void task_graph::transitive_reduction()
     std::vector<task_wrapper*> sorted_tasks;
     while (!stack.empty())
     {
-        task* node = stack.top();
+        task_node* node = stack.top();
         stack.pop();
 
-        for (task* successor : node->get_successors())
+        for (task_node* successor : node->get_successors())
         {
             if ((--in_edge[successor]) == 0)
             {
@@ -105,8 +123,10 @@ void task_graph::transitive_reduction()
         sorted_tasks.push_back(static_cast<task_wrapper*>(node));
     }
 
+    assert(sorted_tasks.size() == m_tasks.size() && "cycle in the task graph");
+
     // Transitive reduction.
-    std::unordered_map<task*, std::uint8_t> task_flags;
+    std::unordered_map<task_node*, std::uint8_t> task_flags;
     for (int i = 1; i < sorted_tasks.size(); ++i)
     {
         for (int j = 0; j < i; ++j)
@@ -122,8 +142,7 @@ void task_graph::transitive_reduction()
             if (task_flags[prev_task] == 0)
             {
                 auto prev_task_successors = prev_task->get_successors();
-                auto iter =
-                    std::find(prev_task_successors.begin(), prev_task_successors.end(), curr_task);
+                auto iter = std::ranges::find(prev_task_successors, curr_task);
                 if (iter != prev_task_successors.end())
                 {
                     curr_task->dependencies.push_back(prev_task);
@@ -134,7 +153,7 @@ void task_graph::transitive_reduction()
 
             if (task_flags[prev_task] != 0)
             {
-                for (task* dependency : prev_task->get_dependencies())
+                for (task_node* dependency : prev_task->get_dependencies())
                 {
                     task_flags[dependency] = 1;
                 }

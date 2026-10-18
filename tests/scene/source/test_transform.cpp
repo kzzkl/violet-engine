@@ -1,3 +1,4 @@
+#include "components/hierarchy_component.hpp"
 #include "test_scene_common.hpp"
 
 namespace violet::test

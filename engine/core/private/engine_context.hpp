@@ -3,7 +3,6 @@
 #include "core/engine.hpp"
 #include "core/timer.hpp"
 #include "ecs/world.hpp"
-#include "task/task_executor.hpp"
 
 namespace violet
 {
@@ -43,11 +42,6 @@ public:
         return m_task_graph;
     }
 
-    task_executor& get_task_executor() noexcept
-    {
-        return m_executor;
-    }
-
 private:
     std::vector<system*> m_systems;
 
@@ -55,7 +49,6 @@ private:
     std::unique_ptr<world> m_world;
 
     task_graph m_task_graph;
-    task_executor m_executor;
 
     std::atomic<bool> m_exit;
 };

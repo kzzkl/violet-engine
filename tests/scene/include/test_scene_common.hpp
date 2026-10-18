@@ -1,12 +1,8 @@
 #pragma once
 
-#include "components/hierarchy_component.hpp"
 #include "components/transform_component.hpp"
-#include "core/engine.hpp"
 #include "ecs/world.hpp"
-#include "math/quaternion.hpp"
 #include "scene/transform_system.hpp"
-#include "task/task_executor.hpp"
 #include "task/task_graph.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
@@ -16,12 +12,11 @@ namespace violet::test
 extern world* g_world;
 extern transform_system* g_transform_system;
 extern task_graph* g_task_graph;
-extern task_executor* g_task_executor;
 
 // Run one full frame tick: processes hierarchy changes, then updates local and world matrices.
 inline void tick()
 {
-    g_task_executor->execute_sync(*g_task_graph);
+    g_task_graph->execute_sync(task_scheduler::instance());
     g_world->add_version();
 }
 

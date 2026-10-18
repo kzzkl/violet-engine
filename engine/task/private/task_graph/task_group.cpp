@@ -1,4 +1,4 @@
-#include "task/task_group.hpp"
+#include "task/task_graph/task_group.hpp"
 #include "task/task_graph.hpp"
 #include <cassert>
 
@@ -25,7 +25,7 @@ task_group& task_group::set_group(task_group& group)
     return *this;
 }
 
-void task_group::add_dependency_impl(task& dependency)
+void task_group::add_dependency_impl(task_node& dependency)
 {
     m_begin->add_dependency(dependency);
 }
