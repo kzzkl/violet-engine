@@ -28,7 +28,7 @@ bool window_system::initialize(const dictionary& config)
     task_graph.add_task()
         .set_name("Update Window")
         .set_group(pre_update)
-        .set_options(TASK_OPTION_MAIN_THREAD)
+        .set_affinity(TASK_AFFINITY_MAIN)
         .set_execute(
             [this]()
             {
@@ -114,11 +114,11 @@ void window_system::tick()
             break;
         }
         case window_message::message_type::WINDOW_RESIZE: {
-            get_task_executor().execute_sync(m_on_resize);
+            m_on_resize.execute(task_scheduler::instance());
             break;
         }
         case window_message::message_type::WINDOW_DESTROY: {
-            get_task_executor().execute_sync(m_on_destroy);
+            m_on_destroy.execute(task_scheduler::instance());
             break;
         }
         default:

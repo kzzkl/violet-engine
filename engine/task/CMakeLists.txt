@@ -1,8 +1,9 @@
 add_library(violet-task STATIC
-    private/task_executor.cpp
+    private/task_graph/task_group.cpp
+    private/task_graph/task_node.cpp
     private/task_graph.cpp
-    private/task_group.cpp
-    private/task.cpp)
+    private/task_queue.cpp
+    private/task_scheduler.cpp)
 add_library(violet::task ALIAS violet-task)
 
 target_include_directories(violet-task

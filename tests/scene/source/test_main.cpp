@@ -1,29 +1,29 @@
 #include "core/engine.hpp"
+#include "ecs/world.hpp"
 #include "scene/scene_system.hpp"
 #include "scene/transform_system.hpp"
-#include "task/task_executor.hpp"
 #include "task/task_graph.hpp"
-#include "ecs/world.hpp"
 #include <catch2/catch_all.hpp>
 
 namespace violet::test
 {
-world*            g_world            = nullptr;
+world* g_world = nullptr;
 transform_system* g_transform_system = nullptr;
-task_graph*       g_task_graph       = nullptr;
-task_executor*    g_task_executor    = nullptr;
+task_graph* g_task_graph = nullptr;
 
 class scene_test_helper : public system
 {
 public:
-    scene_test_helper() : system("scene-test-helper") {}
+    scene_test_helper()
+        : system("scene-test-helper")
+    {
+    }
 
     bool initialize(const dictionary& config) override
     {
-        g_world            = &get_world();
+        g_world = &get_world();
         g_transform_system = &get_system<transform_system>();
-        g_task_graph       = &get_task_graph();
-        g_task_executor    = &get_task_executor();
+        g_task_graph = &get_task_graph();
         return true;
     }
 };

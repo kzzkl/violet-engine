@@ -190,7 +190,11 @@ bool vk_context::initialize_instance(
         extensions,
         [&registry](vk_extension* extension)
         {
-            if (!extension->evaluate_for_instance(registry))
+            if (extension->evaluate_for_instance(registry))
+            {
+                extension->commit_for_instance(registry);
+            }
+            else
             {
                 extension->m_enabled = false;
             }
@@ -359,7 +363,11 @@ bool vk_context::initialize_physical_device(
         extensions,
         [&](vk_extension* extension)
         {
-            if (!extension->evaluate_for_device(registry))
+            if (extension->evaluate_for_device(registry))
+            {
+                extension->commit_for_device(registry);
+            }
+            else
             {
                 extension->m_enabled = false;
             }

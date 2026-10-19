@@ -3,6 +3,7 @@
 #include "graphics/distance_field/sdf_common.hpp"
 #include "math/ray.hpp"
 #include "math/triangle.hpp"
+#include "task/parallel_for.hpp"
 #include <cstddef>
 #include <fstream>
 
@@ -172,35 +173,47 @@ private:
 
         std::size_t data_offset = m_actual_brick_count * SDF_BRICK_VOXEL_COUNT;
 
+        std::vector<float> distances(SDF_BRICK_VOXEL_COUNT, m_max_distance);
+
+        auto get_voxel_position = [&](std::size_t index)
+        {
+            std::size_t x = index % SDF_BRICK_SIZE;
+            index /= SDF_BRICK_SIZE;
+            std::size_t y = index % SDF_BRICK_SIZE;
+            std::size_t z = index / SDF_BRICK_SIZE;
+
+            vec3f voxel_position = vector::mul(
+                m_voxel_extent,
+                vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)));
+            return vector::add(voxel_position, brick_position);
+        };
+
+        parallel_for(
+            0,
+            SDF_BRICK_VOXEL_COUNT,
+            [&](std::size_t index)
+            {
+                vec3f p = get_voxel_position(index);
+
+                auto [primitive_index, distance] = m_bvh.get_distance(p, m_max_distance);
+                if (primitive_index != BVH_INVALID_PRIMITIVE_INDEX)
+                {
+                    distance *= get_distance_sign(p);
+                    m_brick_data[data_offset + index] = encode_distance(distance);
+
+                    distances[index] = distance;
+                }
+                else
+                {
+                    m_brick_data[data_offset + index] = 255;
+                }
+            });
+
         float min_distance = m_max_distance;
 
-        for (std::uint32_t z = 0; z < SDF_BRICK_SIZE; ++z)
+        for (float distance : distances)
         {
-            for (std::uint32_t y = 0; y < SDF_BRICK_SIZE; ++y)
-            {
-                for (std::uint32_t x = 0; x < SDF_BRICK_SIZE; ++x)
-                {
-                    vec3f p = vector::mul(
-                        m_voxel_extent,
-                        vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)));
-                    p = vector::add(p, brick_position);
-
-                    auto [primitive_index, distance] = m_bvh.get_distance(p, m_max_distance);
-                    if (primitive_index != BVH_INVALID_PRIMITIVE_INDEX)
-                    {
-                        distance *= get_distance_sign(p);
-                        m_brick_data[data_offset] = encode_distance(distance);
-
-                        min_distance = std::min(min_distance, distance);
-                    }
-                    else
-                    {
-                        m_brick_data[data_offset] = 255;
-                    }
-
-                    ++data_offset;
-                }
-            }
+            min_distance = std::min(min_distance, distance);
         }
 
         if (min_distance < m_max_distance)

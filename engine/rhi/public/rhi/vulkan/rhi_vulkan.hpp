@@ -2,6 +2,7 @@
 
 #include "rhi/rhi.hpp"
 #include "rhi/vulkan/vk_traits.hpp"
+#include <algorithm>
 #include <list>
 #include <set>
 #include <string>
@@ -41,6 +42,13 @@ public:
                                  reinterpret_cast<VkBaseOutStructure*>(m_chain.front().data());
     }
 
+    const VkBaseOutStructure* get_head() const
+    {
+        return m_chain.empty() ?
+                   nullptr :
+                   reinterpret_cast<const VkBaseOutStructure*>(m_chain.front().data());
+    }
+
     template <typename T>
     T* get()
     {
@@ -50,6 +58,23 @@ public:
             if (head->sType == vk_structure_traits<T>::type)
             {
                 return reinterpret_cast<T*>(head);
+            }
+
+            head = head->pNext;
+        }
+
+        return nullptr;
+    }
+
+    template <typename T>
+    const T* get() const
+    {
+        const VkBaseOutStructure* head = get_head();
+        while (head != nullptr)
+        {
+            if (head->sType == vk_structure_traits<T>::type)
+            {
+                return reinterpret_cast<const T*>(head);
             }
 
             head = head->pNext;
@@ -76,14 +101,32 @@ private:
 class vk_extension_registry
 {
 public:
-    bool is_layer_available(const char* layer) const
+    bool check_layer(const char* layer) const
     {
         return m_available_layers.contains(layer);
+    }
+
+    bool check_layers(const std::vector<const char*>& layers) const
+    {
+        return std::ranges::all_of(
+            layers,
+            [this](const char* layer)
+            {
+                return check_layer(layer);
+            });
     }
 
     void request_layer(const char* layer)
     {
         m_requested_layers.insert(layer);
+    }
+
+    void request_layers(const std::vector<const char*>& layers)
+    {
+        for (const auto& layer : layers)
+        {
+            request_layer(layer);
+        }
     }
 
     std::vector<const char*> get_equested_layers() const
@@ -97,14 +140,32 @@ public:
         return layers;
     }
 
-    bool is_instance_extension_available(const char* extension) const
+    bool check_instance_extension(const char* extension) const
     {
         return m_available_instance_extensions.contains(extension);
+    }
+
+    bool check_instance_extensions(const std::vector<const char*>& extensions) const
+    {
+        return std::ranges::all_of(
+            extensions,
+            [this](const char* extension)
+            {
+                return check_instance_extension(extension);
+            });
     }
 
     void request_instance_extension(const char* extension)
     {
         m_requested_instance_extensions.insert(extension);
+    }
+
+    void request_instance_extensions(const std::vector<const char*>& extensions)
+    {
+        for (const auto& extension : extensions)
+        {
+            request_instance_extension(extension);
+        }
     }
 
     std::vector<const char*> get_requested_instance_extensions() const
@@ -118,9 +179,19 @@ public:
         return extensions;
     }
 
-    bool is_device_extension_available(const char* extension) const
+    bool check_device_extension(const char* extension) const
     {
         return m_available_device_extensions.contains(extension);
+    }
+
+    bool check_device_extensions(const std::vector<const char*>& extensions) const
+    {
+        return std::ranges::all_of(
+            extensions,
+            [this](const char* extension)
+            {
+                return check_device_extension(extension);
+            });
     }
 
     void request_device_extension(const char* extension)
@@ -156,7 +227,7 @@ public:
     }
 
     template <typename T>
-    const T& get_available_feature()
+    const T& get_available_feature() const
     {
         return *m_available_features.get<T>();
     }
@@ -191,15 +262,19 @@ public:
         return m_enabled;
     }
 
-    virtual bool evaluate_for_instance(vk_extension_registry& registry)
+    virtual bool evaluate_for_instance(const vk_extension_registry& registry) const
     {
         return true;
     }
 
-    virtual bool evaluate_for_device(vk_extension_registry& registry)
+    virtual void commit_for_instance(vk_extension_registry& registry) {}
+
+    virtual bool evaluate_for_device(const vk_extension_registry& registry) const
     {
         return true;
     }
+
+    virtual void commit_for_device(vk_extension_registry& registry) {}
 
     virtual void add_feature_query(vk_extension_registry& registry) const {}
 

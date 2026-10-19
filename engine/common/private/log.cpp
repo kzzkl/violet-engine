@@ -9,7 +9,7 @@ log::log()
 {
     m_logger = spdlog::stdout_color_mt("console");
     m_logger->set_level(spdlog::level::trace);
-    m_logger->set_pattern("%T.%e %^%-5l%$ | %v");
+    m_logger->set_pattern("%T.%e %L %6t | %v");
 }
 
 log::~log()
@@ -27,7 +27,7 @@ void log::initialize(std::string_view file_path)
 {
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_level(spdlog::level::trace);
-    console_sink->set_pattern("%T.%e %^%-5l%$ | %v");
+    console_sink->set_pattern("%T.%e %L %6t | %v");
 
     std::vector<spdlog::sink_ptr> sinks = {console_sink};
 
@@ -35,7 +35,7 @@ void log::initialize(std::string_view file_path)
     {
         auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file_path.data());
         file_sink->set_level(spdlog::level::trace);
-        file_sink->set_pattern("%T.%e %^%-5l%$ | %v");
+        file_sink->set_pattern("%T.%e %L %6t | %v");
         file_sink->should_log(spdlog::level::trace);
 
         sinks.push_back(file_sink);

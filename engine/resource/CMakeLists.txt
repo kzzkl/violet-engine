@@ -1,5 +1,5 @@
 add_library(violet-resource STATIC
-    private/resource_manager.cpp)
+    private/stream_manager.cpp)
 add_library(violet::resource ALIAS violet-resource)
 
 target_include_directories(violet-resource

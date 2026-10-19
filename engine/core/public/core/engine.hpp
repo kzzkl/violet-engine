@@ -4,7 +4,7 @@
 #include "common/type_index.hpp"
 #include "core/timer.hpp"
 #include "ecs/world.hpp"
-#include "task/task_executor.hpp"
+#include "task/task_graph.hpp"
 
 namespace violet
 {
@@ -43,7 +43,6 @@ protected:
     world& get_world();
 
     task_graph& get_task_graph() noexcept;
-    task_executor& get_task_executor() noexcept;
 
 private:
     friend class application;

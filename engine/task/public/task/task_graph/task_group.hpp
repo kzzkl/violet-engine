@@ -1,6 +1,6 @@
 #pragma once
 
-#include "task/task.hpp"
+#include "task/task_graph/task_node.hpp"
 
 namespace violet
 {
@@ -29,12 +29,12 @@ public:
 
     task_group& set_group(task_group& group);
 
-    task& get_begin_task()
+    task_node& get_begin_task()
     {
         return *m_begin;
     }
 
-    task& get_end_task()
+    task_node& get_end_task()
     {
         return *m_end;
     }
@@ -47,14 +47,14 @@ public:
     }
 
 private:
-    void add_dependency_impl(task& dependency);
+    void add_dependency_impl(task_node& dependency);
     void add_dependency_impl(task_group& dependency);
 
     std::string m_name;
     task_graph* m_graph{nullptr};
     task_group* m_group{nullptr};
 
-    task* m_begin{nullptr};
-    task* m_end{nullptr};
+    task_node* m_begin{nullptr};
+    task_node* m_end{nullptr};
 };
 } // namespace violet
