@@ -2,6 +2,7 @@
 #include "assimp_loader.hpp"
 #include "common/log.hpp"
 #include "gltf_loader.hpp"
+#include "task/parallel_for.hpp"
 #include "tools/distance_field_tool.hpp"
 #include "tools/geometry_tool.hpp"
 #include "tools/texture_tool.hpp"
@@ -618,79 +619,55 @@ bool mesh_loader_compress_textures(mesh_loader::scene_data& scene_data)
 
 bool mesh_loader_generate_distance_field(mesh_loader::scene_data& scene_data)
 {
-    std::vector<std::thread> threads(
-        std::min<std::uint32_t>(std::thread::hardware_concurrency(), scene_data.geometries.size()));
-
     scene_data.distance_fields.resize(scene_data.geometries.size());
 
-    std::atomic<std::size_t> offset = 0;
     std::atomic<std::uint32_t> total = 0;
 
-    for (auto& thread : threads)
-    {
-        thread = std::thread(
-            [&]()
+    parallel_for(
+        scene_data.distance_fields,
+        [&](std::size_t index, distance_field& distance_field)
+        {
+            auto& geometry = scene_data.geometries[index];
+            geometry.distance_field = static_cast<std::int32_t>(index);
+
+            std::vector<std::uint32_t> indexes;
+            std::size_t index_count = 0;
+            for (const auto& submesh : geometry.submeshes)
             {
-                while (true)
-                {
-                    std::uint32_t index = offset.fetch_add(1);
+                index_count += submesh.index_count;
+            }
+            indexes.resize(index_count);
 
-                    if (index >= scene_data.geometries.size())
+            std::uint32_t index_offset = 0;
+            for (std::size_t i = 0; i < geometry.submeshes.size(); ++i)
+            {
+                const auto& submesh = geometry.submeshes[i];
+                std::ranges::transform(
+                    geometry.indexes.begin() + submesh.index_offset,
+                    geometry.indexes.begin() + submesh.index_offset + submesh.index_count,
+                    indexes.begin() + index_offset,
+                    [&](std::uint32_t index) -> std::uint32_t
                     {
-                        break;
-                    }
-
-                    auto& geometry = scene_data.geometries[index];
-                    geometry.distance_field = static_cast<std::int32_t>(index);
-
-                    std::vector<std::uint32_t> indexes;
-                    std::size_t index_count = 0;
-                    for (const auto& submesh : geometry.submeshes)
-                    {
-                        index_count += submesh.index_count;
-                    }
-                    indexes.resize(index_count);
-
-                    std::uint32_t index_offset = 0;
-                    for (std::size_t i = 0; i < geometry.submeshes.size(); ++i)
-                    {
-                        const auto& submesh = geometry.submeshes[i];
-                        std::ranges::transform(
-                            geometry.indexes.begin() + submesh.index_offset,
-                            geometry.indexes.begin() + submesh.index_offset + submesh.index_count,
-                            indexes.begin() + index_offset,
-                            [&](std::uint32_t index) -> std::uint32_t
-                            {
-                                return index + submesh.vertex_offset;
-                            });
-
-                        index_offset += submesh.index_count;
-                    }
-
-                    auto output = distance_field_tool::generate({
-                        .positions = geometry.positions,
-                        .indexes = indexes,
+                        return index + submesh.vertex_offset;
                     });
 
-                    scene_data.distance_fields[index] = {
-                        .brick_count = output.brick_count,
-                        .volume_bounds = output.volume_bounds,
-                        .brick_table = std::move(output.brick_table),
-                        .brick_data = std::move(output.brick_data),
-                    };
+                index_offset += submesh.index_count;
+            }
 
-                    log::info(
-                        "generate distance field: {} / {}",
-                        ++total,
-                        scene_data.geometries.size());
-                }
+            auto output = distance_field_tool::generate({
+                .positions = geometry.positions,
+                .indexes = indexes,
             });
-    }
 
-    for (auto& thread : threads)
-    {
-        thread.join();
-    }
+            distance_field = {
+                .brick_count = output.brick_count,
+                .volume_bounds = output.volume_bounds,
+                .brick_table = std::move(output.brick_table),
+                .brick_data = std::move(output.brick_data),
+            };
+
+            log::info("generate distance field: {} / {}", ++total, scene_data.geometries.size());
+        });
 
     return true;
 }

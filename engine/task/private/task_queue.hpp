@@ -17,8 +17,6 @@ public:
 
     task_block* try_steal() noexcept;
 
-    std::size_t get_size_approx() const noexcept;
-
 private:
     std::size_t m_capacity;
     std::size_t m_mask;

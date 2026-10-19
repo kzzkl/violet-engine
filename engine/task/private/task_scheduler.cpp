@@ -119,8 +119,17 @@ void task_handle::release()
     }
 }
 
+task_event::task_event(std::uint32_t count)
+    : m_count(count)
+{
+}
+
 task_event::~task_event()
 {
+    // The owner must guarantee that no thread is inside wait() / then() when the event is
+    // destroyed. The destructor's lock only serialises against an in-flight notify().
+    std::scoped_lock lock(m_mutex);
+
     assert(m_count.load(std::memory_order_relaxed) == 0);
 
     if (m_latch != nullptr)
@@ -132,20 +141,6 @@ task_event::~task_event()
     }
 }
 
-void task_event::add(const task_handle& handle)
-{
-    assert(handle.is_valid() && "add() with an empty handle");
-
-    m_count.fetch_add(1, std::memory_order_relaxed);
-
-    handle.then(
-        [this]
-        {
-            notify();
-        },
-        TASK_AFFINITY_ANY);
-}
-
 void task_event::add(std::uint32_t count)
 {
     if (count == 0)
@@ -153,7 +148,7 @@ void task_event::add(std::uint32_t count)
         return;
     }
 
-    assert(!m_fired.load(std::memory_order_relaxed));
+    assert(!m_fired.load(std::memory_order_relaxed) && "add() after the event fired");
 
     m_count.fetch_add(count, std::memory_order_relaxed);
 }
@@ -169,24 +164,21 @@ void task_event::notify()
     }
 
     std::vector<task_block*> waiters;
-    task_block* latch = nullptr;
     {
-        std::lock_guard lock(m_mutex);
+        std::scoped_lock lock(m_mutex);
         m_fired.store(true, std::memory_order_release);
         waiters.swap(m_waiters);
 
-        latch = m_latch;
+        if (m_latch != nullptr)
+        {
+            m_latch->state.store(TASK_STATE_COMPLETE, std::memory_order_release);
+            m_latch->state.notify_all();
+        }
     }
 
     for (task_block* block : waiters)
     {
         block->scheduler->enqueue(block);
-    }
-
-    if (latch != nullptr)
-    {
-        latch->state.store(TASK_STATE_COMPLETE, std::memory_order_release);
-        latch->state.notify_all();
     }
 }
 
@@ -199,6 +191,8 @@ void task_event::reset()
 {
     assert(m_count.load(std::memory_order_relaxed) == 0);
     assert(m_waiters.empty());
+
+    std::scoped_lock lock(m_mutex);
 
     m_count.store(0, std::memory_order_relaxed);
     m_fired.store(false, std::memory_order_release);
@@ -237,6 +231,10 @@ task_scheduler::task_scheduler() = default;
 task_scheduler::~task_scheduler()
 {
     stop();
+
+    m_workers.clear();
+    m_main_local_allocator.reset();
+    m_shared_allocator.reset();
 }
 
 task_scheduler& task_scheduler::instance()
@@ -253,8 +251,11 @@ void task_scheduler::run(std::uint32_t worker_count)
 
     if (worker_count == 0)
     {
-        worker_count = std::thread::hardware_concurrency();
+        worker_count = std::max<std::uint32_t>(std::thread::hardware_concurrency(), 2u) - 1;
     }
+
+    m_workers.clear();
+    m_main_local_allocator.reset();
 
     m_workers.resize(worker_count);
     m_threads.resize(worker_count);
@@ -283,6 +284,7 @@ void task_scheduler::run(std::uint32_t worker_count)
     m_running.store(true, std::memory_order_release);
 
     m_shared_allocator = std::make_unique<task_allocator_shared>();
+    m_main_local_allocator = std::make_unique<task_allocator_local>(m_shared_allocator.get());
 
     for (std::uint32_t i = 0; i < worker_count; ++i)
     {
@@ -506,6 +508,32 @@ task_block* task_scheduler::try_pop_work()
     return nullptr;
 }
 
+task_block* task_scheduler::try_pop_help_work()
+{
+    if (task_block* block = m_global_queue->try_pop())
+    {
+        return block;
+    }
+
+    const auto count = static_cast<std::uint32_t>(m_work_queues.size());
+    if (count == 0)
+    {
+        return nullptr;
+    }
+
+    const std::uint32_t start = m_steal_cursor.fetch_add(1, std::memory_order_relaxed);
+
+    for (std::uint32_t i = 0; i < count; ++i)
+    {
+        if (task_block* block = m_work_queues[(start + i) % count]->try_steal())
+        {
+            return block;
+        }
+    }
+
+    return nullptr;
+}
+
 void task_scheduler::notify(std::atomic<std::uint32_t>& sequence)
 {
     sequence.fetch_add(1, std::memory_order_release);
@@ -560,10 +588,18 @@ void task_scheduler::wait(task_block* block)
         switch (thread_type)
         {
         case TASK_THREAD_MAIN: {
-            if (pump_main(1, std::chrono::microseconds(0)) == 0)
+            if (pump_main(1, std::chrono::microseconds(0)) > 0)
             {
-                std::this_thread::yield();
+                break;
             }
+
+            if (task_block* work = try_pop_help_work())
+            {
+                execute(work);
+                break;
+            }
+
+            std::this_thread::yield();
             break;
         }
         case TASK_THREAD_WORKER: {
@@ -603,23 +639,30 @@ void task_scheduler::dispatch_continuations(task_block* block)
 
 task_block* task_scheduler::allocate_block()
 {
-    if (get_thread_type() == TASK_THREAD_WORKER)
+    switch (get_thread_type())
     {
+    case TASK_THREAD_MAIN:
+        return m_main_local_allocator->allocate();
+    case TASK_THREAD_WORKER:
         return m_current_worker->local_allocator->allocate();
+    default:
+        return m_shared_allocator->allocate();
     }
-
-    return m_shared_allocator->allocate();
 }
 
 void task_scheduler::free_block(task_block* block)
 {
-    if (get_thread_type() == TASK_THREAD_WORKER)
+    switch (get_thread_type())
     {
+    case TASK_THREAD_MAIN:
+        m_main_local_allocator->free(block);
+        break;
+    case TASK_THREAD_WORKER:
         m_current_worker->local_allocator->free(block);
-    }
-    else
-    {
+        break;
+    default:
         m_shared_allocator->free(block);
+        break;
     }
 }
 } // namespace violet

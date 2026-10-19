@@ -1,1 +1,0 @@
-#include "resource/resource_manager.hpp"

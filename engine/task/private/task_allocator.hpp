@@ -1,6 +1,7 @@
 #pragma once
 
 #include "task/task_block.hpp"
+#include <array>
 #include <mutex>
 #include <span>
 
@@ -52,18 +53,20 @@ public:
 
         m_free_blocks.insert(m_free_blocks.end(), blocks.begin(), blocks.end());
 
-        if (m_free_blocks.size() > 500)
+        if (m_free_blocks.size() > capacity)
         {
-            for (std::size_t i = 500; i < m_free_blocks.size(); ++i)
+            for (std::size_t i = capacity; i < m_free_blocks.size(); ++i)
             {
                 delete m_free_blocks[i];
             }
 
-            m_free_blocks.erase(m_free_blocks.begin(), m_free_blocks.begin() + 500);
+            m_free_blocks.resize(capacity);
         }
     }
 
 private:
+    static constexpr std::size_t capacity = 4096;
+
     std::vector<task_block*> m_free_blocks;
 
     std::mutex m_mutex;
@@ -77,38 +80,61 @@ public:
     {
     }
 
+    ~task_allocator_local()
+    {
+        if (m_count > 0)
+        {
+            m_shared_allocator->free(
+                std::span(
+                    m_blocks.begin(),
+                    m_blocks.begin() + static_cast<std::ptrdiff_t>(m_count)));
+        }
+    }
+
     task_block* allocate()
     {
-        if (m_free_blocks.empty())
+        if (m_count == 0)
         {
-            m_free_blocks.resize(16);
+            std::size_t allocate_count = m_shared_allocator->allocate(
+                std::span(m_blocks.begin(), m_blocks.begin() + batch_size));
 
-            std::size_t allocate_count = m_shared_allocator->allocate(m_free_blocks);
-
-            for (std::size_t i = allocate_count; i < 16; ++i)
+            for (std::size_t i = allocate_count; i < batch_size; ++i)
             {
-                m_free_blocks[i] = new task_block();
+                m_blocks[i] = new task_block();
             }
+
+            m_count = batch_size;
         }
 
-        task_block* block = m_free_blocks.back();
-        m_free_blocks.pop_back();
-        return block;
+        return m_blocks[--m_count];
     }
 
     void free(task_block* block)
     {
-        m_free_blocks.push_back(block);
+        block->continuation_head = nullptr;
 
-        if (m_free_blocks.size() > 100)
+        std::size_t slot = m_count++;
+
+        m_blocks[slot] = block;
+
+        if (m_count > high_water)
         {
-            m_shared_allocator->free(std::span(m_free_blocks.begin() + 100, m_free_blocks.end()));
-            m_free_blocks.resize(100);
+            m_shared_allocator->free(
+                std::span(
+                    m_blocks.begin() + low_water,
+                    m_blocks.begin() + static_cast<std::ptrdiff_t>(m_count)));
+            m_count = low_water;
         }
     }
 
 private:
-    std::vector<task_block*> m_free_blocks;
+    static constexpr std::size_t capacity = 256;
+    static constexpr std::size_t high_water = 200;
+    static constexpr std::size_t low_water = 100;
+    static constexpr std::size_t batch_size = 16;
+
+    std::array<task_block*, capacity> m_blocks;
+    std::size_t m_count{0};
 
     task_allocator_shared* m_shared_allocator;
 };

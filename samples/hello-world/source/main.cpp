@@ -43,10 +43,10 @@ public:
         if (config.contains("model"))
         {
             load_options options = 0;
-            options |= LOAD_OPTION_GENERATE_CLUSTERS;
-            options |= LOAD_OPTION_GENERATE_MIPMAPS;
-            options |= LOAD_OPTION_COMPRESS_TEXTURES;
-            // options |= LOAD_OPTION_GENERATE_DISTANCE_FIELD;
+            // options |= LOAD_OPTION_GENERATE_CLUSTERS;
+            // options |= LOAD_OPTION_GENERATE_MIPMAPS;
+            // options |= LOAD_OPTION_COMPRESS_TEXTURES;
+            options |= LOAD_OPTION_GENERATE_DISTANCE_FIELD;
             // options |= LOAD_OPTION_DYNAMIC_MESH;
 
             m_root = load_model(config["model"], options);

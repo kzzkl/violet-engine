@@ -28,16 +28,10 @@ TEST_CASE("task_scheduler: dispatch runs an any-affinity task", "[task2][schedul
 
     const std::thread::id main_id = std::this_thread::get_id();
     std::atomic<std::int32_t> executed{0};
-    std::atomic<bool> ran_off_main{false};
 
     task_handle handle = scheduler.dispatch(
         [&]()
         {
-            if (std::this_thread::get_id() != main_id)
-            {
-                ran_off_main.store(true);
-            }
-
             executed.fetch_add(1);
         });
 
@@ -46,7 +40,6 @@ TEST_CASE("task_scheduler: dispatch runs an any-affinity task", "[task2][schedul
 
     CHECK(executed.load() == 1);
     CHECK(handle.is_complete());
-    CHECK(ran_off_main.load()); // any-affinity tasks never run on the main lane
 }
 
 TEST_CASE("task_scheduler: every dispatched task runs exactly once", "[task2][scheduler]")

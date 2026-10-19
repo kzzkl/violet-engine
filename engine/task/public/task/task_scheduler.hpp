@@ -44,9 +44,9 @@ private:
 class task_event
 {
 public:
+    task_event(std::uint32_t count = 0);
     ~task_event();
 
-    void add(const task_handle& handle);
     void add(std::uint32_t count);
 
     void notify();
@@ -120,6 +120,11 @@ public:
         return m_thread_type;
     }
 
+    std::size_t get_worker_count() const noexcept
+    {
+        return m_workers.size();
+    }
+
 private:
     struct task_worker
     {
@@ -135,6 +140,7 @@ private:
     void execute(task_block* block);
 
     task_block* try_pop_work();
+    task_block* try_pop_help_work();
 
     void notify(std::atomic<std::uint32_t>& sequence);
     void park(std::atomic<std::uint32_t>& sequence, std::uint32_t observed);
@@ -167,6 +173,7 @@ private:
     std::atomic<bool> m_running{false};
 
     std::unique_ptr<task_allocator_shared> m_shared_allocator;
+    std::unique_ptr<task_allocator_local> m_main_local_allocator;
 
     friend class task_handle;
     friend class task_event;

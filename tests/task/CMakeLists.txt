@@ -3,6 +3,7 @@ project(test-task)
 add_executable(${PROJECT_NAME}
     ./source/test_main.cpp
     ./source/test_task_graph.cpp
+    ./source/test_task_parallel_for.cpp
     ./source/test_task_queue.cpp
     ./source/test_task_scheduler.cpp)
 
