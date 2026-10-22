@@ -129,7 +129,7 @@ void surface_cache_renderer::render_surface(
 {
     auto& device = render_device::instance();
 
-    const box3f& volume_bounds = geometry->get_distance_field().volume_bounds;
+    const box3f& volume_bounds = geometry->get_sdf()->get_volume_bounds();
 
     vec3f volume_center = box::get_center(volume_bounds);
     float volume_extent = vector::max(box::get_extent(volume_bounds));

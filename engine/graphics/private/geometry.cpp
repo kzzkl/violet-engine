@@ -1,13 +1,32 @@
 #include "graphics/geometry.hpp"
 #include "distance_field/distance_field_manager.hpp"
+#include "graphics/extensions/ray_tracing_extension.hpp"
 #include "graphics/geometry_manager.hpp"
+#include <algorithm>
 
 namespace violet
 {
-geometry::geometry()
+geometry::geometry(geometry_flags flags)
 {
-    auto* geometry_manager = render_device::instance().get_geometry_manager();
+    auto& device = render_device::instance();
+    auto* geometry_manager = device.get_geometry_manager();
     m_geometry_id = geometry_manager->add_geometry(this);
+
+    if (flags & GEOMETRY_FLAG_SDF)
+    {
+        m_sdf = std::make_unique<geometry_sdf>();
+    }
+
+    if ((flags & GEOMETRY_FLAG_BLAS) && device.has_extension<ray_tracing_extension>())
+    {
+        m_blas = std::make_unique<geometry_blas>();
+        mark_dirty(DIRTY_FLAG_BLAS);
+    }
+
+    if (flags & GEOMETRY_FLAG_MORPH)
+    {
+        m_morph = std::make_unique<geometry_morph>();
+    }
 }
 
 geometry::~geometry()
@@ -16,9 +35,9 @@ geometry::~geometry()
 
     auto& device = render_device::instance();
 
-    if (m_distance_field_id != INVALID_RENDER_ID)
+    if (m_sdf != nullptr && m_sdf->m_distance_field_id != INVALID_RENDER_ID)
     {
-        device.get_distance_field_manager()->remove_distance_field(m_distance_field_id);
+        device.get_distance_field_manager()->remove_distance_field(m_sdf->m_distance_field_id);
     }
 
     device.get_geometry_manager()->remove_geometry(m_geometry_id);
@@ -172,20 +191,6 @@ void geometry::clear_submeshes()
     m_submesh_ids.clear();
 }
 
-void geometry::add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
-{
-    if (m_morph_target_buffer == nullptr)
-    {
-        m_morph_target_buffer = std::make_unique<morph_target_buffer>();
-    }
-
-    m_morph_name_to_index.insert_or_assign(
-        std::string(name),
-        m_morph_target_buffer->get_morph_target_count());
-
-    m_morph_target_buffer->add_morph_target(elements);
-}
-
 void geometry::set_additional_buffer(
     std::string_view name,
     const void* data,
@@ -235,6 +240,11 @@ void geometry::update()
     if (m_dirty_flags & DIRTY_FLAG_DISTANCE_FIELD)
     {
         update_distance_field();
+    }
+
+    if (m_dirty_flags & DIRTY_FLAG_BLAS)
+    {
+        update_blas();
     }
 
     m_dirty_flags = DIRTY_FLAG_NONE;
@@ -306,6 +316,8 @@ void geometry::update_buffer()
                 geometry_buffer.src_geometry->m_geometry_id,
                 type);
         }
+
+        geometry_buffer.dirty = false;
     }
 }
 
@@ -341,10 +353,58 @@ void geometry::update_submesh()
 
 void geometry::update_distance_field()
 {
-    assert(m_distance_field_id == INVALID_RENDER_ID);
+    assert(m_sdf != nullptr && m_sdf->m_distance_field_id == INVALID_RENDER_ID);
 
     auto* distance_field_manager = render_device::instance().get_distance_field_manager();
-    m_distance_field_id = distance_field_manager->add_distance_field(m_distance_field);
+    m_sdf->m_distance_field_id =
+        distance_field_manager->add_distance_field(m_sdf->m_distance_field);
+
+    std::vector<std::uint32_t>{}.swap(m_sdf->m_distance_field.brick_table);
+    std::vector<std::uint8_t>{}.swap(m_sdf->m_distance_field.brick_data);
+}
+
+void geometry::update_blas()
+{
+    assert(m_blas != nullptr);
+
+    auto& device = render_device::instance();
+    auto* geometry_manager = device.get_geometry_manager();
+
+    std::vector<rhi_acceleration_structure_desc::submesh> submeshes(m_submeshes.size());
+    std::ranges::transform(
+        m_submeshes,
+        submeshes.begin(),
+        [](const submesh& submesh)
+        {
+            return rhi_acceleration_structure_desc::submesh{
+                .vertex_offset = submesh.vertex_offset,
+                .index_offset = submesh.index_offset,
+                .index_count = submesh.index_count,
+            };
+        });
+
+    std::size_t vertex_buffer_offset =
+        geometry_manager->get_buffer_offset(m_geometry_id, GEOMETRY_BUFFER_POSITION);
+    std::size_t index_buffer_offset =
+        geometry_manager->get_buffer_offset(m_geometry_id, GEOMETRY_BUFFER_INDEX);
+
+    m_blas->m_blas = device.create_acceleration_structure({
+        .type = RHI_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+        .flags = RHI_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE,
+        .geometry_type = RHI_GEOMETRY_TYPE_TRIANGLES,
+        .triangles =
+            {
+                .vertex_format = RHI_FORMAT_R32G32B32_FLOAT,
+                .vertex_count = m_vertex_count,
+                .vertex_buffer = geometry_manager->get_vertex_buffer()->get_rhi(),
+                .vertex_buffer_offset = vertex_buffer_offset,
+                .index_size = sizeof(std::uint32_t),
+                .index_buffer = geometry_manager->get_index_buffer()->get_rhi(),
+                .index_buffer_offset = index_buffer_offset,
+                .submeshes = submeshes.data(),
+                .submesh_count = static_cast<std::uint32_t>(submeshes.size()),
+            },
+    });
 }
 
 void geometry::mark_dirty(dirty_flags dirty_flags)

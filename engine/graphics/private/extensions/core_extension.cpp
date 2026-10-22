@@ -143,7 +143,7 @@ public:
 #endif
     }
 
-    void add_feature_query(vk::vk_extension_registry& registry) const override
+    void add_device_query(vk::vk_extension_registry& registry) const override
     {
         registry.add_feature<VkPhysicalDeviceVulkan12Features>();
         registry.add_feature<VkPhysicalDeviceVulkan13Features>();

@@ -32,5 +32,12 @@ public:
     static VkImageAspectFlags map_image_aspect_flags(rhi_texture_aspect_flags flags);
 
     static VkQueryType map_query_type(rhi_query_type type);
+
+    static VkIndexType get_index_type(std::size_t index_size);
+
+    static std::size_t align_up(size_t value, size_t alignment) noexcept
+    {
+        return ((value + alignment - 1) & ~(alignment - 1));
+    }
 };
 } // namespace violet::vk

@@ -80,7 +80,7 @@ void cs_main(uint3 dtid : SV_DispatchThreadID)
 
     float3 color = 0.0;
 
-    for (uint i = 0; i < constant.sample_count; ++i)
+    // for (uint i = 0; i < constant.sample_count; ++i)
     {
         float4 stbn = stbn_cosine.SampleLevel(point_repeat_sampler, float3(dtid.xy * constant.stbn_cosine_texel_size, constant.stbn_cosine_slice), 0.0);
         stbn.xyz = stbn.xyz * 2.0 - 1.0;

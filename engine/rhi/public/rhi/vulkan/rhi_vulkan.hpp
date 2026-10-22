@@ -238,6 +238,18 @@ public:
         return *m_requested_features.get<T>();
     }
 
+    template <typename T>
+    void add_property()
+    {
+        m_properties.append(T{});
+    }
+
+    template <typename T>
+    const T& get_property() const
+    {
+        return *m_properties.get<T>();
+    }
+
 private:
     std::set<std::string> m_available_layers;
     std::set<std::string> m_requested_layers;
@@ -250,6 +262,8 @@ private:
 
     vk_structure_chain m_available_features;
     vk_structure_chain m_requested_features;
+
+    vk_structure_chain m_properties;
 
     friend class vk_context;
 };
@@ -276,7 +290,7 @@ public:
 
     virtual void commit_for_device(vk_extension_registry& registry) {}
 
-    virtual void add_feature_query(vk_extension_registry& registry) const {}
+    virtual void add_device_query(vk_extension_registry& registry) const {}
 
 private:
     bool m_enabled{true};

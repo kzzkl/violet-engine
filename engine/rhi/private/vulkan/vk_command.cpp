@@ -149,21 +149,11 @@ void vk_command::set_vertex_buffers(
 void vk_command::set_index_buffer(rhi_buffer* index_buffer, std::size_t index_size)
 {
     auto* buffer = static_cast<vk_buffer*>(index_buffer);
-
-    VkIndexType index_type = VK_INDEX_TYPE_UINT32;
-    switch (index_size)
-    {
-    case 2:
-        index_type = VK_INDEX_TYPE_UINT16;
-        break;
-    case 4:
-        index_type = VK_INDEX_TYPE_UINT32;
-        break;
-    default:
-        throw std::runtime_error("unsupported index size");
-    };
-
-    vkCmdBindIndexBuffer(m_command_buffer, buffer->get_buffer(), 0, index_type);
+    vkCmdBindIndexBuffer(
+        m_command_buffer,
+        buffer->get_buffer(),
+        0,
+        vk_utils::get_index_type(index_size));
 }
 
 void vk_command::draw(

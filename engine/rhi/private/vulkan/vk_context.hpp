@@ -15,6 +15,7 @@ class vk_parameter_manager;
 class vk_parameter;
 class vk_bindless_manager;
 class vk_framebuffer_manager;
+class vk_staging_uploader;
 class vk_deletion_queue;
 
 class vk_extension_registry;
@@ -68,6 +69,11 @@ public:
         return m_framebuffer_manager.get();
     }
 
+    vk_staging_uploader* get_staging_uploader() const noexcept
+    {
+        return m_staging_uploader.get();
+    }
+
     vk_deletion_queue* get_deletion_queue() noexcept
     {
         return m_deletion_queue.get();
@@ -88,9 +94,21 @@ public:
         return m_physical_device;
     }
 
-    VkPhysicalDeviceProperties get_physical_device_properties() const noexcept
+    const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept
     {
-        return m_physical_device_properties;
+        return m_physical_device_properties.properties;
+    }
+
+    const VkPhysicalDeviceAccelerationStructurePropertiesKHR&
+    get_acceleration_structure_properties() const noexcept
+    {
+        return m_acceleration_structure_properties;
+    }
+
+    const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& get_ray_tracing_pipeline_properties()
+        const noexcept
+    {
+        return m_ray_tracing_pipeline_properties;
     }
 
     std::uint32_t get_frame_count() const noexcept
@@ -119,13 +137,16 @@ private:
         std::span<rhi_extension*> extensions,
         vk_extension_registry& registry);
     void initialize_device(vk_extension_registry& registry);
-    void initialize_vma();
+    void initialize_vma(vk_extension_registry& registry);
     void initialize_descriptor_pool(bool bindless);
 
     VkInstance m_instance{VK_NULL_HANDLE};
     VkPhysicalDevice m_physical_device{VK_NULL_HANDLE};
-    VkPhysicalDeviceProperties m_physical_device_properties;
     VkDevice m_device{VK_NULL_HANDLE};
+
+    VkPhysicalDeviceProperties2 m_physical_device_properties;
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR m_acceleration_structure_properties;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_ray_tracing_pipeline_properties;
 
     std::unique_ptr<vk_graphics_queue> m_graphics_queue;
     std::unique_ptr<vk_present_queue> m_present_queue;
@@ -134,6 +155,8 @@ private:
     std::unique_ptr<vk_parameter_manager> m_parameter_manager;
     std::unique_ptr<vk_bindless_manager> m_bindless_manager;
     std::unique_ptr<vk_framebuffer_manager> m_framebuffer_manager;
+
+    std::unique_ptr<vk_staging_uploader> m_staging_uploader;
 
     std::unique_ptr<vk_deletion_queue> m_deletion_queue;
 

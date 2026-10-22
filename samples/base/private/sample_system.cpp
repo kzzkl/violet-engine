@@ -9,6 +9,7 @@
 #include "components/skybox_component.hpp"
 #include "components/transform_component.hpp"
 #include "control/control_system.hpp"
+#include "graphics/extensions/ray_tracing_extension.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/materials/pbr_material.hpp"
 #include "graphics/render_graph/rdg_profiling.hpp"
@@ -142,10 +143,16 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
         m_textures.push_back(std::make_unique<texture_2d>(texture));
     }
 
+    bool enable_ray_tracing = render_device::instance().has_extension<ray_tracing_extension>();
+
     std::size_t geometry_offset = m_geometries.size();
     for (const auto& geometry_data : scene_data.geometries)
     {
-        auto model_geometry = std::make_unique<geometry>();
+        geometry_flags flags = GEOMETRY_FLAG_NONE;
+        flags |= geometry_data.distance_field != -1 ? GEOMETRY_FLAG_SDF : 0;
+        flags |= enable_ray_tracing ? GEOMETRY_FLAG_BLAS : 0;
+
+        auto model_geometry = std::make_unique<geometry>(flags);
 
         model_geometry->set_positions(geometry_data.positions);
         model_geometry->set_normals(geometry_data.normals);
@@ -170,8 +177,12 @@ entity sample_system::load_model(std::string_view model_path, load_options optio
 
         if (geometry_data.distance_field != -1)
         {
-            auto& distance_field = scene_data.distance_fields[geometry_data.distance_field];
-            model_geometry->set_distance_field(distance_field);
+            model_geometry->patch_sdf(
+                [&](geometry_sdf& sdf)
+                {
+                    sdf.set_distance_field(
+                        scene_data.distance_fields[geometry_data.distance_field]);
+                });
         }
 
         m_geometries.push_back(std::move(model_geometry));

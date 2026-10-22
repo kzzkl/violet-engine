@@ -47,6 +47,8 @@ public:
         render_id src_geometry_id,
         geometry_buffer_type type);
 
+    std::size_t get_buffer_offset(render_id geometry_id, geometry_buffer_type type) const;
+
     void upload(gpu_buffer_uploader* uploader);
 
     void mark_dirty(render_id geometry_id);
@@ -147,7 +149,8 @@ private:
         box3f bounding_box;
         sphere3f bounding_sphere;
 
-        render_id cluster_root_id{INVALID_RENDER_ID};
+        render_id cluster_id{INVALID_RENDER_ID};
+        render_id cluster_node_id{INVALID_RENDER_ID};
     };
 
     struct gpu_cluster

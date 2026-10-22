@@ -352,7 +352,7 @@ void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
         [&](const mesh_data& mesh) -> mesh_data::gpu_type
         {
             box3f volume_bounds =
-                distance_field_manager->get_volume_bounds(mesh.geometry->get_distance_field_id());
+                distance_field_manager->get_volume_bounds(mesh.geometry->get_sdf()->get_id());
             vec3f volume_center = box::get_center(volume_bounds);
             vec3f volume_extent = box::get_extent(volume_bounds);
             float max_extent = vector::max(volume_extent);
@@ -380,7 +380,7 @@ void render_scene_sdf::update_meshes(gpu_buffer_uploader& uploader)
                 .volume_to_world = volume_to_world,
                 .volume_to_world_scale = volume_to_world_scale,
                 .volume_bounds_min = volume_bounds.min,
-                .distance_field_id = mesh.geometry->get_distance_field_id(),
+                .distance_field_id = mesh.geometry->get_sdf()->get_id(),
                 .volume_bounds_max = volume_bounds.max,
                 .surface_cache_id = mesh.surface_cache_id,
             };
