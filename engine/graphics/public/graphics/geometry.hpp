@@ -23,9 +23,103 @@ enum geometry_buffer_type
     GEOMETRY_BUFFER_COUNT,
 };
 
+enum geometry_flag
+{
+    GEOMETRY_FLAG_NONE,
+    GEOMETRY_FLAG_SDF,
+    GEOMETRY_FLAG_BLAS,
+    GEOMETRY_FLAG_MORPH,
+};
+using geometry_flags = std::uint32_t;
+
+class geometry_sdf
+{
+public:
+    void set_distance_field(const distance_field& distance_field)
+    {
+        m_distance_field = distance_field;
+    }
+
+    box3f get_volume_bounds() const noexcept
+    {
+        return m_distance_field.volume_bounds;
+    }
+
+    render_id get_id() const noexcept
+    {
+        return m_distance_field_id;
+    }
+
+private:
+    distance_field m_distance_field;
+    render_id m_distance_field_id{INVALID_RENDER_ID};
+
+    friend class geometry;
+};
+
+class geometry_blas
+{
+public:
+    rhi_acceleration_structure* get_blas() const noexcept
+    {
+        return m_blas.get();
+    }
+
+private:
+    rhi_ptr<rhi_acceleration_structure> m_blas;
+
+    friend class geometry;
+};
+
+class geometry_morph
+{
+public:
+    void add_morph_target(std::string_view name, const std::vector<morph_element>& elements)
+    {
+        if (m_morph_target_buffer == nullptr)
+        {
+            m_morph_target_buffer = std::make_unique<morph_target_buffer>();
+        }
+
+        m_morph_name_to_index.insert_or_assign(
+            std::string(name),
+            m_morph_target_buffer->get_morph_target_count());
+
+        m_morph_target_buffer->add_morph_target(elements);
+    }
+
+    std::size_t get_morph_target_count() const noexcept
+    {
+        return m_morph_target_buffer == nullptr ? 0 :
+                                                  m_morph_target_buffer->get_morph_target_count();
+    }
+
+    std::size_t get_morph_index(std::string_view name) const
+    {
+        auto iter = m_morph_name_to_index.find(name);
+        if (iter == m_morph_name_to_index.end())
+        {
+            throw std::runtime_error("Morph target not found.");
+        }
+
+        return iter->second;
+    }
+
+    morph_target_buffer* get_morph_target_buffer() const noexcept
+    {
+        return m_morph_target_buffer.get();
+    }
+
+private:
+    string_map<std::size_t> m_morph_name_to_index;
+    std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
+};
+
 class geometry
 {
 public:
+    static constexpr std::size_t max_custom_attribute = 4;
+
     struct submesh
     {
         std::uint32_t vertex_offset;
@@ -46,9 +140,7 @@ public:
         }
     };
 
-    static constexpr std::size_t max_custom_attribute = 4;
-
-    geometry();
+    geometry(geometry_flags flags = GEOMETRY_FLAG_NONE);
     geometry(const geometry&) = delete;
     virtual ~geometry();
 
@@ -119,51 +211,6 @@ public:
         return m_submeshes;
     }
 
-    void set_distance_field(const distance_field& distance_field)
-    {
-        m_distance_field = distance_field;
-        mark_dirty(DIRTY_FLAG_DISTANCE_FIELD);
-    }
-
-    const distance_field& get_distance_field() const noexcept
-    {
-        return m_distance_field;
-    }
-
-    bool has_distance_field() const noexcept
-    {
-        return m_distance_field_id != INVALID_RENDER_ID;
-    }
-
-    render_id get_distance_field_id() const noexcept
-    {
-        return m_distance_field_id;
-    }
-
-    void add_morph_target(std::string_view name, const std::vector<morph_element>& elements);
-
-    std::size_t get_morph_target_count() const noexcept
-    {
-        return m_morph_target_buffer == nullptr ? 0 :
-                                                  m_morph_target_buffer->get_morph_target_count();
-    }
-
-    std::size_t get_morph_index(std::string_view name) const
-    {
-        auto iter = m_morph_name_to_index.find(name);
-        if (iter == m_morph_name_to_index.end())
-        {
-            throw std::runtime_error("Morph target not found.");
-        }
-
-        return iter->second;
-    }
-
-    morph_target_buffer* get_morph_target_buffer() const noexcept
-    {
-        return m_morph_target_buffer.get();
-    }
-
     void set_additional_buffer(
         std::string_view name,
         const void* data,
@@ -171,6 +218,40 @@ public:
         rhi_buffer_flags flags);
 
     raw_buffer* get_additional_buffer(std::string_view name) const;
+
+    template <typename F>
+    void patch_sdf(F&& fn)
+    {
+        if (m_sdf != nullptr)
+        {
+            fn(*m_sdf);
+            mark_dirty(DIRTY_FLAG_DISTANCE_FIELD);
+        }
+    }
+
+    const geometry_sdf* get_sdf() const noexcept
+    {
+        return m_sdf.get();
+    }
+
+    const geometry_blas* get_blas() const noexcept
+    {
+        return m_blas.get();
+    }
+
+    template <typename F>
+    void patch_morph(F&& fn)
+    {
+        if (m_morph != nullptr)
+        {
+            fn(*m_morph);
+        }
+    }
+
+    geometry_morph* get_morph() const noexcept
+    {
+        return m_morph.get();
+    }
 
     render_id get_geometry_id() const noexcept
     {
@@ -195,6 +276,7 @@ private:
         DIRTY_FLAG_BUFFER = 1 << 0,
         DIRTY_FLAG_SUBMESH = 1 << 1,
         DIRTY_FLAG_DISTANCE_FIELD = 1 << 2,
+        DIRTY_FLAG_BLAS = 1 << 3,
     };
     using dirty_flags = std::uint32_t;
 
@@ -234,6 +316,7 @@ private:
     void update_buffer();
     void update_submesh();
     void update_distance_field();
+    void update_blas();
 
     void mark_dirty(dirty_flags dirty_flags);
 
@@ -247,11 +330,9 @@ private:
     std::vector<submesh> m_submeshes;
     std::vector<render_id> m_submesh_ids;
 
-    distance_field m_distance_field;
-    render_id m_distance_field_id{INVALID_RENDER_ID};
-
-    string_map<std::size_t> m_morph_name_to_index;
-    std::unique_ptr<morph_target_buffer> m_morph_target_buffer;
+    std::unique_ptr<geometry_sdf> m_sdf;
+    std::unique_ptr<geometry_blas> m_blas;
+    std::unique_ptr<geometry_morph> m_morph;
 
     render_id m_geometry_id{INVALID_RENDER_ID};
 

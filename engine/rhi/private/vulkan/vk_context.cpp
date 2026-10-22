@@ -6,6 +6,7 @@
 #include "vk_framebuffer.hpp"
 #include "vk_layout.hpp"
 #include "vk_parameter.hpp"
+#include "vk_staging_uploader.hpp"
 #include <algorithm>
 #include <set>
 
@@ -53,6 +54,7 @@ vk_context::~vk_context()
     m_parameter_manager = nullptr;
     m_bindless_manager = nullptr;
     m_framebuffer_manager = nullptr;
+    m_staging_uploader = nullptr;
     m_deletion_queue = nullptr;
 
     vkDestroyDescriptorPool(m_device, m_descriptor_pool, nullptr);
@@ -87,7 +89,7 @@ bool vk_context::initialize(const rhi_desc& desc)
     }
 
     initialize_device(registry);
-    initialize_vma();
+    initialize_vma(registry);
     initialize_descriptor_pool(true);
 
     m_deletion_queue = std::make_unique<vk_deletion_queue>(this);
@@ -96,6 +98,8 @@ bool vk_context::initialize(const rhi_desc& desc)
     m_parameter_manager = std::make_unique<vk_parameter_manager>(this);
     m_bindless_manager = std::make_unique<vk_bindless_manager>(this);
     m_framebuffer_manager = std::make_unique<vk_framebuffer_manager>(this);
+
+    m_staging_uploader = std::make_unique<vk_staging_uploader>(10 * 1024 * 1024, this);
 
     return true;
 }
@@ -310,18 +314,23 @@ bool vk_context::initialize_physical_device(
 
         registry.m_available_features.clear();
         registry.m_requested_features.clear();
+        registry.m_properties.clear();
 
         registry.add_feature<VkPhysicalDeviceFeatures2>();
+        registry.add_property<VkPhysicalDeviceProperties2>();
         each_extension(
             extensions,
             [&](vk_extension* extension)
             {
-                extension->add_feature_query(registry);
+                extension->add_device_query(registry);
             });
 
         vkGetPhysicalDeviceFeatures2(
             device,
             registry.m_available_features.get<VkPhysicalDeviceFeatures2>());
+        vkGetPhysicalDeviceProperties2(
+            device,
+            registry.m_properties.get<VkPhysicalDeviceProperties2>());
     };
 
     std::uint32_t max_score = 0;
@@ -341,10 +350,9 @@ bool vk_context::initialize_physical_device(
                 }
             });
 
-        VkPhysicalDeviceProperties properties = {};
-        vkGetPhysicalDeviceProperties(device, &properties);
+        const auto& properties = registry.get_property<VkPhysicalDeviceProperties2>();
 
-        if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+        if (properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
         {
             score += 1000;
         }
@@ -372,6 +380,20 @@ bool vk_context::initialize_physical_device(
                 extension->m_enabled = false;
             }
         });
+
+    const auto* acceleration_structure_properties =
+        registry.m_properties.get<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();
+    if (acceleration_structure_properties != nullptr)
+    {
+        m_acceleration_structure_properties = *acceleration_structure_properties;
+    }
+
+    const auto* ray_tracing_pipeline_properties =
+        registry.m_properties.get<VkPhysicalDeviceRayTracingPipelinePropertiesKHR>();
+    if (ray_tracing_pipeline_properties != nullptr)
+    {
+        m_ray_tracing_pipeline_properties = *ray_tracing_pipeline_properties;
+    }
 
     return m_physical_device != VK_NULL_HANDLE;
 }
@@ -435,7 +457,7 @@ void vk_context::initialize_device(vk_extension_registry& registry)
     m_graphics_queue = std::make_unique<vk_graphics_queue>(graphics_queue_family_index, this);
 }
 
-void vk_context::initialize_vma()
+void vk_context::initialize_vma(vk_extension_registry& registry)
 {
     VmaVulkanFunctions vulkan_functions = {};
     vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
@@ -465,12 +487,26 @@ void vk_context::initialize_vma()
     vulkan_functions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
     vulkan_functions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
 
-    VmaAllocatorCreateInfo allocator_info = {};
-    allocator_info.vulkanApiVersion = VK_API_VERSION_1_3;
-    allocator_info.physicalDevice = m_physical_device;
-    allocator_info.device = m_device;
-    allocator_info.instance = m_instance;
-    allocator_info.pVulkanFunctions = &vulkan_functions;
+    VmaAllocatorCreateFlags flags = 0;
+
+    const auto* vk12_features =
+        registry.m_requested_features.get<VkPhysicalDeviceVulkan12Features>();
+    if (vk12_features != nullptr)
+    {
+        if (vk12_features->bufferDeviceAddress)
+        {
+            flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        }
+    }
+
+    VmaAllocatorCreateInfo allocator_info = {
+        .flags = flags,
+        .physicalDevice = m_physical_device,
+        .device = m_device,
+        .pVulkanFunctions = &vulkan_functions,
+        .instance = m_instance,
+        .vulkanApiVersion = VK_API_VERSION_1_3,
+    };
 
     vk_check(vmaCreateAllocator(&allocator_info, &m_vma_allocator));
 }

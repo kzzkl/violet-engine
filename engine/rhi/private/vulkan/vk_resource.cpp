@@ -3,58 +3,15 @@
 #include "vk_command.hpp"
 #include "vk_context.hpp"
 #include "vk_framebuffer.hpp"
+#include "vk_staging_uploader.hpp"
 #include "vk_utils.hpp"
+#include "vk_vma.hpp"
 #include <cassert>
 
 namespace violet::vk
 {
 namespace
 {
-std::pair<VkBuffer, VmaAllocation> create_buffer(
-    const VkBufferCreateInfo& buffer_info,
-    VmaAllocationCreateFlags flags,
-    VmaAllocator allocator,
-    VmaAllocationInfo* allocation_info = nullptr)
-{
-    VkBuffer buffer;
-    VmaAllocation allocation;
-
-    VmaAllocationCreateInfo create_info = {
-        .flags = flags,
-        .usage = VMA_MEMORY_USAGE_AUTO,
-    };
-
-    vk_check(vmaCreateBuffer(
-        allocator,
-        &buffer_info,
-        &create_info,
-        &buffer,
-        &allocation,
-        allocation_info));
-
-    return {buffer, allocation};
-}
-
-std::pair<VkImage, VmaAllocation> create_image(
-    const VkImageCreateInfo& image_info,
-    VmaAllocationCreateFlags flags,
-    VmaAllocator allocator,
-    VmaAllocationInfo* allocation_info = nullptr)
-{
-    VkImage image;
-    VmaAllocation allocation;
-
-    VmaAllocationCreateInfo create_info = {
-        .flags = flags,
-        .usage = VMA_MEMORY_USAGE_AUTO,
-    };
-
-    vk_check(
-        vmaCreateImage(allocator, &image_info, &create_info, &image, &allocation, allocation_info));
-
-    return {image, allocation};
-}
-
 VkImageAspectFlags get_vk_aspect_mask(rhi_texture_flags flags, VkFormat format)
 {
     VkImageAspectFlags aspect_mask = 0;
@@ -204,7 +161,8 @@ vk_texture::vk_texture(const rhi_texture_desc& desc, vk_context* context)
         .usage = vk_utils::map_image_usage_flags(desc.flags),
     };
 
-    std::tie(m_image, m_allocation) = create_image(image_info, 0, m_context->get_vma_allocator());
+    std::tie(m_image, m_allocation) =
+        vk_vma::create_image(image_info, 0, m_context->get_vma_allocator());
 
     if (desc.layout != RHI_TEXTURE_LAYOUT_UNDEFINED)
     {
@@ -585,7 +543,7 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     {
         VmaAllocationInfo allocation_info = {};
 
-        std::tie(m_buffer, m_allocation) = create_buffer(
+        std::tie(m_buffer, m_allocation) = vk_vma::create_buffer(
             buffer_info,
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -605,42 +563,17 @@ vk_buffer::vk_buffer(const rhi_buffer_desc& desc, vk_context* context)
     {
         if (desc.data != nullptr)
         {
-            VkBufferCreateInfo staging_buffer_info = {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = m_buffer_size,
-                .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            };
-
-            VmaAllocationInfo staging_allocation_info = {};
-            auto [staging_buffer, staging_allocation] = create_buffer(
-                staging_buffer_info,
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                    VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                m_context->get_vma_allocator(),
-                &staging_allocation_info);
-
-            std::memcpy(staging_allocation_info.pMappedData, desc.data, m_buffer_size);
-
             buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             std::tie(m_buffer, m_allocation) =
-                create_buffer(buffer_info, 0, m_context->get_vma_allocator());
+                vk_vma::create_buffer(buffer_info, 0, m_context->get_vma_allocator());
 
-            vk_command* command = m_context->get_graphics_queue()->allocate_command();
-            VkBufferCopy copy_region = {0, 0, desc.size};
-            vkCmdCopyBuffer(
-                command->get_command_buffer(),
-                staging_buffer,
-                m_buffer,
-                1,
-                &copy_region);
-            m_context->get_graphics_queue()->execute_sync(command);
-
-            vmaDestroyBuffer(m_context->get_vma_allocator(), staging_buffer, staging_allocation);
+            auto* staging_uploader = m_context->get_staging_uploader();
+            staging_uploader->upload(desc.data, m_buffer_size, m_buffer, 0);
         }
         else
         {
             std::tie(m_buffer, m_allocation) =
-                create_buffer(buffer_info, 0, m_context->get_vma_allocator());
+                vk_vma::create_buffer(buffer_info, 0, m_context->get_vma_allocator());
         }
     }
 }
@@ -747,7 +680,9 @@ vk_sampler::vk_sampler(const rhi_sampler_desc& desc, vk_context* context)
         .addressModeV = vk_utils::map_sampler_address_mode(desc.address_mode_v),
         .addressModeW = vk_utils::map_sampler_address_mode(desc.address_mode_w),
         .anisotropyEnable = VK_TRUE,
-        .maxAnisotropy = m_context->get_physical_device_properties().limits.maxSamplerAnisotropy,
+        .maxAnisotropy = std::min(
+            16.0f,
+            m_context->get_physical_device_properties().limits.maxSamplerAnisotropy),
         .compareEnable = VK_FALSE,
         .minLod = desc.min_level,
         .maxLod = desc.max_level < 0.0f ? VK_LOD_CLAMP_NONE : desc.max_level,

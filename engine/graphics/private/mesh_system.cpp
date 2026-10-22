@@ -2,6 +2,7 @@
 #include "components/mesh_component_meta.hpp"
 #include "components/scene_component.hpp"
 #include "components/transform_component.hpp"
+#include "graphics/render_scene/render_scene_ray_tracing.hpp"
 #include "graphics/render_scene/render_scene_sdf.hpp"
 
 namespace violet
@@ -44,20 +45,33 @@ void mesh_system::update(render_scene_manager& scene_manager)
                         mesh_meta.scene->get_module<render_scene_mesh>().remove_mesh(
                             mesh_meta.mesh);
 
-                        if (mesh_meta.mesh_sdf != INVALID_RENDER_ID)
+                        if (mesh_meta.sdf_instance_id != INVALID_RENDER_ID)
                         {
                             mesh_meta.scene->get_module<render_scene_sdf>().remove_mesh(
-                                mesh_meta.mesh_sdf);
+                                mesh_meta.sdf_instance_id);
+                        }
+
+                        if (mesh_meta.tlas_instance_id != INVALID_RENDER_ID)
+                        {
+                            mesh_meta.scene->get_module<render_scene_ray_tracing>().remove_instance(
+                                mesh_meta.tlas_instance_id);
                         }
                     }
 
                     mesh_meta.mesh = render_scene->get_module<render_scene_mesh>().add_mesh();
                     mesh_meta.instances.clear();
 
-                    if (mesh.geometry->has_distance_field())
+                    if (mesh.geometry->get_sdf() != nullptr)
                     {
                         auto& sdf_module = render_scene->get_module<render_scene_sdf>();
-                        mesh_meta.mesh_sdf = sdf_module.add_mesh();
+                        mesh_meta.sdf_instance_id = sdf_module.add_mesh();
+                    }
+
+                    if (mesh.geometry->get_blas() != nullptr)
+                    {
+                        auto& ray_tracing_module =
+                            render_scene->get_module<render_scene_ray_tracing>();
+                        mesh_meta.tlas_instance_id = ray_tracing_module.add_instance();
                     }
 
                     mesh_meta.scene = render_scene;
@@ -68,12 +82,19 @@ void mesh_system::update(render_scene_manager& scene_manager)
                     transform.matrix,
                     transform.scale);
 
-                if (mesh_meta.mesh_sdf != INVALID_RENDER_ID)
+                if (mesh_meta.sdf_instance_id != INVALID_RENDER_ID)
                 {
                     render_scene->get_module<render_scene_sdf>().set_mesh_matrix(
-                        mesh_meta.mesh_sdf,
+                        mesh_meta.sdf_instance_id,
                         transform.matrix,
                         transform.scale);
+                }
+
+                if (mesh_meta.tlas_instance_id != INVALID_RENDER_ID)
+                {
+                    render_scene->get_module<render_scene_ray_tracing>().set_instance_matrix(
+                        mesh_meta.tlas_instance_id,
+                        transform.matrix);
                 }
             },
             [this](auto& view)
@@ -101,7 +122,7 @@ void mesh_system::update(render_scene_manager& scene_manager)
                 mesh_module.set_mesh_flags(mesh_meta.mesh, mesh.flags);
                 mesh_module.set_mesh_geometry(mesh_meta.mesh, mesh.geometry);
 
-                if (mesh.geometry->has_distance_field())
+                if (mesh.geometry->get_sdf() != nullptr)
                 {
                     auto& sdf_module = mesh_meta.scene->get_module<render_scene_sdf>();
 
@@ -116,7 +137,17 @@ void mesh_system::update(render_scene_manager& scene_manager)
                             return std::make_pair(submesh.index, submesh.material);
                         });
 
-                    sdf_module.set_mesh(mesh_meta.mesh_sdf, mesh.geometry, materials);
+                    sdf_module.set_mesh(mesh_meta.sdf_instance_id, mesh.geometry, materials);
+                }
+
+                if (mesh.geometry->get_blas() != nullptr)
+                {
+                    auto& ray_tracing_module =
+                        mesh_meta.scene->get_module<render_scene_ray_tracing>();
+
+                    ray_tracing_module.set_instance_geometry(
+                        mesh_meta.tlas_instance_id,
+                        mesh.geometry);
                 }
 
                 std::size_t submesh_count = mesh.visible ? mesh.submeshes.size() : 0;

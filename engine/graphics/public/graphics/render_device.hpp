@@ -32,6 +32,7 @@ public:
     void operator()(rhi_swapchain* swapchain);
     void operator()(rhi_fence* fence);
     void operator()(rhi_query_pool* query_pool);
+    void operator()(rhi_acceleration_structure* acceleration_structure);
 
 private:
     rhi* m_rhi;
@@ -122,7 +123,7 @@ public:
     T& get_extension()
     {
         static const std::uint32_t index = extension_index::value<T>();
-        return *static_cast<T*>(m_extensions[index]);
+        return *static_cast<T*>(m_extensions[index].get());
     }
 
     template <typename T>
@@ -235,6 +236,9 @@ public:
     rhi_ptr<rhi_fence> create_fence();
 
     rhi_ptr<rhi_query_pool> create_query_pool(const rhi_query_pool_desc& desc);
+
+    rhi_ptr<rhi_acceleration_structure> create_acceleration_structure(
+        const rhi_acceleration_structure_desc& desc);
 
     // Transient resources.
     rhi_parameter* allocate_parameter(const rhi_parameter_desc& desc);

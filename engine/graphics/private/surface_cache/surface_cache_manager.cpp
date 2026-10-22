@@ -77,7 +77,7 @@ render_id surface_cache_manager::add_surface_cache(
     }
 
     vec3f bounds_extent =
-        box::get_extent(geometry->get_distance_field().volume_bounds) * SURFACE_CACHE_TEXEL_DENSITY;
+        box::get_extent(geometry->get_sdf()->get_volume_bounds()) * SURFACE_CACHE_TEXEL_DENSITY;
     std::uint32_t extent_x = std::min(
         math::next_power_of_two(static_cast<std::uint32_t>(bounds_extent.x)),
         SURFACE_CACHE_FACE_MAX_RESOLUTION);

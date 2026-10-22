@@ -1,4 +1,5 @@
 #include "vk_rhi.hpp"
+#include "vk_acceleration_structure.hpp"
 #include "vk_command.hpp"
 #include "vk_framebuffer.hpp"
 #include "vk_pipeline.hpp"
@@ -170,5 +171,16 @@ rhi_query_pool* vk_rhi::create_query_pool(const rhi_query_pool_desc& desc)
 void vk_rhi::destroy_query_pool(rhi_query_pool* query_pool)
 {
     m_context->get_deletion_queue()->push(query_pool);
+}
+
+rhi_acceleration_structure* vk_rhi::create_acceleration_structure(
+    const rhi_acceleration_structure_desc& desc)
+{
+    return new vk_acceleration_structure(desc, m_context.get());
+}
+
+void vk_rhi::destroy_acceleration_structure(rhi_acceleration_structure* acceleration_structure)
+{
+    m_context->get_deletion_queue()->push(acceleration_structure);
 }
 } // namespace violet::vk

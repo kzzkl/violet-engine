@@ -6,7 +6,8 @@
         "rhi": "vulkan",
         "frame_resource_count": 2,
         "max_draw_commands": 2097152,
-        "max_candidate_clusters": 16777216
+        "max_candidate_clusters": 16777216,
+        "enable_ray_tracing": false
     },
     "window": {
         "title": "violet app",

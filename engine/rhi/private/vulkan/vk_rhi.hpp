@@ -82,6 +82,11 @@ public:
     rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) override;
     void destroy_query_pool(rhi_query_pool* query_pool) override;
 
+    rhi_acceleration_structure* create_acceleration_structure(
+        const rhi_acceleration_structure_desc& desc) override;
+    void destroy_acceleration_structure(
+        rhi_acceleration_structure* acceleration_structure) override;
+
 private:
     std::unique_ptr<vk_context> m_context;
 };

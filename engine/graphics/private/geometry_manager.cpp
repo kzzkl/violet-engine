@@ -1,5 +1,6 @@
 #include "graphics/geometry_manager.hpp"
 #include "gpu_buffer_uploader.hpp"
+#include "graphics/extensions/ray_tracing_extension.hpp"
 #include <queue>
 
 namespace violet
@@ -8,13 +9,20 @@ geometry_manager::geometry_manager()
     : m_clusters(16 * 1024 * 1024),
       m_cluster_nodes(2 * 1024 * 1024)
 {
+    auto& device = render_device::instance();
+
+    rhi_buffer_flags flags = 0;
+    flags |= device.has_extension<ray_tracing_extension>() ?
+                 RHI_BUFFER_DEVICE_ADDRESS | RHI_BUFFER_ACCELERATION_STRUCTURE_BUILD_INPUT :
+                 0;
+
     m_vertex_buffer = std::make_unique<persistent_buffer>(
-        1024 * 1024,
-        RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+        100 * 1024 * 1024,
+        flags | RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 
     m_index_buffer = std::make_unique<persistent_buffer>(
-        1024 * 1024,
-        RHI_BUFFER_INDEX | RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
+        100 * 1024 * 1024,
+        flags | RHI_BUFFER_INDEX | RHI_BUFFER_STORAGE | RHI_BUFFER_TRANSFER_DST);
 }
 
 geometry_manager::~geometry_manager() {}
@@ -106,20 +114,41 @@ render_id geometry_manager::add_submesh(
     std::span<const cluster> clusters,
     std::span<const cluster_node> cluster_nodes)
 {
+    assert(!clusters.empty() && !cluster_nodes.empty());
+
+    std::uint32_t cluster_count = 0;
+    std::uint32_t cluster_node_count = 1; // Root
+
+    for (const auto& cluster_node : cluster_nodes)
+    {
+        if (cluster_node.is_leaf)
+        {
+            cluster_count += cluster_node.child_count;
+        }
+        else
+        {
+            cluster_node_count += cluster_node.child_count;
+        }
+    }
+
     std::scoped_lock lock(m_mutex);
 
+    std::uint32_t cluster_offset = m_clusters.add(cluster_count);
+    std::uint32_t cluster_node_offset = m_cluster_nodes.add(cluster_node_count);
+
     render_id submesh_id = m_submeshes.add();
-    render_id root_id = m_cluster_nodes.add();
 
     auto& submesh = m_submeshes[submesh_id];
     submesh.submesh_id = submesh_id;
     submesh.geometry_id = geometry_id;
-    submesh.cluster_root_id = root_id;
     submesh.bounding_box = cluster_nodes[0].bounding_box;
     submesh.bounding_sphere = cluster_nodes[0].bounding_sphere;
+    submesh.cluster_id = cluster_offset;
+    submesh.cluster_node_id = cluster_node_offset;
 
     std::queue<std::pair<std::uint32_t, render_id>> queue;
-    queue.emplace(0, root_id);
+    queue.emplace(0, cluster_node_offset);
+    ++cluster_node_offset;
 
     while (!queue.empty())
     {
@@ -141,11 +170,10 @@ render_id geometry_manager::add_submesh(
 
         if (cluster_node.is_leaf)
         {
-            render_id first_cluster_id = m_clusters.add(cluster_node.child_count);
             for (std::uint32_t i = 0; i < cluster_node.child_count; ++i)
             {
                 const auto& cluster = clusters[cluster_node.child_offset + i];
-                m_clusters[first_cluster_id + i] = {
+                m_clusters[cluster_offset + i] = {
                     .index_offset = cluster.index_offset,
                     .index_count = cluster.index_count,
                     .bounding_sphere = cluster.bounding_sphere,
@@ -155,17 +183,18 @@ render_id geometry_manager::add_submesh(
                 };
             }
 
-            m_cluster_nodes[id].child_offset = first_cluster_id;
+            m_cluster_nodes[id].child_offset = cluster_offset;
+            cluster_offset += cluster_node.child_count;
         }
         else if (cluster_node.child_count != 0)
         {
-            render_id first_child_id = m_cluster_nodes.add(cluster_node.child_count);
             for (std::uint32_t i = 0; i < cluster_node.child_count; ++i)
             {
-                queue.emplace(cluster_node.child_offset + i, first_child_id + i);
+                queue.emplace(cluster_node.child_offset + i, cluster_node_offset + i);
             }
 
-            m_cluster_nodes[id].child_offset = first_child_id;
+            m_cluster_nodes[id].child_offset = cluster_node_offset;
+            cluster_node_offset += cluster_node.child_count;
         }
     }
 
@@ -177,6 +206,21 @@ render_id geometry_manager::add_submesh(
 void geometry_manager::remove_submesh(render_id submesh_id)
 {
     std::scoped_lock lock(m_mutex);
+
+    auto& submesh = m_submeshes[submesh_id];
+
+    if (submesh.cluster_id != INVALID_RENDER_ID)
+    {
+        m_clusters.remove(submesh.cluster_id);
+        submesh.cluster_id = INVALID_RENDER_ID;
+    }
+
+    if (submesh.cluster_node_id != INVALID_RENDER_ID)
+    {
+        m_cluster_nodes.remove(submesh.cluster_node_id);
+        submesh.cluster_node_id = INVALID_RENDER_ID;
+    }
+
     m_submeshes.remove(submesh_id);
 }
 
@@ -243,6 +287,13 @@ void geometry_manager::set_buffer(
 
         m_index_buffer->copy(data, size, geometry_buffer.offset);
     }
+}
+
+std::size_t geometry_manager::get_buffer_offset(render_id geometry_id, geometry_buffer_type type)
+    const
+{
+    auto& geometry_buffer = m_geometries[geometry_id].buffers[type];
+    return geometry_buffer.offset;
 }
 
 void geometry_manager::set_shared_buffer(
@@ -330,7 +381,7 @@ void geometry_manager::upload(gpu_buffer_uploader* uploader)
                     (get_buffer_address(geometry.geometry_id, GEOMETRY_BUFFER_INDEX) / 4) +
                     geometry.index_offset,
                 .index_count = geometry.index_count,
-                .cluster_root = static_cast<std::uint32_t>(geometry.cluster_root_id),
+                .cluster_root = static_cast<std::uint32_t>(geometry.cluster_node_id),
                 .bounding_box_min = geometry.bounding_box.min,
                 .bounding_box_max = geometry.bounding_box.max,
                 .bounding_sphere = m_submeshes[geometry.submesh_id].bounding_sphere,

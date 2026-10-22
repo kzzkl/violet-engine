@@ -15,6 +15,7 @@ target_link_libraries(violet-rhi
 if (VIOLET_ENABLE_VULKAN)
     target_sources(violet-rhi
         PRIVATE
+            private/vulkan/vk_acceleration_structure.cpp
             private/vulkan/vk_bindless.cpp
             private/vulkan/vk_command.cpp
             private/vulkan/vk_context.cpp
@@ -27,6 +28,7 @@ if (VIOLET_ENABLE_VULKAN)
             private/vulkan/vk_render_pass.cpp
             private/vulkan/vk_resource.cpp
             private/vulkan/vk_rhi.cpp
+            private/vulkan/vk_staging_uploader.cpp
             private/vulkan/vk_swapchain.cpp
             private/vulkan/vk_sync.cpp
             private/vulkan/vk_utils.cpp)

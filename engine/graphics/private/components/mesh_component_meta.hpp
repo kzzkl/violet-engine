@@ -36,9 +36,9 @@ public:
             scene->get_module<render_scene_mesh>().remove_mesh(mesh);
         }
 
-        if (mesh_sdf != INVALID_RENDER_ID)
+        if (sdf_instance_id != INVALID_RENDER_ID)
         {
-            scene->get_module<render_scene_sdf>().remove_mesh(mesh_sdf);
+            scene->get_module<render_scene_sdf>().remove_mesh(sdf_instance_id);
         }
     }
 
@@ -76,7 +76,8 @@ public:
     render_id mesh{INVALID_RENDER_ID};
     std::vector<render_id> instances;
 
-    render_id mesh_sdf{INVALID_RENDER_ID};
+    render_id sdf_instance_id{INVALID_RENDER_ID};
+    render_id tlas_instance_id{INVALID_RENDER_ID};
 };
 
 template <>

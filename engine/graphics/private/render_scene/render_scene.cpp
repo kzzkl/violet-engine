@@ -1,12 +1,14 @@
 #include "graphics/render_scene/render_scene.hpp"
 #include "components/camera_component_meta.hpp"
 #include "gpu_buffer_uploader.hpp"
+#include "graphics/extensions/ray_tracing_extension.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/material_manager.hpp"
 #include "graphics/render_scene/render_scene_camera.hpp"
 #include "graphics/render_scene/render_scene_environment.hpp"
 #include "graphics/render_scene/render_scene_light.hpp"
 #include "graphics/render_scene/render_scene_mesh.hpp"
+#include "graphics/render_scene/render_scene_ray_tracing.hpp"
 #include "graphics/render_scene/render_scene_sdf.hpp"
 #include "graphics/render_scene/render_scene_shadow.hpp"
 
@@ -24,6 +26,11 @@ render_scene::render_scene(vsm_manager* vsm_manager)
     m_context.add_module<render_scene_shadow>(vsm_manager);
     m_context.add_module<render_scene_environment>();
     m_context.add_module<render_scene_sdf>();
+
+    if (device.has_extension<ray_tracing_extension>())
+    {
+        m_context.add_module<render_scene_ray_tracing>();
+    }
 }
 
 render_scene::~render_scene() {}

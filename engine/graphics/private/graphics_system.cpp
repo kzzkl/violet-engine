@@ -1,5 +1,6 @@
 #include "graphics/graphics_system.hpp"
 #include "camera_system.hpp"
+#include "common/log.hpp"
 #include "components/camera_component.hpp"
 #include "components/camera_component_meta.hpp"
 #include "components/scene_component.hpp"
@@ -7,6 +8,7 @@
 #include "environment_system.hpp"
 #include "extensions/core_extension.hpp"
 #include "gpu_buffer_uploader.hpp"
+#include "graphics/extensions/ray_tracing_extension.hpp"
 #include "graphics/geometry_manager.hpp"
 #include "graphics/graphics_config.hpp"
 #include "graphics/material_manager.hpp"
@@ -72,11 +74,21 @@ bool graphics_system::initialize(const dictionary& config)
 
     auto& core = device.add_extension<core_extension>();
 
+    if (config["enable_ray_tracing"])
+    {
+        device.add_extension<ray_tracing_extension>();
+    }
+
     device.initialize(backend, config["frame_resource_count"]);
 
     if (!core.is_enabled())
     {
         return false;
+    }
+
+    if (config["enable_ray_tracing"] && !device.get_extension<ray_tracing_extension>().is_enabled())
+    {
+        log::warn("Raytracing is not supported.");
     }
 
     auto& task_graph = get_task_graph();

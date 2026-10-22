@@ -20,6 +20,7 @@ void vk_deletion_queue::tick(std::size_t frame_index)
     m_swapchain_queue.tick(frame_index);
     m_fence_queue.tick(frame_index);
     m_query_pool_queue.tick(frame_index);
+    m_acceleration_structure_queue.tick(frame_index);
 }
 
 void vk_deletion_queue::flush()
@@ -34,6 +35,7 @@ void vk_deletion_queue::flush()
     m_swapchain_queue.flush();
     m_fence_queue.flush();
     m_query_pool_queue.flush();
+    m_acceleration_structure_queue.flush();
 }
 
 void vk_deletion_queue::push(rhi_render_pass* render_pass)
@@ -114,6 +116,11 @@ void vk_deletion_queue::push(rhi_fence* fence)
 void vk_deletion_queue::push(rhi_query_pool* query_pool)
 {
     m_query_pool_queue.push(query_pool, get_delete_frame());
+}
+
+void vk_deletion_queue::push(rhi_acceleration_structure* acceleration_structure)
+{
+    m_acceleration_structure_queue.push(acceleration_structure, get_delete_frame());
 }
 
 std::size_t vk_deletion_queue::get_delete_frame() const noexcept

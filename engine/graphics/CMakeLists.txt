@@ -1,6 +1,7 @@
 add_library(violet-graphics STATIC
     private/distance_field/distance_field_manager.cpp
     private/extensions/core_extension.cpp
+    private/extensions/ray_tracing_extension.cpp
     private/geometries/box_geometry.cpp
     private/geometries/plane_geometry.cpp
     private/geometries/sphere_geometry.cpp
@@ -15,6 +16,7 @@ add_library(violet-graphics STATIC
     private/render_scene/render_scene_light.cpp
     private/render_scene/render_scene_manager.cpp
     private/render_scene/render_scene_mesh.cpp
+    private/render_scene/render_scene_ray_tracing.cpp
     private/render_scene/render_scene_sdf.cpp
     private/render_scene/render_scene_shadow.cpp
     private/render_scene/render_scene.cpp

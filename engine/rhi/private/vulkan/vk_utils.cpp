@@ -321,6 +321,10 @@ VkBufferUsageFlags vk_utils::map_buffer_usage_flags(rhi_buffer_flags flags)
     usages |= (flags & RHI_BUFFER_TRANSFER_SRC) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
     usages |= (flags & RHI_BUFFER_TRANSFER_DST) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
     usages |= (flags & RHI_BUFFER_INDIRECT) ? VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT : 0;
+    usages |= (flags & RHI_BUFFER_DEVICE_ADDRESS) ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
+    usages |= (flags & RHI_BUFFER_ACCELERATION_STRUCTURE_BUILD_INPUT) ?
+                  VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR :
+                  0;
 
     return usages;
 }
@@ -496,5 +500,18 @@ VkQueryType vk_utils::map_query_type(rhi_query_type type)
     default:
         throw std::runtime_error("Invalid query type.");
     }
+}
+
+VkIndexType vk_utils::get_index_type(std::size_t index_size)
+{
+    switch (index_size)
+    {
+    case 2:
+        return VK_INDEX_TYPE_UINT16;
+    case 4:
+        return VK_INDEX_TYPE_UINT32;
+    default:
+        throw std::runtime_error("unsupported index size");
+    };
 }
 } // namespace violet::vk

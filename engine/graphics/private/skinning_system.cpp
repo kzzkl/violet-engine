@@ -65,7 +65,7 @@ void skinning_system::pre_update()
 
                     skinned_geometry->set_indexes_shared(original_geometry);
 
-                    if (original_geometry->get_morph_target_count() != 0)
+                    if (original_geometry->get_morph()->get_morph_target_count() != 0)
                     {
                         skinned_geometry->set_additional_buffer(
                             "morph",
@@ -256,7 +256,7 @@ void skinning_system::update_morph()
         [this](skinned_component_meta& skinned_meta, const morph_component& morph)
         {
             morph_target_buffer* morph_target_buffer =
-                skinned_meta.original_geometry->get_morph_target_buffer();
+                skinned_meta.original_geometry->get_morph()->get_morph_target_buffer();
 
             if (morph_target_buffer == nullptr)
             {

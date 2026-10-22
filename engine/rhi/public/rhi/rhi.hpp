@@ -446,6 +446,8 @@ enum rhi_buffer_flag : std::uint32_t
     RHI_BUFFER_TRANSFER_DST = 1 << 7,
     RHI_BUFFER_HOST_VISIBLE = 1 << 8,
     RHI_BUFFER_INDIRECT = 1 << 9,
+    RHI_BUFFER_DEVICE_ADDRESS = 1 << 10,
+    RHI_BUFFER_ACCELERATION_STRUCTURE_BUILD_INPUT = 1 << 11,
 };
 using rhi_buffer_flags = std::uint32_t;
 
@@ -1156,6 +1158,85 @@ public:
     virtual std::uint32_t get_texture_count() const noexcept = 0;
 };
 
+enum rhi_geometry_type
+{
+    RHI_GEOMETRY_TYPE_TRIANGLES,
+    RHI_GEOMETRY_TYPE_AABBS,
+    RHI_GEOMETRY_TYPE_INSTANCES,
+};
+
+enum rhi_acceleration_structure_type
+{
+    RHI_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+    RHI_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+};
+
+enum rhi_acceleration_structure_flag
+{
+    RHI_ACCELERATION_STRUCTURE_NONE = 0,
+    RHI_ACCELERATION_STRUCTURE_ALLOW_UPDATE = 1 << 0,
+    RHI_ACCELERATION_STRUCTURE_ALLOW_COMPACTION = 1 << 1,
+    RHI_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE = 1 << 2,
+    RHI_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD = 1 << 3,
+};
+using rhi_acceleration_structure_flags = std::uint32_t;
+
+class rhi_acceleration_structure;
+struct rhi_acceleration_structure_desc
+{
+    rhi_acceleration_structure_type type;
+    rhi_acceleration_structure_flags flags;
+
+    rhi_geometry_type geometry_type;
+
+    struct submesh
+    {
+        std::uint32_t vertex_offset;
+        std::uint32_t index_offset;
+        std::uint32_t index_count;
+    };
+
+    struct triangle_data
+    {
+        rhi_format vertex_format;
+        std::uint32_t vertex_count;
+        rhi_buffer* vertex_buffer;
+        std::size_t vertex_buffer_offset;
+
+        std::uint32_t index_size;
+        rhi_buffer* index_buffer;
+        std::size_t index_buffer_offset;
+
+        const submesh* submeshes;
+        std::uint32_t submesh_count;
+    };
+
+    struct instance
+    {
+        rhi_acceleration_structure* blas;
+        float transform[12];
+        std::uint32_t custom_index;
+    };
+
+    struct instance_data
+    {
+        const instance* instances;
+        std::uint32_t instance_count;
+    };
+
+    union
+    {
+        triangle_data triangles;
+        instance_data instances;
+    };
+};
+
+class rhi_acceleration_structure
+{
+public:
+    virtual ~rhi_acceleration_structure() = default;
+};
+
 enum rhi_backend : std::uint8_t
 {
     RHI_BACKEND_VULKAN
@@ -1240,5 +1321,17 @@ public:
 
     virtual rhi_query_pool* create_query_pool(const rhi_query_pool_desc& desc) = 0;
     virtual void destroy_query_pool(rhi_query_pool* query_pool) = 0;
+
+    // Ray tracing
+
+    virtual rhi_acceleration_structure* create_acceleration_structure(
+        const rhi_acceleration_structure_desc& desc)
+    {
+        return nullptr;
+    }
+
+    virtual void destroy_acceleration_structure(rhi_acceleration_structure* acceleration_structure)
+    {
+    }
 };
 } // namespace violet
